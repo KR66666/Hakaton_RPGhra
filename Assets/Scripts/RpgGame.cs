@@ -215,6 +215,7 @@ public sealed class RpgGame : MonoBehaviour
     private void SpawnEnemy(string id, Vector2 position, bool boss)
     {
         if (State.defeated.Contains(id)) return;
+        position = SnapToRoad(position);
         var obj = new GameObject(boss ? "Velitel Vranek" : "Nájezdník");
         obj.transform.position = position;
         var enemy = obj.AddComponent<RpgEnemy>();
@@ -225,7 +226,7 @@ public sealed class RpgGame : MonoBehaviour
     private void AddPerson(string id, string title, string kind, Vector2 position, Color tint)
     {
         var obj = new GameObject(title);
-        obj.transform.position = position;
+        obj.transform.position = SnapToRoad(position);
         obj.transform.localScale = Vector3.one * 0.9f;
         var renderer = obj.AddComponent<SpriteRenderer>();
         renderer.sprite = HeroSprite; renderer.color = tint; renderer.sortingOrder = 2;
@@ -238,7 +239,7 @@ public sealed class RpgGame : MonoBehaviour
     {
         if (State.collected.Contains(id)) return;
         var obj = new GameObject(title);
-        obj.transform.position = position;
+        obj.transform.position = SnapToRoad(position);
         var renderer = obj.AddComponent<SpriteRenderer>();
         renderer.sprite = MarkerSprite(); renderer.color = tint; renderer.sortingOrder = 3;
         obj.transform.localScale = new Vector3(0.35f, 0.35f, 1);
@@ -375,10 +376,11 @@ public sealed class RpgGame : MonoBehaviour
             State.y = Mathf.Clamp(State.y, bounds.min.y + 1, bounds.max.y - 1);
         }
         transform.position = new Vector3(State.x, State.y, transform.position.z);
-        if (map != null && RpgWorldGeometry.Blocked(transform.position, map.bounds, -0.45f))
+        if (map != null)
         {
-            State.x = State.y = 0;
-            transform.position = new Vector3(0, 0, transform.position.z);
+            transform.position = SnapToRoad(transform.position);
+            State.x = transform.position.x;
+            State.y = transform.position.y;
         }
     }
 
@@ -444,6 +446,11 @@ public sealed class RpgGame : MonoBehaviour
     public Vector3 MoveEnemy(Vector3 current, Vector3 desired)
     {
         return map != null ? RpgWorldGeometry.Move(current, desired, map.bounds) : desired;
+    }
+
+    public Vector3 SnapToRoad(Vector3 position)
+    {
+        return map != null ? RpgWorldGeometry.NearestWalkable(position, map.bounds) : position;
     }
 
     private void OnApplicationPause(bool paused) { if (paused) Save(false); }

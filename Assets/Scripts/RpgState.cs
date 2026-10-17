@@ -151,6 +151,67 @@ public sealed class RpgState
 // Movement uses a small circle at the character's feet rather than the sprite's transparent border.
 public static class RpgWorldGeometry
 {
+    public const float FeetOffset = -0.65f;
+    private struct Road
+    {
+        public Vector2 a, b;
+        public float radius;
+        public Road(float x1, float y1, float x2, float y2, float width)
+        { a = new Vector2(x1, y1); b = new Vector2(x2, y2); radius = width; }
+    }
+
+    // Whitelist of paved surfaces, traced in the background's pixel coordinates.
+    // Rectangular roof blockers below take priority over this road network.
+    private static readonly Vector2[] Square =
+    {
+        new Vector2(651, 432), new Vector2(916, 405), new Vector2(980, 470),
+        new Vector2(1000, 675), new Vector2(900, 697), new Vector2(840, 710),
+        new Vector2(688, 710), new Vector2(630, 685), new Vector2(614, 636), new Vector2(628, 455)
+    };
+    private static readonly Road[] Roads =
+    {
+        new Road(650,450,535,448,22), new Road(535,448,420,466,20),
+        new Road(420,466,282,428,18), new Road(282,428,210,403,17),
+        new Road(210,403,110,466,18), new Road(110,466,145,535,16),
+        new Road(145,535,165,625,15), new Road(165,625,268,655,18),
+        new Road(268,655,292,683,16), new Road(292,683,276,772,15),
+        new Road(276,772,276,858,15), new Road(276,858,205,850,15),
+        new Road(205,850,145,842,14), new Road(145,842,122,905,14),
+        new Road(122,905,122,1024,14),
+        new Road(210,403,224,320,14), new Road(224,320,240,260,14),
+        new Road(240,260,224,190,14), new Road(224,190,180,150,14),
+        new Road(180,150,205,90,14), new Road(205,90,240,0,14),
+        new Road(224,320,280,289,13), new Road(280,289,370,285,13),
+        new Road(370,285,400,266,13), new Road(400,266,400,180,13),
+        new Road(400,180,370,112,13), new Road(370,112,380,0,13),
+        new Road(110,466,108,300,12), new Road(108,300,125,245,12),
+        new Road(535,448,535,285,15), new Road(535,285,555,200,14),
+        new Road(555,200,545,100,14), new Road(545,100,550,0,14),
+        new Road(900,420,915,300,16), new Road(915,300,908,275,16),
+        new Road(915,300,810,300,16), new Road(810,300,670,282,14),
+        new Road(670,282,570,280,14), new Road(570,280,535,285,14),
+        new Road(980,500,1075,523,21), new Road(1075,523,1235,530,20),
+        new Road(1235,530,1300,505,20), new Road(1300,505,1350,477,20),
+        new Road(1350,477,1500,477,20), new Road(1500,477,1536,477,18),
+        new Road(1300,505,1350,550,14), new Road(1350,550,1355,675,13),
+        new Road(1355,675,1335,740,13), new Road(1335,740,1340,930,13),
+        new Road(1340,930,1360,1024,13),
+        new Road(975,650,1010,720,18), new Road(1010,720,1065,770,16),
+        new Road(1065,770,1050,840,14), new Road(1050,840,1055,950,12),
+        new Road(1055,950,1060,1024,12), new Road(1065,770,1190,700,14),
+        new Road(1190,700,1290,690,13), new Road(1290,690,1335,740,13),
+        new Road(640,680,560,705,15), new Road(560,705,560,835,12),
+        new Road(560,835,620,860,14), new Road(620,860,680,900,15),
+        new Road(680,900,710,1024,15)
+    };
+    private static readonly Rect[] MarketStalls =
+    {
+        new Rect(574,400,61,30), new Rect(579,481,58,142),
+        new Rect(782,335,57,44), new Rect(842,334,34,57),
+        new Rect(952,370,33,58), new Rect(989,466,81,31),
+        new Rect(1009,545,47,140), new Rect(886,669,61,32),
+        new Rect(786,696,57,29), new Rect(713,699,39,34)
+    };
     private static readonly Rect[] Buildings =
     {
         new Rect(276, 306, 207, 112), new Rect(454, 172, 88, 104),
@@ -173,13 +234,19 @@ public static class RpgWorldGeometry
         new Rect(702, 54, 209, 86), new Rect(834, 104, 130, 105)
     };
 
-    public static Vector3 Move(Vector3 current, Vector3 desired, Bounds map, float feetOffset = -0.45f)
+    public static Vector3 Move(Vector3 current, Vector3 desired, Bounds map, float feetOffset = FeetOffset)
     {
         var result = current;
-        var horizontal = new Vector3(desired.x, current.y, current.z);
-        if (!Blocked(horizontal, map, feetOffset)) result.x = desired.x;
-        var vertical = new Vector3(result.x, desired.y, current.z);
-        if (!Blocked(vertical, map, feetOffset)) result.y = desired.y;
+        // Sweep the full movement, including sprint/roll frames; never just test its endpoint.
+        int steps = Mathf.Max(1, Mathf.CeilToInt(Vector2.Distance(current, desired) / 0.06f));
+        var delta = (desired - current) / steps;
+        for (int i = 0; i < steps; i++)
+        {
+            var horizontal = result + new Vector3(delta.x, 0, 0);
+            if (!Blocked(horizontal, map, feetOffset)) result.x = horizontal.x;
+            var vertical = result + new Vector3(0, delta.y, 0);
+            if (!Blocked(vertical, map, feetOffset)) result.y = vertical.y;
+        }
         return result;
     }
 
@@ -188,12 +255,54 @@ public static class RpgWorldGeometry
         var point = new Vector2(
             (position.x - map.min.x) / map.size.x * 1536,
             (map.max.y - position.y - feetOffset) / map.size.y * 1024);
+        return !WalkablePixel(point) || !WalkablePixel(point + new Vector2(4, 0)) ||
+            !WalkablePixel(point - new Vector2(4, 0)) || !WalkablePixel(point + new Vector2(0, 4)) ||
+            !WalkablePixel(point - new Vector2(0, 4));
+    }
+
+    private static bool WalkablePixel(Vector2 point)
+    {
+        if (point.x < 5 || point.x > 1531 || point.y < 5 || point.y > 1019) return false;
         foreach (var building in Buildings)
         {
             var padded = new Rect(building.xMin - 5, building.yMin - 5, building.width + 10, building.height + 10);
-            if (padded.Contains(point)) return true;
+            if (padded.Contains(point)) return false;
+        }
+        foreach (var stall in MarketStalls) if (stall.Contains(point)) return false;
+        bool inside = false;
+        for (int i = 0, j = Square.Length - 1; i < Square.Length; j = i++)
+            if ((Square[i].y > point.y) != (Square[j].y > point.y) &&
+                point.x < (Square[j].x - Square[i].x) * (point.y - Square[i].y) / (Square[j].y - Square[i].y) + Square[i].x)
+                inside = !inside;
+        if (inside) return true;
+        foreach (var road in Roads)
+        {
+            var segment = road.b - road.a;
+            float t = Mathf.Clamp01(Vector2.Dot(point - road.a, segment) / segment.sqrMagnitude);
+            if ((point - (road.a + segment * t)).sqrMagnitude <= road.radius * road.radius) return true;
         }
         return false;
+    }
+
+    public static Vector3 PixelPosition(Vector2 point, Bounds map, float feetOffset = FeetOffset)
+    {
+        return new Vector3(map.min.x + point.x / 1536 * map.size.x,
+            map.max.y - point.y / 1024 * map.size.y - feetOffset, map.center.z);
+    }
+
+    public static Vector3 NearestWalkable(Vector3 position, Bounds map)
+    {
+        if (!Blocked(position, map, FeetOffset)) return position;
+        for (float radius = 0.1f; radius <= 10; radius += 0.1f)
+            for (int angle = 0; angle < 32; angle++)
+            {
+                float radians = angle * Mathf.PI / 16;
+                var candidate = position + new Vector3(Mathf.Cos(radians), Mathf.Sin(radians), 0) * radius;
+                if (!Blocked(candidate, map, FeetOffset)) return candidate;
+            }
+        var fallback = PixelPosition(new Vector2(768, 600), map);
+        fallback.z = position.z;
+        return fallback;
     }
 }
 

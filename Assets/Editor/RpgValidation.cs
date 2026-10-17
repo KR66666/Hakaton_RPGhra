@@ -10,10 +10,10 @@ public static class RpgValidation
     {
         EditorApplication.delayCall += () =>
         {
-            if (!EditorApplication.isPlayingOrWillChangePlaymode && !SessionState.GetBool("RPG.Validation.v2", false))
+            if (!EditorApplication.isPlayingOrWillChangePlaymode && !SessionState.GetBool("RPG.Validation.v4", false))
             {
                 Run();
-                SessionState.SetBool("RPG.Validation.v2", true);
+                SessionState.SetBool("RPG.Validation.v4", true);
             }
         };
     }
@@ -54,6 +54,19 @@ public static class RpgValidation
             Check(!RpgWorldGeometry.Blocked(Vector3.zero, bounds, -0.45f), "Player spawn is walkable", ref checks);
             var house = new Vector3((350 - 768) / 38.4f, (512 - 350) / 38.4f + 2 + 0.45f, 0);
             Check(RpgWorldGeometry.Blocked(house, bounds, -0.45f), "House footprint blocks movement", ref checks);
+            Check(!AtPixelBlocked(1410, 477, bounds), "Bridge is walkable", ref checks);
+            Check(AtPixelBlocked(1390, 200, bounds), "River away from bridge is blocked", ref checks);
+            Check(AtPixelBlocked(50, 50, bounds), "Grass outside paths is blocked", ref checks);
+            Check(AtPixelBlocked(600, 550, bounds), "Market stalls are blocked", ref checks);
+            var start = RpgWorldGeometry.PixelPosition(new Vector2(330, 285), bounds);
+            var end = RpgWorldGeometry.PixelPosition(new Vector2(360, 450), bounds);
+            Check(!RpgWorldGeometry.Blocked(start, bounds, RpgWorldGeometry.FeetOffset) && !RpgWorldGeometry.Blocked(end, bounds, RpgWorldGeometry.FeetOffset), "Opposite sides of roof are both roads", ref checks);
+            var swept = RpgWorldGeometry.Move(start, end, bounds);
+            Check(Vector2.Distance(swept, end) > 2 && !RpgWorldGeometry.Blocked(swept, bounds, RpgWorldGeometry.FeetOffset), "Long movement cannot tunnel through roof", ref checks);
+            var recovered = RpgWorldGeometry.NearestWalkable(house, bounds);
+            Check(!RpgWorldGeometry.Blocked(recovered, bounds, RpgWorldGeometry.FeetOffset), "Old save on a roof relocates to road", ref checks);
+            Check(PlayerMovement.WalkingFrame(0.1f) == 0 && PlayerMovement.WalkingFrame(0.5f) == 1 && PlayerMovement.WalkingFrame(0.9f) == 0, "Walking alternates steps by travelled distance", ref checks);
+            CheckNavigation(bounds, ref checks);
             state = new RpgState();
             Check(!state.FinishSideQuest(0) && !state.AcceptSideQuest(-1) && !state.AcceptSideQuest(3), "Side quests require valid acceptance", ref checks);
             Check(state.AcceptSideQuest(0) && !state.AcceptSideQuest(0), "Side quest accepted once", ref checks);
@@ -94,6 +107,45 @@ public static class RpgValidation
         checks++;
     }
 
+    private static bool AtPixelBlocked(float x, float y, Bounds bounds)
+    {
+        return RpgWorldGeometry.Blocked(RpgWorldGeometry.PixelPosition(new Vector2(x, y), bounds), bounds, RpgWorldGeometry.FeetOffset);
+    }
+
+    private static void CheckNavigation(Bounds bounds, ref int checks)
+    {
+        const int columns = 192, rows = 128;
+        var walkable = new bool[columns * rows];
+        var visited = new bool[walkable.Length];
+        for (int y = 0; y < rows; y++) for (int x = 0; x < columns; x++)
+            walkable[y * columns + x] = !AtPixelBlocked(x * 8 + 4, y * 8 + 4, bounds);
+        var queue = new System.Collections.Generic.Queue<int>();
+        int origin = 75 * columns + 96;
+        queue.Enqueue(origin); visited[origin] = true;
+        while (queue.Count > 0)
+        {
+            int cell = queue.Dequeue(), x = cell % columns, y = cell / columns;
+            int[] neighbors = { x > 0 ? cell - 1 : -1, x + 1 < columns ? cell + 1 : -1,
+                y > 0 ? cell - columns : -1, y + 1 < rows ? cell + columns : -1 };
+            foreach (int next in neighbors)
+                if (next >= 0 && walkable[next] && !visited[next]) { visited[next] = true; queue.Enqueue(next); }
+        }
+        Vector2[] goals = { new Vector2(0,0), new Vector2(-2.1f,0.8f), new Vector2(3.2f,-1.1f),
+            new Vector2(-1.6f,-2.2f), new Vector2(13.5f,3.3f), new Vector2(12.3f,3.5f),
+            new Vector2(2.8f,5.4f), new Vector2(2.6f,7.3f) };
+        foreach (var goal in goals)
+        {
+            Vector3 position = RpgWorldGeometry.NearestWalkable(goal, bounds);
+            int px = Mathf.FloorToInt((position.x - bounds.min.x) / bounds.size.x * columns);
+            int py = Mathf.FloorToInt((bounds.max.y - position.y - RpgWorldGeometry.FeetOffset) / bounds.size.y * rows);
+            bool reachable = false;
+            for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++)
+                if (px + dx >= 0 && px + dx < columns && py + dy >= 0 && py + dy < rows)
+                    reachable |= visited[(py + dy) * columns + px + dx];
+            Check(reachable, "Road connection to quest destination " + goal, ref checks);
+        }
+    }
+
     [MenuItem("Tools/RPG/Run Live Gameplay Checks")]
     public static void RunLive()
     {
@@ -105,6 +157,17 @@ public static class RpgValidation
         string result;
         try
         {
+            game.RestoreState(new RpgState());
+            var movement = game.GetComponent<PlayerMovement>();
+            var appearance = game.GetComponent<SpriteRenderer>();
+            var opposite = Resources.Load<Sprite>("HeroStepB");
+            Check(opposite != null, "Second walking step loads in the running game", ref checks);
+            movement.MoveInDirection(Vector2.zero, 0);
+            var idle = appearance.sprite;
+            movement.MoveInDirection(Vector2.right, 0.15f);
+            Check(appearance.sprite == opposite, "Actual movement switches to opposite walking step", ref checks);
+            movement.MoveInDirection(Vector2.zero, 0.1f);
+            Check(appearance.sprite == idle, "Standing still restores idle pose", ref checks);
             game.RestoreState(new RpgState());
             game.AcceptQuest();
             Check(game.State.questStage == 1 && game.Enemies.Count == 6, "Quest and encounter creation", ref checks);

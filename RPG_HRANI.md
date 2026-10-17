@@ -59,6 +59,7 @@ Při přepisu vzniká záložní soubor `.bak`.
 - `RpgEnemy.cs`: pronásledování, signalizovaný útok, zranění a odměny.
 - `RpgInterface.cs`: HUD, dialogy, batoh, deník, pauza a obrazovky smrti/vítězství.
 - `PlayerMovement.cs`: ovládání, běh, okraje mapy, překážky a sledování kamery.
+- `Resources/HeroStepB.png`: druhý krok chůze z dodané obrácené verze; oba kroky mají stejnou výšku a polohu chodidel.
 - `Editor/RpgValidation.cs`: kontroly pravidel a integrační ověření ve spuštěné scéně.
 
 ## Kontroly v editoru
@@ -70,6 +71,7 @@ Výsledky jsou v konzoli Unity a v `Temp/RpgValidation.txt` a `Temp/RpgLiveValid
 ## Rozsah prototypu
 
 Obsahuje jednu vesnici, hlavní úkol, tři vedlejší úkoly, šest nájezdníků, velitele a čtyři NPC.
-NPC a nepřátelé zatím používají barevné varianty stejného spritu; chybí směrové animace a zvuk.
-Překážky odpovídají hlavním budovám; drobné předměty a voda jsou dekorace.
+Hráčka střídá dva kroky podle skutečně ušlé vzdálenosti. Při zastavení, v dialogu a při nárazu do překážky se animace zastaví; při běhu se zrychlí. Pohyb doleva a doprava se zrcadlí.
+NPC a nepřátelé zatím používají barevné varianty stejného spritu; chybí samostatné pohledy zezadu/boku a zvuk.
+Chůze je povolená na vyznačené síti cest, náměstí a kamenném mostu. Budovy, stánky, voda mimo most a plochy mimo cesty jsou blokované. Kolize kontroluje celou dráhu i při úhybu, aby nešlo přeskočit střechu. Starší uložená pozice mimo cestu se přesune na nejbližší průchozí místo.
 Nepřátelé mají lokální pronásledování, nikoli navigační síť pro cestu přes celou vesnici.

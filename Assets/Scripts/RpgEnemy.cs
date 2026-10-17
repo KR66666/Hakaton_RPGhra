@@ -64,7 +64,7 @@ public sealed class RpgEnemy : MonoBehaviour
         }
         else if (distance >= 5 && Vector2.Distance(transform.position, home) > 0.1f)
         {
-            transform.position = Vector3.MoveTowards(transform.position, home, Time.deltaTime);
+            transform.position = game.MoveEnemy(transform.position, Vector3.MoveTowards(transform.position, home, Time.deltaTime));
         }
     }
 
