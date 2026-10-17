@@ -21,6 +21,16 @@ public sealed class MainMenu : MonoBehaviour
         scaler.referenceResolution = new Vector2(1920, 1080);
         scaler.matchWidthOrHeight = 0.5f;
 
+        var backdrop = new GameObject("Backdrop", typeof(RectTransform), typeof(Image));
+        backdrop.transform.SetParent(canvas.transform, false);
+        var backdropRect = backdrop.GetComponent<RectTransform>();
+        backdropRect.anchorMin = Vector2.zero; backdropRect.anchorMax = Vector2.one;
+        backdropRect.offsetMin = backdropRect.offsetMax = Vector2.zero;
+        backdrop.GetComponent<Image>().color = new Color(0.035f, 0.055f, 0.065f);
+        Label("Title", canvas.transform, "HAVRANOV", 72, new Vector2(0, 300), new Vector2(1100, 100));
+        Label("Subtitle", canvas.transform, "Strážce vesnice • středověké RPG", 27, new Vector2(0, 220), new Vector2(1100, 60));
+        Label("Instructions", canvas.transform, "Meč, odvaha a vesnice, která potřebuje hrdinu.\n\nWASD • pohyb     J • útok     E • rozhovor     I • batoh\nUložený příběh se při vstupu automaticky načte.", 23, new Vector2(0, -270), new Vector2(1100, 180));
+
         var play = Button(canvas.transform, "Hrát", 82, StartGame);
         Button(canvas.transform, "Archiv", 0, OpenArchive);
         Button(canvas.transform, "Konec", -82, Quit);
@@ -77,7 +87,7 @@ public sealed class MainMenu : MonoBehaviour
         return button;
     }
 
-    private static void Label(string name, Transform parent, string content, int size, Vector2 position, Vector2 dimensions)
+    internal static Text Label(string name, Transform parent, string content, int size, Vector2 position, Vector2 dimensions)
     {
         var text = Box(name, parent, position, dimensions).gameObject.AddComponent<Text>();
         text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
@@ -86,6 +96,7 @@ public sealed class MainMenu : MonoBehaviour
         text.color = new Color(0.92f, 0.94f, 0.98f);
         text.alignment = TextAnchor.MiddleCenter;
         text.raycastTarget = false;
+        return text;
     }
 
     private static RectTransform Box(string name, Transform parent, Vector2 position, Vector2 size)

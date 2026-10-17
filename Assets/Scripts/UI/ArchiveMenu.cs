@@ -4,10 +4,11 @@ using UnityEngine.InputSystem.UI;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
-/// <summary>Archive navigation. Category content will be connected later.</summary>
+/// <summary>Reference pages for the playable village adventure.</summary>
 public sealed class ArchiveMenu : MonoBehaviour
 {
     [SerializeField] private string mainMenuScene = "MainMenu";
+    private Text content;
 
     private void Awake()
     {
@@ -20,10 +21,14 @@ public sealed class ArchiveMenu : MonoBehaviour
         scaler.referenceResolution = new Vector2(1920, 1080);
         scaler.matchWidthOrHeight = 0.5f;
 
-        PrepareCategory(canvas.transform, "Nepřátelé", 123);
-        PrepareCategory(canvas.transform, "Lokace", 41);
-        PrepareCategory(canvas.transform, "Předměty", -41);
-        var back = MainMenu.Button(canvas.transform, "Zpět", -123, BackToMenu);
+        MainMenu.Label("Title", canvas.transform, "KRONIKA HAVRANOVA", 44, new Vector2(0, 360), new Vector2(1200, 80));
+        content = MainMenu.Label("Content", canvas.transform, "", 27, new Vector2(230, 30), new Vector2(850, 540));
+        content.alignment = TextAnchor.UpperLeft;
+        PrepareCategory(canvas.transform, "Nepřátelé", 160, Enemies);
+        PrepareCategory(canvas.transform, "Lokace", 60, Locations);
+        PrepareCategory(canvas.transform, "Předměty", -40, Items);
+        var back = MainMenu.Button(canvas.transform, "Zpět", -360, BackToMenu);
+        Enemies();
 
         if (EventSystem.current == null)
         {
@@ -33,12 +38,15 @@ public sealed class ArchiveMenu : MonoBehaviour
         EventSystem.current.SetSelectedGameObject(back.gameObject);
     }
 
-    private static void PrepareCategory(Transform parent, string title, float y)
+    private void PrepareCategory(Transform parent, string title, float y, UnityEngine.Events.UnityAction action)
     {
-        var button = MainMenu.Button(parent, title, y, () => { });
-        // Enable once this category has content and a click handler.
-        button.interactable = false;
+        var button = MainMenu.Button(parent, title, y, action);
+        button.GetComponent<RectTransform>().anchoredPosition = new Vector2(-570, y);
     }
+
+    private void Enemies() => content.text = "NÁJEZDNÍK\nSlabší bojovník s 48 zdraví. Pronásleduje tě zblízka. Před úderem zčervená: uhni mezerníkem. Odměna: 35 XP a 12 zlata.\n\nVELITEL VRANEK\nObjeví se po porážce pěti nájezdníků. Má 220 zdraví a silnější, pomalejší úder. Připrav si lektvary a lepší meč.\n\nJ / levé tlačítko: útok. Shift: běh. H: lektvar.";
+    private void Locations() => content.text = "HAVRANOV\nStředověká vesnice s tržištěm, hradem a řekou.\n\nNÁMĚSTÍ\nRychtář Radovan zadává hlavní úkol. Obchodnice Eliška prodává lektvary a vylepšuje vybavení. Bylinkářka Mira léčí a vyrábí lektvary.\n\nSEVERNÍ BRÁNA\nÚkryt velitele Vranka. Nejdříve poraz jeho nájezdníky.\n\nZlaté značky: truhly. Zelené značky: byliny.";
+    private void Items() => content.text = "ŽELEZNÝ MEČ\nZákladní útok 18. Každé vylepšení přidá 9 poškození.\n\nKOŽENÁ ZBROJ\nKaždé vylepšení snižuje příchozí zranění o 3.\n\nLÉČIVÝ LEKTVAR\nObnoví 60 zdraví. Cena: 15 zlata. Použití: H.\n\nLÉČIVÉ BYLINY\nDvě byliny Mira přemění na jeden lektvar.\n\nTRUHLA\nObsahuje 30 zlata a léčivý lektvar.";
 
     public void BackToMenu() => SceneManager.LoadScene(mainMenuScene);
 }
