@@ -6,6 +6,38 @@ using UnityEngine;
 public sealed class RpgState
 {
     public int version = 1;
+    public int currentArea;
+    public int travelCompanion;
+    public bool travelByCart;
+    public List<int> completedAreas = new List<int>();
+    public List<RpgAreaProgress> areaProgress = new List<RpgAreaProgress>();
+    public bool AreaUnlocked(int area) => area >= 0 && area < RpgCampaign.Names.Length && (area == 0 || completedAreas.Contains(area - 1));
+    public string TravelProblem(int area, int companion, bool cart)
+    {
+        if (!AreaUnlocked(area)) return "Nejprve dokonči předchozí úroveň.";
+        if (health <= 0) return "Nejprve se nech oživit.";
+        if (companion < 0 || companion > 2) return "Vyber platný doprovod.";
+        if (companion == 1 && deliveryQuest != 2) return "Petr se přidá po splnění Zásilky pro strážného.";
+        if (companion == 2 && herbsQuest != 2) return "Mira se přidá po splnění Bylin pro Miru.";
+        if (cart && gold < 10) return "Na vůz potřebuješ 10 zlata.";
+        return null;
+    }
+    public bool EnterArea(int area, int companion, bool cart, bool replay)
+    {
+        if (TravelProblem(area, companion, cart) != null || replay && !completedAreas.Contains(area)) return false;
+        var previous = areaProgress.Find(p => p.area == currentArea);
+        if (previous == null) { previous = new RpgAreaProgress { area = currentArea }; areaProgress.Add(previous); }
+        previous.quest = questStage; previous.bandits = banditsDefeated; previous.boss = bossDefeated;
+        previous.defeated = new List<string>(defeated);
+        var target = areaProgress.Find(p => p.area == area);
+        currentArea = area; travelCompanion = companion; travelByCart = cart;
+        if (cart) gold -= 10;
+        questStage = replay || target == null ? (area == 0 ? 0 : 1) : target.quest;
+        banditsDefeated = replay || target == null ? 0 : target.bandits;
+        bossDefeated = !replay && target != null && target.boss;
+        defeated = replay || target == null ? new List<string>() : new List<string>(target.defeated);
+        return true;
+    }
     public bool heroIsBoy;
     public int level = 1;
     public int experience;
@@ -122,6 +154,13 @@ public sealed class RpgState
 
     public void Normalize()
     {
+        currentArea = Mathf.Clamp(currentArea, 0, RpgCampaign.Names.Length - 1);
+        completedAreas = completedAreas ?? new List<int>();
+        completedAreas.RemoveAll(a => a < 0 || a >= RpgCampaign.Names.Length);
+        areaProgress = areaProgress ?? new List<RpgAreaProgress>();
+        areaProgress.RemoveAll(p => p == null);
+        foreach (var progress in areaProgress) progress.defeated = progress.defeated ?? new List<string>();
+        if (questStage == 2 && !completedAreas.Contains(currentArea)) completedAreas.Add(currentArea);
         level = Mathf.Clamp(level, 1, 30);
         experience = Mathf.Clamp(experience, 0, 100000);
         gold = Mathf.Clamp(gold, 0, 1000000);

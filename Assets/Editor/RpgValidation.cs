@@ -10,10 +10,10 @@ public static class RpgValidation
     {
         EditorApplication.delayCall += () =>
         {
-            if (!EditorApplication.isPlayingOrWillChangePlaymode && !SessionState.GetBool("RPG.Validation.v12", false))
+            if (!EditorApplication.isPlayingOrWillChangePlaymode && !SessionState.GetBool("RPG.Validation.v13", false))
             {
                 Run();
-                SessionState.SetBool("RPG.Validation.v12", true);
+                SessionState.SetBool("RPG.Validation.v13", true);
             }
         };
     }
@@ -90,6 +90,19 @@ public static class RpgValidation
                     "Original downward sprite rotates correctly in all directions", ref checks);
             }
             finally { animation.Dispose(); }
+            var campaign = new RpgState();
+            Check(campaign.AreaUnlocked(0) && !campaign.AreaUnlocked(1), "Campaign starts with only first level unlocked", ref checks);
+            Check(!campaign.EnterArea(1,0,false,false) && campaign.gold==35, "Locked travel cannot mutate state", ref checks);
+            campaign.completedAreas.Add(0); campaign.questStage=2;
+            Check(campaign.EnterArea(1,0,true,false) && campaign.gold==25 && campaign.questStage==1, "Cart travel charges once and starts next encounter", ref checks);
+            Check(campaign.TravelProblem(1,1,false)!=null && campaign.TravelProblem(1,2,false)!=null, "Companions require their completed quests", ref checks);
+            campaign.deliveryQuest=2;
+            Check(campaign.TravelProblem(1,1,false)==null, "Completed delivery unlocks Petr", ref checks);
+            campaign.banditsDefeated=3;
+            Check(campaign.EnterArea(0,0,false,true) && campaign.questStage==0 && campaign.completedAreas.Contains(0), "Replay resets encounter and retains completion", ref checks);
+            Check(campaign.EnterArea(1,0,false,false) && campaign.banditsDefeated==3, "Returning restores unfinished level progress", ref checks);
+            var campaignCopy=JsonUtility.FromJson<RpgState>(JsonUtility.ToJson(campaign));campaignCopy.Normalize();
+            Check(campaignCopy.currentArea==1 && campaignCopy.completedAreas.Contains(0) && campaignCopy.areaProgress.Count>0, "Map progress survives save round trip", ref checks);
             CheckNavigation(bounds, ref checks);
             state = new RpgState();
             Check(!state.FinishSideQuest(0) && !state.AcceptSideQuest(-1) && !state.AcceptSideQuest(3), "Side quests require valid acceptance", ref checks);

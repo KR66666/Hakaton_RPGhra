@@ -24,6 +24,8 @@ public sealed class RpgGame : MonoBehaviour
     private SpriteRenderer map;
     private SpriteRenderer playerRenderer;
     private HeroWalkAnimation actorAppearance;
+    private GameObject companionObject;
+    private float nextCompanionHeal;
     private float nextAttack, dodgeUntil, nextDamage, nextSave, nextRegen;
     private Color playerColor;
     private string SavePath => Path.Combine(Application.persistentDataPath, "village-rpg-save.json");
@@ -86,6 +88,7 @@ public sealed class RpgGame : MonoBehaviour
         if (keyboard != null && Application.isFocused)
         {
             if (keyboard.escapeKey.wasPressedThisFrame) Interface.TogglePause();
+            if (keyboard.mKey.wasPressedThisFrame) Interface.ShowWorldMap();
             if (keyboard.iKey.wasPressedThisFrame) Interface.ToggleInventory();
             if (keyboard.qKey.wasPressedThisFrame) Interface.ToggleJournal();
             if (keyboard.f5Key.wasPressedThisFrame) Save();
@@ -108,6 +111,7 @@ public sealed class RpgGame : MonoBehaviour
         }
         if (playerRenderer != null)
             playerRenderer.color = Time.time < nextDamage && State.health > 0 ? Color.Lerp(playerColor, Color.red, 0.65f) : playerColor;
+        UpdateCompanion();
         UpdatePrompt();
         if (Time.unscaledTime >= nextSave && State.health > 0)
         {
@@ -178,6 +182,7 @@ public sealed class RpgGame : MonoBehaviour
         bool leveled = State.AddExperience(enemy.IsBoss ? 100 : 35);
         Notify(leveled ? $"ÚROVEŇ {State.level}! Zdraví a výdrž obnoveny." : enemy.IsBoss ? "Velitel padl! Vrať se k rychtáři pro odměnu." : $"Nájezdník poražen • +35 XP • +12 zlata ({Mathf.Min(5, State.banditsDefeated)}/5)");
         if (State.banditsDefeated >= 5 && !State.bossDefeated) SpawnBoss();
+        BuildCompanion();
         Save(false);
     }
 
@@ -207,6 +212,7 @@ public sealed class RpgGame : MonoBehaviour
         Vector2[] spawns = { new Vector2(-4.7f, 3.6f), new Vector2(4.8f, 3.8f), new Vector2(-4.2f, -3.7f), new Vector2(4.8f, -3.8f), new Vector2(0.4f, 5.7f), new Vector2(5.8f, 0.4f) };
         for (int i = 0; i < spawns.Length; i++) SpawnEnemy("bandit" + i, spawns[i], false);
         if (State.banditsDefeated >= 5 && !State.bossDefeated) SpawnBoss();
+        BuildCompanion();
     }
 
     private void SpawnBoss()
@@ -219,6 +225,7 @@ public sealed class RpgGame : MonoBehaviour
     private void SpawnEnemy(string id, Vector2 position, bool boss)
     {
         if (State.defeated.Contains(id)) return;
+        if (State.currentArea > 0) position = RpgCampaign.Starts[State.currentArea] + (position - new Vector2(0, 2)) * 0.55f;
         position = SnapToRoad(position);
         var obj = new GameObject(boss ? "Velitel Vranek" : "Nájezdník");
         obj.transform.position = position;
@@ -329,7 +336,48 @@ public sealed class RpgGame : MonoBehaviour
     public void ClaimReward()
     {
         if (!State.FinishQuest()) return;
+        if (!State.completedAreas.Contains(State.currentArea)) State.completedAreas.Add(State.currentArea);
         Save(false); Interface.ShowVictory();
+    }
+
+    public void TravelToArea(int area, int companion, bool cart, bool replay)
+    {
+        string problem = State.TravelProblem(area, companion, cart);
+        if (problem != null) { Notify(problem); return; }
+        if (!State.EnterArea(area, companion, cart, replay)) return;
+        var spawn = SnapToRoad(RpgCampaign.Starts[area]);
+        State.x = spawn.x; State.y = spawn.y;
+        PlacePlayer(); BuildWorld(); Interface.Close(); Save(false);
+        Notify(RpgCampaign.Names[area] + (replay ? " • opakování" : " • cesta dokončena"), 5);
+    }
+
+    private void BuildCompanion()
+    {
+        companionObject = null;
+        if (State.travelCompanion == 0) return;
+        companionObject = new GameObject(State.travelCompanion == 1 ? "Doprovod Petr" : "Doprovod Mira");
+        companionObject.transform.position = SnapToRoad(transform.position + Vector3.left);
+        var renderer = companionObject.AddComponent<SpriteRenderer>();
+        renderer.sprite = HeroSprite; renderer.sortingOrder = 3;
+        renderer.color = State.travelCompanion == 1 ? new Color(.55f,.7f,1) : new Color(.55f,1,.7f);
+        companionObject.transform.localScale = Vector3.one * .75f;
+        AddLabel(companionObject.transform, companionObject.name, new Vector3(0,.9f,0), Color.cyan);
+        worldObjects.Add(companionObject);
+    }
+    private void UpdateCompanion()
+    {
+        if (companionObject == null || BlockMovement) return;
+        Vector3 current = companionObject.transform.position;
+        if (Vector2.Distance(current, transform.position) > 1.2f)
+            companionObject.transform.position = MoveEnemy(current, Vector3.MoveTowards(current, transform.position, Time.deltaTime * 3.8f));
+        if (State.travelCompanion == 2 && Time.time >= nextCompanionHeal && State.health < State.MaxHealth)
+        { State.health = Mathf.Min(State.MaxHealth, State.health + 5); nextCompanionHeal = Time.time + 8; }
+        if (State.travelCompanion == 1 && Time.time >= nextCompanionHeal)
+        {
+            foreach (var enemy in Enemies)
+                if (enemy != null && !enemy.Dead && Vector2.Distance(enemy.transform.position, companionObject.transform.position) < 2)
+                { enemy.Hit(8, Facing); nextCompanionHeal = Time.time + 2; break; }
+        }
     }
 
     public void BuyPotion()

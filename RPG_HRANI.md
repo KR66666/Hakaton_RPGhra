@@ -76,3 +76,5 @@ Chůze je povolená na vyznačené síti cest, náměstí a kamenném mostu. Bud
 Nepřátelé mají lokální pronásledování, nikoli navigační síť pro cestu přes celou vesnici.
 
 Hrdinové používají přesně dodané postavy: Image (2)/(3) pro holku, Image (4)/imagine5 pro kluka. Odstraněné je pouze pozadí, proporce zůstávají. Kód střídá oba kroky podle skutečně ušlé vzdálenosti a otáčí celý obrázek podle směru včetně diagonál. Výběr pohlaví zůstává v menu a v uložené hře. Kamera snímá mapu shora; perspektiva dodaných obrázků se nepřekresluje.
+
+Mapa úrovní: tlačítko MAPA nebo M, také v pauze a po vítězství. Čtyři bojové varianty v sektorech současné vesnice; dokončení znamená převzít odměnu u Radovana. Další úroveň se odemkne postupně. Zelené uzly lze znovu projít (resetuje se pouze boj dané úrovně), stav ostatních úrovní i vedlejší úkoly se zachovají. Modrá tečka ukazuje polohu hráče, zlatá značka aktivní úroveň. Před cestou lze vybrat chůzi zdarma nebo přesun vozem za 10 zlata; Petr po doručení zásilky pomáhá útokem, Mira po bylinkovém úkolu léčí. Volby a postup jsou součástí uložené hry.

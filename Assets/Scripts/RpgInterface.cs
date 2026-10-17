@@ -14,6 +14,9 @@ public sealed class RpgInterface : MonoBehaviour
     private float toastUntil;
     private string currentModal;
     private Font font;
+    private RectTransform mapContent;
+    private int travelCompanion;
+    private bool travelCart;
     private static readonly Color Gold = new Color(0.91f, 0.76f, 0.43f);
     private static readonly Color Ink = new Color(0.055f, 0.07f, 0.085f, 0.96f);
 
@@ -41,13 +44,19 @@ public sealed class RpgInterface : MonoBehaviour
         experienceFill = Bar(status, new Vector2(18, -111), new Color(0.4f, 0.57f, 0.85f));
         stats = Label(status, "", new Vector2(24, -107), new Vector2(320, 38), 15, Color.white);
 
+        var mapButton = Panel(canvas, "Open map", new Vector2(0,-20),new Vector2(180,42),new Vector2(.5f,1));
+        var mapClick=mapButton.gameObject.AddComponent<Button>();mapClick.targetGraphic=mapButton.GetComponent<Image>();
+        mapClick.onClick.AddListener(ShowWorldMap);
+        var mapCaption=Label(mapButton,"MAPA  [M]",new Vector2(0,0),new Vector2(180,42),20,Gold);
+        mapCaption.alignment=TextAnchor.MiddleCenter;
+
         var tracker = Panel(canvas, "Quest tracker", new Vector2(-20, -20), new Vector2(370, 166), new Vector2(1, 1));
         Label(tracker, "DENÍK DOBRODRUHA  [Q]", new Vector2(18, -12), new Vector2(335, 26), 18, Gold);
         quest = Label(tracker, "", new Vector2(18, -44), new Vector2(335, 112), 18, new Color(0.88f, 0.9f, 0.92f));
 
         var controls = Panel(canvas, "Controls", new Vector2(0, 16), new Vector2(1100, 72), new Vector2(0.5f, 0));
         combat = Label(controls, "", new Vector2(18, -9), new Vector2(1064, 25), 18, Gold);
-        var keys = Label(controls, "WASD / šipky  pohyb     Shift  běh     Mezerník  úhyb     E  mluvit / sebrat     I  batoh     Q  deník     Esc  pauza", new Vector2(18, -39), new Vector2(1064, 24), 16, Color.white);
+        var keys = Label(controls, "WASD / šipky  pohyb     Shift  běh     Mezerník  úhyb     E  mluvit / sebrat     I  batoh     Q  deník     Esc  pauza     M  mapa", new Vector2(18, -39), new Vector2(1064, 24), 16, Color.white);
         keys.alignment = TextAnchor.MiddleCenter;
         combat.alignment = TextAnchor.MiddleCenter;
 
@@ -111,6 +120,7 @@ public sealed class RpgInterface : MonoBehaviour
         if (game.State.health <= 0) return;
         if (IsModal) { Close(); return; }
         Open("pause", "ODPOČINEK U OHNĚ", "Hra je pozastavena.\n\nPostup se ukládá automaticky každých 30 sekund a po důležitých událostech.\nF5: ručně uložit • F9: načíst uloženou hru.");
+        Action("Mapa úrovní  [M]", ShowWorldMap);
         Action("Pokračovat", Close);
         Action("Uložit hru", () => game.Save());
         Action("Hlavní nabídka", game.ReturnToMenu);
@@ -245,8 +255,78 @@ public sealed class RpgInterface : MonoBehaviour
     {
         var state = game.State;
         Open("victory", "HAVRANOV JE ZACHRÁNĚN", $"Velitel Vranek je poražen a vesnice oslavuje svého ochránce.\n\nOdměna přidána: 150 zlata, 150 XP a 3 lektvary.\n\nDosažená úroveň: {state.level}\nZískané zlato: {state.gold}\n\nMůžeš pokračovat v průzkumu a vylepšování vybavení.");
+        Action("Mapa • další úroveň / opakování", ShowWorldMap);
         Action("Pokračovat v dobrodružství", Close);
         Action("Uložit a odejít do nabídky", game.ReturnToMenu);
+    }
+
+    public void ShowWorldMap()
+    {
+        if (game.State.health <= 0) return;
+        if (currentModal == "map") { Close(); return; }
+        Open("map", "MAPA HAVRANOVA  [M]", "");
+        mapContent = Rect(modalBody.transform.parent, "Pixel map", new Vector2(32,-85), new Vector2(696,280));
+        var bg = mapContent.gameObject.AddComponent<Image>(); bg.color = new Color(.18f,.28f,.19f);
+        // Crisp UI tiles form a pixel map of the existing village and four encounter sectors.
+        for (int y=0;y<12;y++) for(int x=0;x<29;x++)
+        {
+            bool road = y==6 || x==14 || (x>20 && y==5);
+            bool water = x==25 && y!=6;
+            bool roof = (x%7<3 && y%6<3);
+            var tile=Rect(mapContent,"Tile",new Vector2(x*24,-y*22),new Vector2(24,22));
+            var image=tile.gameObject.AddComponent<Image>(); image.raycastTarget=false;
+            image.color=water ? new Color(.22f,.43f,.53f) : road ? new Color(.62f,.55f,.4f) : roof ? new Color(.4f,.23f,.15f) : new Color(.21f+(x+y)%3*.02f,.31f,.19f);
+        }
+        Vector2[] points={new Vector2(348,145),new Vector2(348,50),new Vector2(565,145),new Vector2(155,112)};
+        for(int i=0;i<RpgCampaign.Names.Length;i++)
+        {
+            int area=i; bool unlocked=game.State.AreaUnlocked(i), done=game.State.completedAreas.Contains(i);
+            var node=Rect(mapContent,"Level "+i,new Vector2(points[i].x-68,-points[i].y),new Vector2(136,42));
+            var image=node.gameObject.AddComponent<Image>();
+            image.color=!unlocked ? new Color(.18f,.18f,.18f) : done ? new Color(.15f,.4f,.25f) : new Color(.6f,.4f,.12f);
+            var button=node.gameObject.AddComponent<Button>();button.targetGraphic=image;
+            button.onClick.AddListener(()=>ShowTravel(area,0,false));
+            var caption=Label(node,(done?"✓ ":unlocked?"":"ZÁMEK ")+(i+1)+". "+RpgCampaign.Names[i],new Vector2(3,-2),new Vector2(130,40),14,Color.white);
+            caption.alignment=TextAnchor.MiddleCenter;
+            if(i==game.State.currentArea)
+            {
+                var pin=Rect(node,"Current sector",new Vector2(58,12),new Vector2(20,12));
+                pin.gameObject.AddComponent<Image>().color=Gold;
+            }
+        }
+        Vector3 pos=game.Player.position;
+        var dot=Rect(mapContent,"Player position",new Vector2(Mathf.Clamp01((pos.x+20)/40)*680,-Mathf.Clamp01((15.333f-pos.y)/26.666f)*250),new Vector2(10,10));
+        dot.gameObject.AddComponent<Image>().color=Color.cyan;
+        Action("Modrá tečka = tvoje poloha • zlatá značka = aktuální úroveň",()=>{});
+        Action("Klikni na úroveň • zelená = splněná",()=>{});
+        Action("Zavřít mapu",Close);
+    }
+    private void ShowTravel(int area, int companion, bool cart)
+    {
+        travelCompanion=companion;travelCart=cart;
+        var state=game.State;
+        bool unlocked=state.AreaUnlocked(area),done=state.completedAreas.Contains(area);
+        string problem=state.TravelProblem(area,companion,cart);
+        string who=companion==0?"Sám / sama":companion==1?"Strážný Petr • pomáhá v boji":"Mira • léčí během cesty";
+        Open("travel",RpgCampaign.Names[area],
+            (done?"DOKONČENO • můžeš projít znovu":unlocked?"DOSTUPNÁ ÚROVEŇ":"ZAMČENO")+
+            "\n\nPodmínka: "+(area==0?"dostupné od začátku":"dokončit "+RpgCampaign.Names[area-1])+
+            "\nCesta: "+(cart?"vozem • 10 zlata":"pěšky • zdarma")+"\nDoprovod: "+who+
+            "\n\nPetr: dokončit Zásilku pro strážného. Mira: dokončit Byliny pro Miru."+
+            "\n"+(problem??"Všechny podmínky splněné.")+
+            "\n\nČtyři bojové úrovně ve stejné vesnici. Cíl: porazit 5 nájezdníků a velitele, odměnu převzít u Radovana.");
+        modalBody.fontSize=18;
+        if(unlocked)
+        {
+            Action("Doprovod: "+who+" • změnit",()=>ShowTravel(area,(companion+1)%3,cart));
+            Action("Způsob cesty: "+(cart?"vůz":"pěšky")+" • změnit",()=>ShowTravel(area,companion,!cart));
+            if(problem==null)
+            {
+                if(area==state.currentArea && !done) Action("Pokračovat v této úrovni",Close);
+                else Action(done?"Projít úroveň znovu":"Vyrazit do úrovně",()=>game.TravelToArea(area,companion,cart,done));
+            }
+        }
+        Action("Zpět na mapu",ShowWorldMap);
     }
 
     private void ConfirmNewGame()
@@ -258,6 +338,7 @@ public sealed class RpgInterface : MonoBehaviour
 
     private void Open(string kind, string title, string body)
     {
+        if (mapContent != null) { mapContent.gameObject.SetActive(false); Destroy(mapContent.gameObject); mapContent = null; }
         currentModal = kind;
         modalBody.fontSize = 22;
         modalTitle.text = title; modalBody.text = body;

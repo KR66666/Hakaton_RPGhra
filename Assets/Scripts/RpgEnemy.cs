@@ -17,7 +17,7 @@ public sealed class RpgEnemy : MonoBehaviour
     public void Initialize(RpgGame owner, string id, Vector2 origin, bool boss)
     {
         game = owner; Id = id; home = origin; IsBoss = boss;
-        maxHealth = health = boss ? 220 : 48;
+        maxHealth = health = (boss ? 220 : 48) + game.State.currentArea * (boss ? 35 : 10);
         appearance = gameObject.AddComponent<SpriteRenderer>();
         appearance.sprite = game.HeroSprite;
         tint = boss ? new Color(0.85f, 0.35f, 0.55f) : new Color(1, 0.62f, 0.56f);
