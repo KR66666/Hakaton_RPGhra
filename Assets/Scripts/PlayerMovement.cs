@@ -21,7 +21,9 @@ public sealed class PlayerMovement : MonoBehaviour
     private void Awake()
     {
         character = GetComponent<SpriteRenderer>();
-        transform.localScale *= 0.85f;
+        // Foreshorten the supplied front-facing artwork in its local plane before heading rotation.
+        var spriteScale = transform.localScale;
+        transform.localScale = new Vector3(spriteScale.x * 0.85f, spriteScale.y * 0.85f, spriteScale.z);
         if (followCamera == null)
             followCamera = Camera.main;
     }
@@ -101,10 +103,9 @@ public sealed class PlayerMovement : MonoBehaviour
 
     public static int WalkingFrame(float distance)
     {
-        int phase = Mathf.FloorToInt(Mathf.Max(0, distance) / 0.2f) % 4;
-        return phase == 0 ? 1 : phase == 2 ? 2 : 0;
+        return Mathf.FloorToInt(Mathf.Max(0, distance) / 0.3f) % 2;
     }
-    public Sprite WalkingSprite(int direction, int step) => walkingAnimation?.Frame(direction, step);
+    public Sprite WalkingSprite(int direction, int step) => walkingAnimation?.Frame(direction, step, RpgGame.Instance != null && RpgGame.Instance.State != null && RpgGame.Instance.State.heroIsBoy);
 
     private void StopWalking()
     {
@@ -118,61 +119,32 @@ public sealed class PlayerMovement : MonoBehaviour
         return direction.x < 0 ? 3 : direction.x > 0 ? 2 : 0;
     }
 
+    public static float FacingAngle(Vector2 direction) =>
+        direction.sqrMagnitude > 0.0001f ? Mathf.Atan2(direction.x, -direction.y) * Mathf.Rad2Deg : 0f;
+
     private void ShowWalkingFrame(int step)
     {
         if (character == null || walkingAnimation == null) return;
         int orientation = FacingIndex(facing);
-        character.sprite = walkingAnimation.Frame(orientation, step);
+        character.sprite = walkingAnimation.Frame(orientation, step, RpgGame.Instance != null && RpgGame.Instance.State != null && RpgGame.Instance.State.heroIsBoy);
         character.flipX = false;
+        transform.rotation = Quaternion.Euler(0, 0, FacingAngle(facing));
     }
 
     private void OnDestroy() { walkingAnimation?.Dispose(); }
 }
 
+// Preserve the supplied characters. Heading is controlled only by map-plane rotation.
 public sealed class HeroWalkAnimation
 {
-    [System.Serializable]
-    public sealed class FrameDefinition
-    {
-        public float x, y, width, height, ppu, pivotX, pivotY;
-    }
-    [System.Serializable]
-    public sealed class SheetDefinition { public FrameDefinition[] frames; }
-    private readonly Sprite[,] poses = new Sprite[4, 3];
-    private readonly System.Collections.Generic.List<Sprite> generated = new System.Collections.Generic.List<Sprite>();
+    private readonly Sprite[,] frames = new Sprite[2, 2];
     public HeroWalkAnimation(Sprite standing)
     {
-        for (int direction = 0; direction < 4; direction++)
-            for (int pose = 0; pose < 3; pose++) poses[direction, pose] = standing;
-        var texture = Resources.Load<Texture2D>("HeroDirections");
-        var definitions = Resources.Load<TextAsset>("HeroDirections");
-        if (texture == null || definitions == null) return;
-        var sheet = JsonUtility.FromJson<SheetDefinition>(definitions.text);
-        if (sheet?.frames == null || sheet.frames.Length != 12) return;
-        string[] names = { "South", "North", "East", "West" };
-        string[] states = { "Idle", "Left foot", "Right foot" };
-        for (int i = 0; i < 12; i++)
-        {
-            var frame = sheet.frames[i];
-            var sprite = Sprite.Create(texture, new Rect(frame.x, frame.y, frame.width, frame.height),
-                new Vector2(frame.pivotX, frame.pivotY), frame.ppu, 0, SpriteMeshType.FullRect);
-            sprite.name = names[i / 3] + " " + states[i % 3];
-            generated.Add(sprite);
-            poses[i / 3, i % 3] = sprite;
-        }
+        frames[0,0] = Resources.Load<Sprite>("HeroUserStepA") ?? standing;
+        frames[0,1] = Resources.Load<Sprite>("HeroUserStepB") ?? frames[0,0];
+        frames[1,0] = Resources.Load<Sprite>("HeroBoyStepA") ?? standing;
+        frames[1,1] = Resources.Load<Sprite>("HeroBoyStepB") ?? frames[1,0];
     }
-    public Sprite Frame(int direction, int step) => poses[Mathf.Clamp(direction, 0, 3), Mathf.Clamp(step, 0, 2)];
-
-    public void Dispose()
-    {
-        foreach (var sprite in generated) Release(sprite);
-    }
-
-    private static void Release(Sprite sprite)
-    {
-        if (sprite == null) return;
-        if (Application.isPlaying) Object.Destroy(sprite);
-        else Object.DestroyImmediate(sprite);
-    }
+    public Sprite Frame(int direction, int step, bool boy = false) => frames[boy ? 1 : 0, step == 1 ? 1 : 0];
+    public void Dispose() { }
 }
-

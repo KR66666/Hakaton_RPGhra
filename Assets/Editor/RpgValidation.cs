@@ -10,10 +10,10 @@ public static class RpgValidation
     {
         EditorApplication.delayCall += () =>
         {
-            if (!EditorApplication.isPlayingOrWillChangePlaymode && !SessionState.GetBool("RPG.Validation.v8", false))
+            if (!EditorApplication.isPlayingOrWillChangePlaymode && !SessionState.GetBool("RPG.Validation.v12", false))
             {
                 Run();
-                SessionState.SetBool("RPG.Validation.v8", true);
+                SessionState.SetBool("RPG.Validation.v12", true);
             }
         };
     }
@@ -65,7 +65,7 @@ public static class RpgValidation
             Check(Vector2.Distance(swept, end) > 2 && !RpgWorldGeometry.Blocked(swept, bounds, RpgWorldGeometry.FeetOffset), "Long movement cannot tunnel through roof", ref checks);
             var recovered = RpgWorldGeometry.NearestWalkable(house, bounds);
             Check(!RpgWorldGeometry.Blocked(recovered, bounds, RpgWorldGeometry.FeetOffset), "Old save on a roof relocates to road", ref checks);
-            Check(PlayerMovement.WalkingFrame(0.1f) == 1 && PlayerMovement.WalkingFrame(0.3f) == 0 && PlayerMovement.WalkingFrame(0.5f) == 2 && PlayerMovement.WalkingFrame(0.7f) == 0, "Walk cycle alternates left, planted, right, planted", ref checks);
+            Check(PlayerMovement.WalkingFrame(0.1f) == 0 && PlayerMovement.WalkingFrame(0.4f) == 1 && PlayerMovement.WalkingFrame(0.7f) == 0, "Two supplied steps alternate by actual distance", ref checks);
             Check(PlayerMovement.FacingIndex(Vector2.up) == 1 && PlayerMovement.FacingIndex(Vector2.down) == 0 &&
                 PlayerMovement.FacingIndex(Vector2.right) == 2 && PlayerMovement.FacingIndex(Vector2.left) == 3,
                 "Four movement directions select four character views", ref checks);
@@ -73,19 +73,21 @@ public static class RpgValidation
             var animation = new HeroWalkAnimation(originalSprite);
             try
             {
-                string[] names = { "South", "North", "East", "West" };
-                for (int direction = 0; direction < 4; direction++)
-                {
-                    Check(animation.Frame(direction, 0).name == names[direction] + " Idle", "Dedicated standing pose " + names[direction], ref checks);
-                    Check(animation.Frame(direction, 1).name == names[direction] + " Left foot" &&
-                        animation.Frame(direction, 2).name == names[direction] + " Right foot" &&
-                        animation.Frame(direction, 0) != animation.Frame(direction, 1) &&
-                        animation.Frame(direction, 1) != animation.Frame(direction, 2), "Distinct alternating feet " + names[direction], ref checks);
-                }
-                Vector3 northSize = animation.Frame(1, 0).bounds.size;
-                Vector3 eastSize = animation.Frame(2, 1).bounds.size;
-                Check(Mathf.Abs(Mathf.Max(northSize.x, northSize.y) - Mathf.Max(eastSize.x, eastSize.y)) < 0.01f,
-                    "Overhead directions keep the same ground-plane scale", ref checks);
+                Check(animation.Frame(0,0) != animation.Frame(0,1), "Supplied feet alternate", ref checks);
+                Check(animation.Frame(0,0,false) != animation.Frame(0,0,true), "Boy and girl have distinct appearances", ref checks);
+                for(int direction=0;direction<4;direction++)
+                    Check(animation.Frame(direction,0) == animation.Frame(0,0), "All directions rotate the same supplied artwork", ref checks);
+                Check(animation.Frame(0,0,true) == Resources.Load<Sprite>("HeroBoyStepA") &&
+                    animation.Frame(0,1,true) == Resources.Load<Sprite>("HeroBoyStepB"), "Boy uses both supplied male images", ref checks);
+                Check(animation.Frame(0,0,false) == Resources.Load<Sprite>("HeroUserStepA") &&
+                    animation.Frame(0,1,false) == Resources.Load<Sprite>("HeroUserStepB"), "Girl uses both supplied female images", ref checks);
+                state.heroIsBoy = true;
+                Check(JsonUtility.FromJson<RpgState>(JsonUtility.ToJson(state)).heroIsBoy, "Hero choice survives saving", ref checks);
+                Check(Mathf.Abs(Mathf.DeltaAngle(PlayerMovement.FacingAngle(Vector2.down), 0)) < 0.01f &&
+                    Mathf.Abs(Mathf.DeltaAngle(PlayerMovement.FacingAngle(Vector2.right), 90)) < 0.01f &&
+                    Mathf.Abs(Mathf.DeltaAngle(PlayerMovement.FacingAngle(Vector2.up), 180)) < 0.01f &&
+                    Mathf.Abs(Mathf.DeltaAngle(PlayerMovement.FacingAngle(Vector2.left), -90)) < 0.01f,
+                    "Original downward sprite rotates correctly in all directions", ref checks);
             }
             finally { animation.Dispose(); }
             CheckNavigation(bounds, ref checks);
@@ -182,7 +184,7 @@ public static class RpgValidation
             game.RestoreState(new RpgState());
             var movement = game.GetComponent<PlayerMovement>();
             var appearance = game.GetComponent<SpriteRenderer>();
-            var opposite = movement.WalkingSprite(0, 2);
+            var opposite = movement.WalkingSprite(0, 1);
             Check(opposite != null, "Second walking step loads in the running game", ref checks);
             movement.MoveInDirection(Vector2.down, 0);
             var idle = appearance.sprite;
@@ -191,13 +193,13 @@ public static class RpgValidation
             movement.MoveInDirection(Vector2.zero, 0.1f);
             Check(appearance.sprite == idle, "Standing still restores idle pose", ref checks);
             movement.MoveInDirection(Vector2.up, 0.15f);
-            Check(appearance.sprite != idle && appearance.sprite != opposite, "Walking north uses a rear-view sprite", ref checks);
+            Check(Mathf.Abs(Mathf.DeltaAngle(movement.transform.eulerAngles.z, 180)) < 0.01f, "Walking north rotates the same sprite", ref checks);
             movement.MoveInDirection(Vector2.zero, 0);
-            Check(appearance.sprite.name.StartsWith("North"), "Stopping preserves north-facing pose", ref checks);
+            Check(Mathf.Abs(Mathf.DeltaAngle(movement.transform.eulerAngles.z, 180)) < 0.01f, "Stopping preserves north-facing rotation", ref checks);
             movement.MoveInDirection(Vector2.left, 0.15f);
-            Check(appearance.sprite.name.StartsWith("West") && !appearance.flipX, "Walking left mirrors the side view", ref checks);
+            Check(Mathf.Abs(Mathf.DeltaAngle(movement.transform.eulerAngles.z, -90)) < 0.01f, "Walking left mirrors the side view", ref checks);
             movement.MoveInDirection(Vector2.right, 0.15f);
-            Check(appearance.sprite.name.StartsWith("East") && !appearance.flipX, "Walking right uses an unmirrored side view", ref checks);
+            Check(Mathf.Abs(Mathf.DeltaAngle(movement.transform.eulerAngles.z, 90)) < 0.01f, "Walking right uses an unmirrored side view", ref checks);
             game.RestoreState(new RpgState());
             game.AcceptQuest();
             Check(game.State.questStage == 1 && game.Enemies.Count == 6, "Quest and encounter creation", ref checks);

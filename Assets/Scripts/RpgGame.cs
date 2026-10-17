@@ -61,6 +61,8 @@ public sealed class RpgGame : MonoBehaviour
         var background = GameObject.Find("Background");
         if (background != null) map = background.GetComponent<SpriteRenderer>();
         State = ReadSave() ?? new RpgState();
+        if (MainMenu.SelectedHeroIsBoy.HasValue)
+        { State.heroIsBoy = MainMenu.SelectedHeroIsBoy.Value; MainMenu.SelectedHeroIsBoy = null; }
         State.Normalize();
         if (State.health <= 0) State.health = State.MaxHealth;
         PlacePlayer();
@@ -420,7 +422,7 @@ public sealed class RpgGame : MonoBehaviour
 
     public void NewGame()
     {
-        State = new RpgState(); PlacePlayer(); BuildWorld(); Interface.Close(); Save(false);
+        State = new RpgState { heroIsBoy = State.heroIsBoy }; PlacePlayer(); BuildWorld(); Interface.Close(); Save(false);
         Notify("Nový příběh začíná. Vyhledej rychtáře Radovana.");
     }
 

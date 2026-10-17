@@ -6,6 +6,7 @@ using UnityEngine;
 public sealed class RpgState
 {
     public int version = 1;
+    public bool heroIsBoy;
     public int level = 1;
     public int experience;
     public int gold = 35;

@@ -9,6 +9,14 @@ public sealed class MainMenu : MonoBehaviour
     [SerializeField] private string gameplayScene = "SampleScene";
     [SerializeField] private string archiveScene = "Bestiář";
     private bool loading;
+    public static bool? SelectedHeroIsBoy;
+    private Text heroSelection;
+
+    private void SelectHero(bool boy)
+    {
+        SelectedHeroIsBoy = boy;
+        heroSelection.text = boy ? "Vybraný hrdina: KLUK" : "Vybraná hrdinka: HOLKA";
+    }
 
     private void Awake()
     {
@@ -31,9 +39,14 @@ public sealed class MainMenu : MonoBehaviour
         Label("Subtitle", canvas.transform, "Strážce vesnice • středověké RPG", 27, new Vector2(0, 220), new Vector2(1100, 60));
         Label("Instructions", canvas.transform, "Meč, odvaha a vesnice, která potřebuje hrdinu.\n\nWASD • pohyb     J • útok     E • rozhovor     I • batoh\nUložený příběh se při vstupu automaticky načte.", 23, new Vector2(0, -270), new Vector2(1100, 180));
 
-        var play = Button(canvas.transform, "Hrát", 82, StartGame);
-        Button(canvas.transform, "Archiv", 0, OpenArchive);
-        Button(canvas.transform, "Konec", -82, Quit);
+        heroSelection = Label("Hero selection", canvas.transform, "Vyber hlavního hrdinu", 26, new Vector2(0, 166), new Vector2(1000, 45));
+        var girl = Button(canvas.transform, "Holka", 0, () => SelectHero(false));
+        girl.GetComponent<RectTransform>().anchoredPosition = new Vector2(-220, 120);
+        var boy = Button(canvas.transform, "Kluk", 0, () => SelectHero(true));
+        boy.GetComponent<RectTransform>().anchoredPosition = new Vector2(220, 120);
+        var play = Button(canvas.transform, "Hrát", 22, StartGame);
+        Button(canvas.transform, "Archiv", -60, OpenArchive);
+        Button(canvas.transform, "Konec", -142, Quit);
 
         if (EventSystem.current == null)
         {
@@ -45,6 +58,7 @@ public sealed class MainMenu : MonoBehaviour
 
     public void StartGame()
     {
+        if (!SelectedHeroIsBoy.HasValue) { heroSelection.text = "Nejprve vyber: Holka nebo Kluk"; return; }
         LoadScene(gameplayScene);
     }
 

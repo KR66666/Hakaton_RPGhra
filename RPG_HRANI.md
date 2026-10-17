@@ -71,8 +71,8 @@ Výsledky jsou v konzoli Unity a v `Temp/RpgValidation.txt` a `Temp/RpgLiveValid
 ## Rozsah prototypu
 
 Obsahuje jednu vesnici, hlavní úkol, tři vedlejší úkoly, šest nájezdníků, velitele a čtyři NPC.
-Hráčka střídá dva kroky podle skutečně ušlé vzdálenosti. Při zastavení, v dialogu a při nárazu do překážky se animace zastaví; při běhu se zrychlí. Všechny směry používají stejný pohled přímo shora (viditelný vršek hlavy a ramen), včetně pohybu vlevo a vpravo. Při zastavení zachová poslední směr. Atlas obsahuje šest snímků: dva kroky na jih, sever a východ; západ zrcadlí východ. Velikost se kalibruje podle delší osy půdorysu, takže otočení na východ postavu nenatáhne.
 NPC a nepřátelé zatím používají barevné varianty stejného spritu; zvuk zatím chybí.
 Chůze je povolená na vyznačené síti cest, náměstí a kamenném mostu. Budovy, stánky, voda mimo most a plochy mimo cesty jsou blokované. Kolize kontroluje celou dráhu i při úhybu, aby nešlo přeskočit střechu. Starší uložená pozice mimo cestu se přesune na nejbližší průchozí místo.
 Nepřátelé mají lokální pronásledování, nikoli navigační síť pro cestu přes celou vesnici.
-Postava má 12 snímků shora: čtyři směry, v každém stoj na obou nohách, levá a pravá noha. Cyklus: levá–stoj–pravá–stoj. Hráč je menší o 15 %.
+
+Hrdinové používají přesně dodané postavy: Image (2)/(3) pro holku, Image (4)/imagine5 pro kluka. Odstraněné je pouze pozadí, proporce zůstávají. Kód střídá oba kroky podle skutečně ušlé vzdálenosti a otáčí celý obrázek podle směru včetně diagonál. Výběr pohlaví zůstává v menu a v uložené hře. Kamera snímá mapu shora; perspektiva dodaných obrázků se nepřekresluje.
