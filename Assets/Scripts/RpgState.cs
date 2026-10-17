@@ -151,7 +151,8 @@ public sealed class RpgState
 // Movement uses a small circle at the character's feet rather than the sprite's transparent border.
 public static class RpgWorldGeometry
 {
-    public const float FeetOffset = -0.65f;
+    // A directly overhead character is anchored at its ground-plane centre.
+    public const float FeetOffset = 0f;
     private struct Road
     {
         public Vector2 a, b;

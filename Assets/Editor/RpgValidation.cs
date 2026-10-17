@@ -10,10 +10,10 @@ public static class RpgValidation
     {
         EditorApplication.delayCall += () =>
         {
-            if (!EditorApplication.isPlayingOrWillChangePlaymode && !SessionState.GetBool("RPG.Validation.v4", false))
+            if (!EditorApplication.isPlayingOrWillChangePlaymode && !SessionState.GetBool("RPG.Validation.v8", false))
             {
                 Run();
-                SessionState.SetBool("RPG.Validation.v4", true);
+                SessionState.SetBool("RPG.Validation.v8", true);
             }
         };
     }
@@ -65,7 +65,29 @@ public static class RpgValidation
             Check(Vector2.Distance(swept, end) > 2 && !RpgWorldGeometry.Blocked(swept, bounds, RpgWorldGeometry.FeetOffset), "Long movement cannot tunnel through roof", ref checks);
             var recovered = RpgWorldGeometry.NearestWalkable(house, bounds);
             Check(!RpgWorldGeometry.Blocked(recovered, bounds, RpgWorldGeometry.FeetOffset), "Old save on a roof relocates to road", ref checks);
-            Check(PlayerMovement.WalkingFrame(0.1f) == 0 && PlayerMovement.WalkingFrame(0.5f) == 1 && PlayerMovement.WalkingFrame(0.9f) == 0, "Walking alternates steps by travelled distance", ref checks);
+            Check(PlayerMovement.WalkingFrame(0.1f) == 1 && PlayerMovement.WalkingFrame(0.3f) == 0 && PlayerMovement.WalkingFrame(0.5f) == 2 && PlayerMovement.WalkingFrame(0.7f) == 0, "Walk cycle alternates left, planted, right, planted", ref checks);
+            Check(PlayerMovement.FacingIndex(Vector2.up) == 1 && PlayerMovement.FacingIndex(Vector2.down) == 0 &&
+                PlayerMovement.FacingIndex(Vector2.right) == 2 && PlayerMovement.FacingIndex(Vector2.left) == 3,
+                "Four movement directions select four character views", ref checks);
+            var originalSprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Characters/Hero.png");
+            var animation = new HeroWalkAnimation(originalSprite);
+            try
+            {
+                string[] names = { "South", "North", "East", "West" };
+                for (int direction = 0; direction < 4; direction++)
+                {
+                    Check(animation.Frame(direction, 0).name == names[direction] + " Idle", "Dedicated standing pose " + names[direction], ref checks);
+                    Check(animation.Frame(direction, 1).name == names[direction] + " Left foot" &&
+                        animation.Frame(direction, 2).name == names[direction] + " Right foot" &&
+                        animation.Frame(direction, 0) != animation.Frame(direction, 1) &&
+                        animation.Frame(direction, 1) != animation.Frame(direction, 2), "Distinct alternating feet " + names[direction], ref checks);
+                }
+                Vector3 northSize = animation.Frame(1, 0).bounds.size;
+                Vector3 eastSize = animation.Frame(2, 1).bounds.size;
+                Check(Mathf.Abs(Mathf.Max(northSize.x, northSize.y) - Mathf.Max(eastSize.x, eastSize.y)) < 0.01f,
+                    "Overhead directions keep the same ground-plane scale", ref checks);
+            }
+            finally { animation.Dispose(); }
             CheckNavigation(bounds, ref checks);
             state = new RpgState();
             Check(!state.FinishSideQuest(0) && !state.AcceptSideQuest(-1) && !state.AcceptSideQuest(3), "Side quests require valid acceptance", ref checks);
@@ -146,7 +168,7 @@ public static class RpgValidation
         }
     }
 
-    [MenuItem("Tools/RPG/Run Live Gameplay Checks")]
+    [MenuItem("Tools/RPG/Run Live Gameplay Checks %#F8")]
     public static void RunLive()
     {
         var game = RpgGame.Instance;
@@ -160,14 +182,22 @@ public static class RpgValidation
             game.RestoreState(new RpgState());
             var movement = game.GetComponent<PlayerMovement>();
             var appearance = game.GetComponent<SpriteRenderer>();
-            var opposite = Resources.Load<Sprite>("HeroStepB");
+            var opposite = movement.WalkingSprite(0, 2);
             Check(opposite != null, "Second walking step loads in the running game", ref checks);
-            movement.MoveInDirection(Vector2.zero, 0);
+            movement.MoveInDirection(Vector2.down, 0);
             var idle = appearance.sprite;
-            movement.MoveInDirection(Vector2.right, 0.15f);
+            movement.MoveInDirection(Vector2.down, 0.15f);
             Check(appearance.sprite == opposite, "Actual movement switches to opposite walking step", ref checks);
             movement.MoveInDirection(Vector2.zero, 0.1f);
             Check(appearance.sprite == idle, "Standing still restores idle pose", ref checks);
+            movement.MoveInDirection(Vector2.up, 0.15f);
+            Check(appearance.sprite != idle && appearance.sprite != opposite, "Walking north uses a rear-view sprite", ref checks);
+            movement.MoveInDirection(Vector2.zero, 0);
+            Check(appearance.sprite.name.StartsWith("North"), "Stopping preserves north-facing pose", ref checks);
+            movement.MoveInDirection(Vector2.left, 0.15f);
+            Check(appearance.sprite.name.StartsWith("West") && !appearance.flipX, "Walking left mirrors the side view", ref checks);
+            movement.MoveInDirection(Vector2.right, 0.15f);
+            Check(appearance.sprite.name.StartsWith("East") && !appearance.flipX, "Walking right uses an unmirrored side view", ref checks);
             game.RestoreState(new RpgState());
             game.AcceptQuest();
             Check(game.State.questStage == 1 && game.Enemies.Count == 6, "Quest and encounter creation", ref checks);

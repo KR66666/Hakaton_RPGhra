@@ -23,6 +23,7 @@ public sealed class RpgGame : MonoBehaviour
     private readonly List<GameObject> worldObjects = new List<GameObject>();
     private SpriteRenderer map;
     private SpriteRenderer playerRenderer;
+    private HeroWalkAnimation actorAppearance;
     private float nextAttack, dodgeUntil, nextDamage, nextSave, nextRegen;
     private Color playerColor;
     private string SavePath => Path.Combine(Application.persistentDataPath, "village-rpg-save.json");
@@ -54,7 +55,8 @@ public sealed class RpgGame : MonoBehaviour
     {
         Instance = this;
         playerRenderer = GetComponent<SpriteRenderer>();
-        HeroSprite = playerRenderer.sprite;
+        actorAppearance = new HeroWalkAnimation(playerRenderer.sprite);
+        HeroSprite = actorAppearance.Frame(0, 0);
         playerColor = playerRenderer.color;
         var background = GameObject.Find("Background");
         if (background != null) map = background.GetComponent<SpriteRenderer>();
@@ -455,7 +457,11 @@ public sealed class RpgGame : MonoBehaviour
 
     private void OnApplicationPause(bool paused) { if (paused) Save(false); }
     private void OnApplicationQuit() { Save(false); }
-    private void OnDestroy() { if (Instance == this) { Save(false); Instance = null; } }
+    private void OnDestroy()
+    {
+        if (Instance == this) { Save(false); Instance = null; }
+        actorAppearance?.Dispose();
+    }
 
     public static TextMesh AddLabel(Transform parent, string text, Vector3 offset, Color color)
     {

@@ -8,18 +8,20 @@ public sealed class PlayerMovement : MonoBehaviour
     [SerializeField] private SpriteRenderer map;
     [SerializeField] private Camera followCamera;
     private SpriteRenderer character;
-    private Sprite idleSprite, oppositeStep;
+    private HeroWalkAnimation walkingAnimation;
+    private Vector2 facing = Vector2.down;
     private float walkedDistance;
 
     private void Start()
     {
-        idleSprite = character != null ? character.sprite : null;
-        oppositeStep = Resources.Load<Sprite>("HeroStepB");
+        if (character != null) walkingAnimation = new HeroWalkAnimation(character.sprite);
+        ShowWalkingFrame(0);
     }
 
     private void Awake()
     {
         character = GetComponent<SpriteRenderer>();
+        transform.localScale *= 0.85f;
         if (followCamera == null)
             followCamera = Camera.main;
     }
@@ -45,6 +47,7 @@ public sealed class PlayerMovement : MonoBehaviour
     {
         var game = RpgGame.Instance;
         var direction = Vector2.ClampMagnitude(input, 1f);
+        if (direction.sqrMagnitude > 0.01f) facing = direction.normalized;
         if (game != null && direction.sqrMagnitude > 0.01f)
             game.Facing = direction.normalized;
         var position = transform.position + (Vector3)(direction * (moveSpeed * (game != null ? game.SpeedMultiplier : 1) * Mathf.Max(0, deltaTime)));
@@ -59,11 +62,10 @@ public sealed class PlayerMovement : MonoBehaviour
         }
         float distance = Vector2.Distance(transform.position, position);
         transform.position = position;
-        if (distance > 0.0001f && character != null && oppositeStep != null)
+        if (distance > 0.0001f && character != null && walkingAnimation != null)
         {
             walkedDistance += distance;
-            character.sprite = WalkingFrame(walkedDistance) == 0 ? idleSprite : oppositeStep;
-            if (Mathf.Abs(direction.x) > 0.1f) character.flipX = direction.x < 0;
+            ShowWalkingFrame(WalkingFrame(walkedDistance));
         }
         else StopWalking();
     }
@@ -97,11 +99,80 @@ public sealed class PlayerMovement : MonoBehaviour
         followCamera = camera;
     }
 
-    public static int WalkingFrame(float distance) => Mathf.FloorToInt(distance / 0.4f) % 2;
+    public static int WalkingFrame(float distance)
+    {
+        int phase = Mathf.FloorToInt(Mathf.Max(0, distance) / 0.2f) % 4;
+        return phase == 0 ? 1 : phase == 2 ? 2 : 0;
+    }
+    public Sprite WalkingSprite(int direction, int step) => walkingAnimation?.Frame(direction, step);
 
     private void StopWalking()
     {
         walkedDistance = 0;
-        if (character != null && idleSprite != null) character.sprite = idleSprite;
+        ShowWalkingFrame(0);
+    }
+
+    public static int FacingIndex(Vector2 direction)
+    {
+        if (Mathf.Abs(direction.y) > Mathf.Abs(direction.x)) return direction.y > 0 ? 1 : 0;
+        return direction.x < 0 ? 3 : direction.x > 0 ? 2 : 0;
+    }
+
+    private void ShowWalkingFrame(int step)
+    {
+        if (character == null || walkingAnimation == null) return;
+        int orientation = FacingIndex(facing);
+        character.sprite = walkingAnimation.Frame(orientation, step);
+        character.flipX = false;
+    }
+
+    private void OnDestroy() { walkingAnimation?.Dispose(); }
+}
+
+public sealed class HeroWalkAnimation
+{
+    [System.Serializable]
+    public sealed class FrameDefinition
+    {
+        public float x, y, width, height, ppu, pivotX, pivotY;
+    }
+    [System.Serializable]
+    public sealed class SheetDefinition { public FrameDefinition[] frames; }
+    private readonly Sprite[,] poses = new Sprite[4, 3];
+    private readonly System.Collections.Generic.List<Sprite> generated = new System.Collections.Generic.List<Sprite>();
+    public HeroWalkAnimation(Sprite standing)
+    {
+        for (int direction = 0; direction < 4; direction++)
+            for (int pose = 0; pose < 3; pose++) poses[direction, pose] = standing;
+        var texture = Resources.Load<Texture2D>("HeroDirections");
+        var definitions = Resources.Load<TextAsset>("HeroDirections");
+        if (texture == null || definitions == null) return;
+        var sheet = JsonUtility.FromJson<SheetDefinition>(definitions.text);
+        if (sheet?.frames == null || sheet.frames.Length != 12) return;
+        string[] names = { "South", "North", "East", "West" };
+        string[] states = { "Idle", "Left foot", "Right foot" };
+        for (int i = 0; i < 12; i++)
+        {
+            var frame = sheet.frames[i];
+            var sprite = Sprite.Create(texture, new Rect(frame.x, frame.y, frame.width, frame.height),
+                new Vector2(frame.pivotX, frame.pivotY), frame.ppu, 0, SpriteMeshType.FullRect);
+            sprite.name = names[i / 3] + " " + states[i % 3];
+            generated.Add(sprite);
+            poses[i / 3, i % 3] = sprite;
+        }
+    }
+    public Sprite Frame(int direction, int step) => poses[Mathf.Clamp(direction, 0, 3), Mathf.Clamp(step, 0, 2)];
+
+    public void Dispose()
+    {
+        foreach (var sprite in generated) Release(sprite);
+    }
+
+    private static void Release(Sprite sprite)
+    {
+        if (sprite == null) return;
+        if (Application.isPlaying) Object.Destroy(sprite);
+        else Object.DestroyImmediate(sprite);
     }
 }
+
