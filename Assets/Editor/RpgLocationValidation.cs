@@ -13,6 +13,15 @@ public static class RpgLocationValidation
         Action<bool,string> check=(value,message)=>{if(!value)throw new Exception(message);count++;};
         check(RpgLocations.Normalize((RpgPlace)99)==RpgPlace.Town,"Unknown saved locations must fall back to town");
         check(new RpgState().place==RpgPlace.Town,"Old saves and new games default to town");
+        check(!new RpgState().librarySecretOpened,"The library passage starts hidden");
+        var secretSave=JsonUtility.FromJson<RpgState>(JsonUtility.ToJson(new RpgState{place=RpgPlace.SecretLibrary,librarySecretOpened=true}));secretSave.Normalize();
+        check(secretSave.place==RpgPlace.SecretLibrary&&secretSave.librarySecretOpened,"Secret room and unlocked candle survive saving");
+        check(secretSave.TakeLibraryCandle()&&!secretSave.TakeLibraryCandle(),"The secret shelf holds exactly one collectible candle");
+        var candleSave=JsonUtility.FromJson<RpgState>(JsonUtility.ToJson(secretSave));
+        check(candleSave.libraryCandleTaken&&!candleSave.TakeLibraryCandle(),"The secret candle cannot respawn after loading");
+        check(!new RpgState().TakeLibraryCandle(),"The secret candle cannot be collected outside its room");
+        check(!RpgLocations.Blocked(RpgPlace.SecretLibrary,new Vector3(0,-7.5f*RpgLocations.SecretRoomScale,0)),"Smaller secret room has a safe arrival");
+        check(!RpgLocations.Blocked(RpgPlace.SecretLibrary,new Vector3(-4.6f,1.25f,0)),"Candle shelf remains approachable in the smaller room");
         check(RpgLocations.Find(RpgPlace.Town,RpgPlace.DarkForest)==null,"Dark forest is reached through the forest");
         var townBounds=RpgWorldGeometry.ExpandedBounds(new Bounds(new Vector3(0,2,1),new Vector3(40,26.666666f,1)));
         foreach(var link in RpgLocations.Exits)
@@ -37,7 +46,7 @@ public static class RpgLocationValidation
                     check(Reachable(link.to,link.arrival,next.point),"Walking route from arrival to exit: "+link.to+" -> "+next.to);
             }
         }
-        foreach(var place in new[]{RpgPlace.Forest,RpgPlace.DarkForest,RpgPlace.Library,RpgPlace.ChurchRuins})
+        foreach(var place in new[]{RpgPlace.Forest,RpgPlace.DarkForest,RpgPlace.Library,RpgPlace.ChurchRuins,RpgPlace.SecretLibrary})
         {
             var obstacle=RpgLocations.Obstacles(place)[0];float y=obstacle.center.y;
             var start=new Vector3(obstacle.xMin-1,y,0);var end=new Vector3(obstacle.xMax+1,y,0);
@@ -78,14 +87,15 @@ public static class RpgLocationValidation
     public static void Run()
     {
         int count=CheckGeometry();
-        foreach(var place in new[]{RpgPlace.Forest,RpgPlace.DarkForest,RpgPlace.Library,RpgPlace.ChurchRuins})
+        foreach(var place in new[]{RpgPlace.Forest,RpgPlace.DarkForest,RpgPlace.Library,RpgPlace.ChurchRuins,RpgPlace.SecretLibrary})
         {
             var saved=new RpgState{place=place,x=1,y=-7,health=38,gold=67,cellarQuest=5};
             var restored=JsonUtility.FromJson<RpgState>(JsonUtility.ToJson(saved));restored.Normalize();
             if(restored.place!=place||restored.x!=1||restored.y!=-7||restored.health!=38||restored.gold!=67||restored.cellarQuest!=5)
                 throw new Exception("Location save round trip failed: "+place);
             var map=RpgLocationArt.Map(place);
-            if(map==null||map.texture.filterMode!=FilterMode.Point||Mathf.Abs(map.bounds.size.x-32)>.01f||Mathf.Abs(map.bounds.size.y-24)>.01f)
+            float expectedHeight=place==RpgPlace.Library||place==RpgPlace.SecretLibrary?1024f/48:24;
+            if(map==null||map.texture.filterMode!=FilterMode.Point||Mathf.Abs(map.bounds.size.x-32)>.01f||Mathf.Abs(map.bounds.size.y-expectedHeight)>.01f)
                 throw new Exception("Location map dimensions failed: "+place);
             count+=2;
         }

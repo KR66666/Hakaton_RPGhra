@@ -133,7 +133,7 @@ public sealed partial class RpgInterface : MonoBehaviour
         mapButton.anchoredPosition=new Vector2(-105,-20);
         characterButton.anchoredPosition=new Vector2(105,-20);
         tracker.anchoredPosition=new Vector2(-20,-290);
-        goalPanel.anchoredPosition=new Vector2(0,-270);
+        goalPanel.anchoredPosition=new Vector2(0,-205);
         toast.rectTransform.anchoredPosition=new Vector2(0,-365);
         interactionPanel.anchoredPosition=new Vector2(0,108);
         hudRoot.SetAsFirstSibling();
@@ -265,7 +265,7 @@ public sealed partial class RpgInterface : MonoBehaviour
         if(state.KnowsSideQuest(0) || state.herbs>0)questItems+=$"\nLéčivé byliny: {state.herbs}";
         if(state.KnowsSideQuest(1) || state.SuppliesFound>0)questItems+=$"\nZásoby pro vesnici: {state.SuppliesFound}/2";
         if(state.KnowsSideQuest(2))questItems+="\nBalíček pro Petra: "+(state.parcelDelivered?"doručen":state.deliveryQuest==1?"v batohu":"nepřevzat");
-        Open("inventory", "BATOH A VYBAVENÍ", $"Rituální svíčky: {state.candles}/3   •   Cyklus {state.cycle}\nZlato: {state.gold}     |     Léčivé lektvary: {state.potions}"+questItems+
+        Open("inventory", "BATOH A VYBAVENÍ", $"Rituální svíčky: {state.candles}/3   •   Cyklus {state.cycle}\nZlato: {state.gold}     |     Léčivé lektvary: {state.potions}"+(state.libraryCandleTaken?"\nSvíčka z tajného pokoje: 1":"")+questItems+
             $"\n\nŽelezný meč +{state.weaponLevel}   •   Útok {state.Damage}\nKožená zbroj +{state.armorLevel}   •   Obrana {state.Defense}\n\nBody vylepšení: {state.UpgradePoints}\nLektvar obnoví 60 zdraví. Vybavení vylepšuje Eliška.");
         Action("Vylepšit postavu  [C]",ShowCharacterUpgrades);
         Action("Vypít lektvar", () => { game.DrinkPotion(); ShowInventory(); });

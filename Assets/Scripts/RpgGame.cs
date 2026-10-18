@@ -72,7 +72,7 @@ public sealed partial class RpgGame : MonoBehaviour
         playerColor = playerRenderer.color;
         var background = GameObject.Find("Background");
         if (background != null) map = background.GetComponent<SpriteRenderer>();
-        var fantasyMap=Resources.Load<Sprite>("MedievalTownExpanded") ?? Resources.Load<Sprite>("SpaciousVillage") ?? Resources.Load<Sprite>("FantasyVillage");
+        var fantasyMap=Resources.Load<Sprite>("MedievalTownDetailed") ?? Resources.Load<Sprite>("MedievalTownExpanded") ?? Resources.Load<Sprite>("SpaciousVillage") ?? Resources.Load<Sprite>("FantasyVillage");
         if(map!=null && fantasyMap!=null)
         {
             var expanded=RpgWorldGeometry.ExpandedBounds(map.bounds);
@@ -347,6 +347,7 @@ public sealed partial class RpgGame : MonoBehaviour
             if (item.obj == null || !item.obj.activeSelf) continue;
             float current = Vector2.Distance(transform.position, item.obj.transform.position);
             if (item.kind == "locationExit" && current > 1.35f) continue;
+            if(item.kind=="secretBook"&&current>RpgSecretBookGlow.BookReach)continue;
             if (current < distance) { result = item; distance = current; }
         }
         return result;
@@ -415,6 +416,12 @@ public sealed partial class RpgGame : MonoBehaviour
         var item=NearestItem();
         if(item==null) { Notify("Přijdi blíž k postavě nebo předmětu.");return; }
         if(item.kind=="ritual") { TryRitual();return; }
+        if(item.kind=="secretBook") {PullLibraryBook(item.obj);return;}
+        if(item.kind=="archiveCandle")
+        {
+            if(State.TakeLibraryCandle()){item.obj.SetActive(false);Save(false);Notify("Získáváš jedinou svíčku z tajného pokoje. Je uložená v batohu.",6);}
+            return;
+        }
         if(item.kind=="locationExit") { TryTravelLocation((RpgPlace)int.Parse(item.id));return; }
         if(item.kind=="shop") { Notify("Přijdi těsně ke vchodu domu.");return; }
         DialogueNpcId=item.id;
