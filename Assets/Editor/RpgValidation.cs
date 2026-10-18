@@ -10,10 +10,10 @@ public static class RpgValidation
     {
         EditorApplication.delayCall += () =>
         {
-            if (!SessionState.GetBool("RPG.Validation.v30", false))
+            if (!SessionState.GetBool("RPG.Validation.v34", false))
             {
                 Run();
-                SessionState.SetBool("RPG.Validation.v30", true);
+                SessionState.SetBool("RPG.Validation.v34", true);
             }
         };
     }
@@ -132,17 +132,22 @@ public static class RpgValidation
             restored.gold = -20; restored.level = -1; restored.health = float.NaN; restored.x = float.PositiveInfinity;
             restored.Normalize();
             Check(restored.gold == 0 && restored.level == 1 && restored.health == 100 && restored.x == 0, "Invalid save values normalized", ref checks);
-            var bounds = new Bounds(new Vector3(0, 2, 0), new Vector3(40, 26.666666f, 1));
-            Check(!RpgWorldGeometry.Blocked(Vector3.zero, bounds, -0.45f), "Player spawn is walkable", ref checks);
-            var house = new Vector3((350 - 768) / 38.4f, (512 - 350) / 38.4f + 2 + 0.45f, 0);
+            var originalBounds = new Bounds(new Vector3(0, 2, 0), new Vector3(40, 26.666666f, 1));
+            var bounds=RpgWorldGeometry.ExpandedBounds(originalBounds);
+            Check(Vector3.Distance(RpgWorldGeometry.PixelPosition(new Vector2(768,512),bounds),originalBounds.center)<.001f,"Expansion preserves legacy quest/NPC world coordinates",ref checks);
+            Check(!RpgWorldGeometry.Blocked(new Vector3(.5f,3.5f), bounds, RpgWorldGeometry.FeetOffset), "New village spawn is inside the open square", ref checks);
+            var house = RpgWorldGeometry.ExpandedPixelPosition(new Vector2(650,300),bounds);
             Check(RpgWorldGeometry.Blocked(house, bounds, -0.45f), "House footprint blocks movement", ref checks);
-            Check(!AtPixelBlocked(1410, 477, bounds), "Bridge is walkable", ref checks);
-            Check(!AtPixelBlocked(744,411,bounds), "Existing shop doorstep is reachable on the road network", ref checks);
-            Check(AtPixelBlocked(1390, 200, bounds), "River away from bridge is blocked", ref checks);
-            Check(AtPixelBlocked(50, 50, bounds), "Grass outside paths is blocked", ref checks);
-            Check(AtPixelBlocked(600, 550, bounds), "Market stalls are blocked", ref checks);
-            var start = RpgWorldGeometry.PixelPosition(new Vector2(330, 285), bounds);
-            var end = RpgWorldGeometry.PixelPosition(new Vector2(360, 450), bounds);
+            Check(!AtPixelBlocked(1150, 434, bounds), "Bridge is walkable", ref checks);
+            Check(!AtPixelBlocked(650,395,bounds), "New visible shop doorstep is reachable", ref checks);
+            Check(!AtPixelBlocked(650,650,bounds),"Library entrance path connects to the wide road network",ref checks);
+            Check(!AtPixelBlocked(1150,445,bounds)&&AtPixelBlocked(1150,490,bounds),"Bridge has wide walkable paving and still blocks water",ref checks);
+            Check(!AtPixelBlocked(800,420,bounds)&&!AtPixelBlocked(800,450,bounds),"Boulevard supports walking abreast across its width",ref checks);
+            Check(AtPixelBlocked(1240,300, bounds), "River away from bridge is blocked", ref checks);
+            Check(AtPixelBlocked(30,30, bounds), "Grass outside paths is blocked", ref checks);
+            Check(AtPixelBlocked(600,650, bounds), "Fenced garden beside the library is blocked", ref checks);
+            var start = RpgWorldGeometry.ExpandedPixelPosition(new Vector2(525,550), bounds);
+            var end = RpgWorldGeometry.ExpandedPixelPosition(new Vector2(780,550), bounds);
             Check(!RpgWorldGeometry.Blocked(start, bounds, RpgWorldGeometry.FeetOffset) && !RpgWorldGeometry.Blocked(end, bounds, RpgWorldGeometry.FeetOffset), "Opposite sides of roof are both roads", ref checks);
             var swept = RpgWorldGeometry.Move(start, end, bounds);
             Check(Vector2.Distance(swept, end) > 2 && !RpgWorldGeometry.Blocked(swept, bounds, RpgWorldGeometry.FeetOffset), "Long movement cannot tunnel through roof", ref checks);
@@ -165,8 +170,8 @@ public static class RpgValidation
                 Check(animation.Frame(2,0)==animation.Frame(3,0),"Left and right share mirrored side artwork",ref checks);
                 Check(animation.Frame(0,3)!=animation.Frame(0,2),"Fourth supplied walking pose remains available",ref checks);
                 var originalMap=AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Characters/MedievalTown.png");
-                var fantasyMap=Resources.Load<Sprite>("FantasyVillage");
-                Check(fantasyMap!=null && Vector3.Distance(originalMap.bounds.size,fantasyMap.bounds.size)<.001f,"New artwork preserves exact gameplay map bounds",ref checks);
+                var fantasyMap=Resources.Load<Sprite>("MedievalTownExpanded");
+                Check(fantasyMap!=null && Vector2.Distance((Vector2)originalMap.bounds.size/RpgWorldGeometry.LegacyScale,(Vector2)fantasyMap.bounds.size)<.001f,$"Expanded artwork dimensions: expected {originalMap.bounds.size/RpgWorldGeometry.LegacyScale}, actual {(fantasyMap!=null?fantasyMap.bounds.size:Vector3.zero)}",ref checks);
                 Check(animation.Frame(0,0,true).name=="Boy idle" && animation.Frame(0,1,true).name=="Boy left foot" && animation.Frame(0,2,true).name=="Boy right foot", "Boy has distinct overhead standing and steps", ref checks);
                 Check(animation.Frame(0,0,false).name=="Heroine Front 0" && animation.Frame(1,0,false).name=="Heroine Back 0" && animation.Frame(3,0,false).name=="Heroine Left 2", "Heroine uses exact supplied directional frames", ref checks);
                 state.heroIsBoy = true;
@@ -215,8 +220,10 @@ public static class RpgValidation
             var secondTest=RpgGame.CreateTestState(false);testState.collected.Add("testPotion");
             Check(!secondTest.heroIsBoy&&secondTest.collected.Count==0,"Test reset creates fresh independent collections",ref checks);
             CheckNavigation(bounds, ref checks);
-            Check(!AtPixelBlocked(120,220,bounds) && AtPixelBlocked(130,150,bounds), "Mill lane is accessible but the mill itself blocks walking",ref checks);
+            Check(!AtPixelBlocked(1045,395,bounds) && AtPixelBlocked(1045,250,bounds), "Church approach is reachable but church roof blocks walking",ref checks);
             CheckAllRoadsConnected(bounds,ref checks);
+            foreach(var district in new[]{new Vector2(155,190),new Vector2(140,430),new Vector2(790,850),new Vector2(1380,185),new Vector2(1340,570),new Vector2(250,640)})
+                Check(!AtPixelBlocked(district.x,district.y,bounds),"District resident has accessible paving: "+district,ref checks);
             state = new RpgState();
             Check(!state.FinishSideQuest(0) && !state.AcceptSideQuest(-1) && !state.AcceptSideQuest(3), "Side quests require valid acceptance", ref checks);
             Check(state.AcceptSideQuest(0) && !state.AcceptSideQuest(0), "Side quest accepted once", ref checks);
@@ -267,7 +274,7 @@ public static class RpgValidation
             bool open=!AtPixelBlocked(x*4,y*4,bounds);walkable[y*width+x]=open;if(open)total++;
         }
         var queue=new System.Collections.Generic.Queue<int>();
-        int start=150*width+192;queue.Enqueue(start);visited[start]=true;int reachable=0;
+        int start=107*width+195;queue.Enqueue(start);visited[start]=true;int reachable=0;
         while(queue.Count>0)
         {
             int cell=queue.Dequeue(),x=cell%width,y=cell/width;reachable++;
@@ -285,7 +292,7 @@ public static class RpgValidation
 
     private static bool AtPixelBlocked(float x, float y, Bounds bounds)
     {
-        return RpgWorldGeometry.Blocked(RpgWorldGeometry.PixelPosition(new Vector2(x, y), bounds), bounds, RpgWorldGeometry.FeetOffset);
+        return RpgWorldGeometry.Blocked(RpgWorldGeometry.ExpandedPixelPosition(new Vector2(x, y), bounds), bounds, RpgWorldGeometry.FeetOffset);
     }
 
     private static void CheckNavigation(Bounds bounds, ref int checks)
@@ -296,7 +303,7 @@ public static class RpgValidation
         for (int y = 0; y < rows; y++) for (int x = 0; x < columns; x++)
             walkable[y * columns + x] = !AtPixelBlocked(x * 8 + 4, y * 8 + 4, bounds);
         var queue = new System.Collections.Generic.Queue<int>();
-        int origin = 75 * columns + 96;
+        int origin = 53 * columns + 97;
         queue.Enqueue(origin); visited[origin] = true;
         while (queue.Count > 0)
         {

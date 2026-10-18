@@ -71,8 +71,13 @@ public sealed partial class RpgGame : MonoBehaviour
         playerColor = playerRenderer.color;
         var background = GameObject.Find("Background");
         if (background != null) map = background.GetComponent<SpriteRenderer>();
-        var fantasyMap=Resources.Load<Sprite>("FantasyVillage");
-        if(map!=null && fantasyMap!=null){map.sprite=fantasyMap;map.sharedMaterial=RpgVisualTheme.FantasyAtmosphere();}
+        var fantasyMap=Resources.Load<Sprite>("MedievalTownExpanded") ?? Resources.Load<Sprite>("SpaciousVillage") ?? Resources.Load<Sprite>("FantasyVillage");
+        if(map!=null && fantasyMap!=null)
+        {
+            var expanded=RpgWorldGeometry.ExpandedBounds(map.bounds);
+            map.sprite=fantasyMap;map.transform.position+=expanded.center-map.bounds.center;
+            map.sharedMaterial=RpgVisualTheme.FantasyAtmosphere();
+        }
         IsTestLocation=MainMenu.LaunchTest;MainMenu.LaunchTest=false;
         State = IsTestLocation ? CreateTestState(MainMenu.SelectedHeroIsBoy ?? false) : ReadSave() ?? new RpgState();
         if (MainMenu.SelectedHeroIsBoy.HasValue)
@@ -223,6 +228,15 @@ public sealed partial class RpgGame : MonoBehaviour
         if(IsTestLocation){BuildTestLocation();return;}
         AddPerson("mayor", "Rychtář Radovan", "mayor", new Vector2(-2.1f, 0.8f), new Color(0.85f, 0.72f, 0.35f));
         AddShopEntrance();
+        AddVillageLandmark("KOSTEL",RpgWorldGeometry.ChurchApproachPixel);
+        AddVillageLandmark("KNIHOVNA",RpgWorldGeometry.LibraryApproachPixel);
+        AddVillageLandmark("KAMENNÝ MOST",new Vector2(1360,520));
+        AddExpandedDistrict("HRADNÍ BRÁNA",new Vector2(155,190),"Strážný Bohumil");
+        AddExpandedDistrict("ŘEMESLNICKÁ ULIČKA",new Vector2(140,430),"Kovář Mikuláš");
+        AddExpandedDistrict("TRŽIŠTĚ",new Vector2(790,850),"Trhovkyně Alena");
+        AddExpandedDistrict("VODNÍ MLÝN",new Vector2(1380,185),"Mlynář Matěj");
+        AddExpandedDistrict("PŘÍSTAVIŠTĚ",new Vector2(1340,570),"Rybář Oldřich");
+        AddExpandedDistrict("SEDLÁCKÁ ČTVRŤ",new Vector2(250,640),"Selka Dorota");
         AddPerson("elder", "Děda Matěj", "elder", new Vector2(-4, 1.3f), Color.white);
         AddPerson("healer", "Bylinkářka Mira", "healer", new Vector2(-1.6f, -2.2f), new Color(0.55f, 1, 0.7f));
         AddPerson("guard", "Petr Kříž • průvodce", "guard", new Vector2(13.5f, 3.3f), new Color(0.6f, 0.7f, 1));
@@ -259,25 +273,25 @@ public sealed partial class RpgGame : MonoBehaviour
     }
     private void BuildTestLocation()
     {
-        AddPerson("mayor","Rychtář Radovan","mayor",new Vector2(-2,2.8f),Color.white);
-        AddPerson("merchant","Obchodnice Eliška","merchant",new Vector2(0,2.8f),Color.white);
-        AddPerson("healer","Bylinkářka Mira","healer",new Vector2(2,2.8f),Color.white);
-        AddPerson("guard","Petr Kříž • průvodce","guard",new Vector2(4,2.8f),Color.white);
-        AddPerson("elder","Děda Matěj","elder",new Vector2(6,2.8f),Color.white);
-        AddPickup("testTools","Testovací nástroje [T]","testgear",new Vector2(-3,0),Color.cyan);
-        AddPickup("testPotion","Léčivý lektvar","testpotion",new Vector2(-2,1.2f),new Color(.8f,.2f,.4f));
-        AddPickup("herbTest","Léčivé byliny","herb",new Vector2(0,1.2f),Color.green);
-        AddPickup("garden","Miřin záhonek","garden",new Vector2(2,1.2f),Color.green);
-        AddPickup("chestTest","Truhla s odměnou","chest",new Vector2(4,1.2f),Color.yellow);
-        AddPickup("supply1","Zásoby • bedna 1","supply",new Vector2(-2,0),new Color(1,.6f,.2f));
-        AddPickup("supply2","Zásoby • bedna 2","supply",new Vector2(0,0),new Color(1,.6f,.2f));
+        AddPerson("mayor","Rychtář Radovan","mayor",new Vector2(-2,6.8f),Color.white);
+        AddPerson("merchant","Obchodnice Eliška","merchant",new Vector2(0,6.8f),Color.white);
+        AddPerson("healer","Bylinkářka Mira","healer",new Vector2(2,6.8f),Color.white);
+        AddPerson("guard","Petr Kříž • průvodce","guard",new Vector2(4,6.8f),Color.white);
+        AddPerson("elder","Děda Matěj","elder",new Vector2(5.5f,6.8f),Color.white);
+        AddPickup("testTools","Testovací nástroje [T]","testgear",new Vector2(-3,3.3f),Color.cyan);
+        AddPickup("testPotion","Léčivý lektvar","testpotion",new Vector2(-2,4.7f),new Color(.8f,.2f,.4f));
+        AddPickup("herbTest","Léčivé byliny","herb",new Vector2(0,4.7f),Color.green);
+        AddPickup("garden","Miřin záhonek","garden",new Vector2(2,4.7f),Color.green);
+        AddPickup("chestTest","Truhla s odměnou","chest",new Vector2(4,4.7f),Color.yellow);
+        AddPickup("supply1","Zásoby • bedna 1","supply",new Vector2(-2,3.3f),new Color(1,.6f,.2f));
+        AddPickup("supply2","Zásoby • bedna 2","supply",new Vector2(0,3.3f),new Color(1,.6f,.2f));
         for(int rank=0;rank<=5;rank++)
         {
-            AddPickup("testWeapon"+rank,"Meč +"+rank,"testweapon",new Vector2(-3+rank*1.4f,-1.3f),new Color(.75f,.85f,1));
-            AddPickup("testArmor"+rank,"Zbroj +"+rank,"testarmor",new Vector2(-3+rank*1.4f,-2.7f),new Color(.65f,.7f,.8f));
+            AddPickup("testWeapon"+rank,"Meč +"+rank,"testweapon",new Vector2(-3+rank*1.4f,1.9f),new Color(.75f,.85f,1));
+            AddPickup("testArmor"+rank,"Zbroj +"+rank,"testarmor",new Vector2(-3+rank*1.4f,.5f),new Color(.65f,.7f,.8f));
         }
-        for(int i=0;i<4;i++)SpawnEnemy("bandit"+i,new Vector2(-3+i*2.2f,5.5f),false);
-        SpawnEnemy("commander",new Vector2(0,8),true);
+        for(int i=0;i<4;i++)SpawnEnemy("bandit"+i,new Vector2(-3+i*2.2f,5.9f),false);
+        SpawnEnemy("commander",new Vector2(5.2f,3.3f),true);
     }
 
     private void SpawnBoss()
@@ -321,7 +335,21 @@ public sealed partial class RpgGame : MonoBehaviour
         worldObjects.Add(obj);
         if(!IsTestLocation && kind!="elder") obj.AddComponent<VillageNpcRoutine>().Initialize(this,kind,title);
     }
-    private Vector3 ShopApproach => RpgWorldGeometry.PixelPosition(new Vector2(744,411),map.bounds);
+    private Vector3 ShopApproach => RpgWorldGeometry.PixelPosition(RpgWorldGeometry.ShopApproachPixel,map.bounds);
+    private void AddExpandedDistrict(string title,Vector2 point,string resident)
+    {
+        var position=RpgWorldGeometry.ExpandedPixelPosition(point,map.bounds);
+        var marker=new GameObject(title);marker.transform.position=position;
+        var text=AddLabel(marker.transform,title,new Vector3(0,.7f,0),new Color(1,.9f,.65f));text.characterSize=.035f;
+        worldObjects.Add(marker);
+        AddPerson("district"+resident,resident,"district",position,Color.white);
+    }
+    private void AddVillageLandmark(string title,Vector2 point)
+    {
+        var landmark=new GameObject(title);landmark.transform.position=RpgWorldGeometry.PixelPosition(point,map.bounds);
+        var text=AddLabel(landmark.transform,title,new Vector3(0,.35f,0),new Color(1,.9f,.65f));text.characterSize=.035f;
+        worldObjects.Add(landmark);
+    }
     private void AddShopEntrance()
     {
         var entrance = new GameObject("Obchod • vstup v domě na pozadí");
@@ -356,7 +384,7 @@ public sealed partial class RpgGame : MonoBehaviour
         return result;
     }
 
-    public Vector3 RoomDoor(string kind) => kind=="merchant" ? RpgWorldGeometry.PixelPosition(new Vector2(734,384),map.bounds) : transform.position;
+    public Vector3 RoomDoor(string kind) => kind=="merchant" ? RpgWorldGeometry.PixelPosition(RpgWorldGeometry.ShopDoorPixel,map.bounds) : transform.position;
     public bool AtRoomDoor(string kind) => kind=="merchant" && Vector2.Distance(transform.position,ShopApproach)<=.42f;
     private void UpdatePrompt()
     {
@@ -383,21 +411,21 @@ public sealed partial class RpgGame : MonoBehaviour
         Vector3 door=RoomDoor(kind),start=transform.position;
         var movement=GetComponent<PlayerMovement>();
         float elapsed=0;
-        while(elapsed<.7f)
+        while(elapsed<1.15f)
         {
             elapsed+=Time.deltaTime;
             var previous=transform.position;
             // Only this scripted, short doorway crossing may pass the building edge.
-            transform.position=Vector3.Lerp(start,door,Mathf.Clamp01(elapsed/.7f));
+            transform.position=Vector3.Lerp(start,door,Mathf.Clamp01(elapsed/1.15f));
             Vector2 direction=door-start;
             if(movement!=null) movement.PlayEntranceStep(direction,elapsed*1.4f);
             yield return null;
         }
         elapsed=0;
-        while(elapsed<.3f)
+        while(elapsed<.45f)
         {
-            elapsed+=Time.deltaTime;float t=Mathf.Clamp01(elapsed/.3f);
-            transform.localScale=Vector3.Lerp(entryScale,entryScale*.3f,t);
+            elapsed+=Time.deltaTime;float t=Mathf.Clamp01(elapsed/.45f);
+            transform.localScale=Vector3.Lerp(entryScale,entryScale*.85f,t);
             var color=playerColor;color.a=1-t;playerRenderer.color=color;
             yield return null;
         }
@@ -427,7 +455,7 @@ public sealed partial class RpgGame : MonoBehaviour
         else if(item.kind=="healer") Interface.ShowHealer();
         else if(item.kind=="guard") Interface.ShowGuard();
         else if(item.kind=="elder") Interface.ShowCellarElder();
-        else if(item.kind=="villager") Interface.ShowResident(item.title);
+        else if(item.kind=="villager" || item.kind=="district") Interface.ShowResident(item.title);
         else if (item.kind == "garden")
         {
             long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();

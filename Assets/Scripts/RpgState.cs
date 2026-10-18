@@ -83,8 +83,8 @@ public sealed class RpgState
     }
     public float health = 100;
     public float stamina = 100;
-    public float x;
-    public float y;
+    public float x = .5f;
+    public float y = 3.5f;
     public int trackedQuest = -1;
     public int questStage;
     public int banditsDefeated;
@@ -233,106 +233,21 @@ public static class RpgWorldGeometry
 {
     // A directly overhead character is anchored at its ground-plane centre.
     public const float FeetOffset = 0f;
-    private struct Road
+    public const float LegacyScale = .58f;
+    public static readonly Vector2 ExpandedCoreOffset = new Vector2(358,163);
+    public static Vector2 ToExpandedPixel(Vector2 original) => original*LegacyScale+ExpandedCoreOffset;
+    public static Vector2 FromExpandedPixel(Vector2 expanded) => (expanded-ExpandedCoreOffset)/LegacyScale;
+    public static readonly Vector2 ShopDoorPixel=FromExpandedPixel(new Vector2(655,345));
+    public static readonly Vector2 ShopApproachPixel=FromExpandedPixel(new Vector2(650,395));
+    public static readonly Vector2 ChurchApproachPixel=FromExpandedPixel(new Vector2(1045,395));
+    public static readonly Vector2 LibraryApproachPixel=FromExpandedPixel(new Vector2(650,650));
+    public static Bounds ExpandedBounds(Bounds original)
     {
-        public Vector2 a, b;
-        public float radius;
-        public Road(float x1, float y1, float x2, float y2, float width)
-        { a = new Vector2(x1, y1); b = new Vector2(x2, y2); radius = width; }
+        var size=new Vector3(original.size.x/LegacyScale,original.size.y/LegacyScale,original.size.z);
+        var centerPixel=ToExpandedPixel(new Vector2(768,512));
+        var shift=new Vector3((centerPixel.x/1536-.5f)*size.x,(.5f-centerPixel.y/1024)*size.y,0);
+        return new Bounds(original.center-shift,size);
     }
-
-    // Whitelist of paved surfaces, traced in the background's pixel coordinates.
-    // Rectangular roof blockers below take priority over this road network.
-    private static readonly Vector2[] Square =
-    {
-        new Vector2(651, 432), new Vector2(916, 405), new Vector2(980, 470),
-        new Vector2(1000, 675), new Vector2(900, 697), new Vector2(840, 710),
-        new Vector2(688, 710), new Vector2(630, 685), new Vector2(614, 636), new Vector2(628, 455)
-    };
-    private static readonly Road[] Roads =
-    {
-        new Road(750,440,744,402,20), // Existing shop doorstep below the north-square house.
-        new Road(650,450,535,448,22), new Road(535,448,420,466,20),
-        new Road(420,466,282,428,18), new Road(282,428,210,403,17),
-        new Road(210,403,150,420,17), new Road(150,420,108,420,16),
-        new Road(108,420,108,466,15), new Road(108,466,106,535,15),
-        new Road(106,535,145,570,15),
-        new Road(145,570,165,625,15), new Road(165,625,268,655,18),
-        new Road(268,655,292,683,16), new Road(292,683,276,772,15),
-        new Road(276,772,276,858,15), new Road(276,858,205,850,15),
-        new Road(205,850,145,842,14), new Road(145,842,152,905,14),
-        new Road(152,905,152,1015,14),
-        new Road(210,403,224,320,14), new Road(224,320,240,260,14),
-        new Road(240,260,224,190,14), new Road(224,190,205,190,14),
-        new Road(205,190,205,90,14), new Road(205,90,240,0,14),
-        new Road(224,320,280,289,13), new Road(280,289,370,285,13),
-        new Road(370,285,400,266,13), new Road(400,266,400,180,13),
-        new Road(400,180,384,172,12), new Road(384,172,384,120,11),
-        new Road(384,120,384,10,11),
-        new Road(110,466,108,300,12), new Road(108,300,125,245,12),
-        new Road(535,448,535,285,15), new Road(535,285,565,285,15), new Road(565,285,565,200,14),
-        new Road(565,200,550,170,14), new Road(550,170,550,100,14), new Road(550,100,550,10,14),
-        new Road(900,420,915,300,16), new Road(915,300,908,275,16),
-        new Road(915,300,810,300,16), new Road(810,300,670,282,14),
-        new Road(670,282,570,280,14), new Road(570,280,535,285,14),
-        new Road(980,500,1075,523,21), new Road(1075,523,1235,530,20),
-        new Road(1235,530,1300,505,20), new Road(1300,505,1350,477,20),
-        new Road(1350,477,1500,477,20), new Road(1500,477,1536,477,18),
-        new Road(1300,505,1350,550,14), new Road(1350,550,1355,675,13),
-        new Road(1355,675,1335,740,13), new Road(1335,740,1340,930,13),
-        new Road(1340,930,1360,1024,13),
-        new Road(975,650,1010,720,18), new Road(1010,720,1065,770,16),
-        new Road(1065,770,1050,840,14), new Road(1050,840,1055,950,12),
-        new Road(1055,950,1060,1024,12), new Road(1065,770,1190,720,15),
-        new Road(1190,720,1240,700,14), new Road(1240,700,1290,690,14), new Road(1290,690,1335,740,13),
-        new Road(640,680,560,705,15), new Road(560,705,560,835,12),
-        new Road(560,835,620,860,14), new Road(620,860,680,900,15),
-        new Road(680,900,710,1015,15),
-        // Dirt lane below the mill and its connection to the western village.
-        new Road(205,190,205,220,14), new Road(205,220,120,220,14),
-        new Road(120,220,15,220,14), new Road(125,245,120,220,14),
-        // Northern and eastern residential lanes, outside the castle walls.
-        new Road(1075,523,1092,420,12), new Road(1092,420,1092,330,12),
-        new Road(1092,330,1070,250,14), new Road(1070,250,1090,170,14),
-        new Road(1090,170,1170,140,14), new Road(1170,140,1240,170,14),
-        new Road(1240,170,1290,175,14), new Road(1290,175,1300,230,14), new Road(1300,230,1290,285,13),
-        new Road(1290,285,1290,304,12), new Road(1290,304,1210,304,12),
-        // Lanes around the southern houses connect both sides of the village.
-        new Road(276,858,335,855,14), new Road(335,855,460,855,14),
-        new Road(460,855,560,835,14), new Road(680,900,770,860,13),
-        new Road(770,860,920,850,13), new Road(920,850,920,985,13),
-        new Road(920,985,1055,985,13)
-    };
-    private static readonly Rect[] MarketStalls =
-    {
-        new Rect(574,400,61,30), new Rect(579,481,58,142),
-        new Rect(782,335,57,44), new Rect(842,334,34,57),
-        new Rect(952,370,33,58), new Rect(989,466,81,31),
-        new Rect(1009,545,47,140), new Rect(886,669,61,32),
-        new Rect(786,696,57,29), new Rect(713,699,39,34)
-    };
-    private static readonly Rect[] Buildings =
-    {
-        new Rect(83,108,93,92), // Mill body; the lane passes around its southern side.
-        new Rect(276, 306, 207, 112), new Rect(454, 172, 88, 104),
-        new Rect(394, 30, 107, 130), new Rect(284, 50, 91, 57),
-        new Rect(550, 295, 125, 101), new Rect(688, 314, 88, 73),
-        new Rect(988, 325, 91, 137), new Rect(1109, 438, 116, 84),
-        new Rect(1086, 546, 102, 84), new Rect(1114, 632, 104, 71),
-        new Rect(1216, 569, 111, 93), new Rect(1248, 310, 104, 104),
-        new Rect(1106, 278, 77, 112), new Rect(1191, 194, 77, 103),
-        new Rect(1119, 45, 80, 62), new Rect(1437, 60, 67, 82),
-        new Rect(1070, 813, 191, 143), new Rect(935, 829, 102, 148),
-        new Rect(793, 706, 101, 122), new Rect(695, 732, 97, 87),
-        new Rect(575, 723, 108, 105), new Rect(324, 690, 219, 144),
-        new Rect(471, 478, 107, 141), new Rect(293, 492, 100, 116),
-        new Rect(229, 447, 102, 79), new Rect(164, 490, 78, 72),
-        new Rect(121, 438, 73, 85), new Rect(32, 346, 61, 102),
-        new Rect(68, 581, 77, 83), new Rect(24, 819, 99, 137),
-        new Rect(198, 879, 78, 115), new Rect(311, 875, 143, 94),
-        new Rect(836, 882, 61, 96), new Rect(1219, 718, 78, 98),
-        new Rect(702, 54, 209, 86), new Rect(834, 104, 130, 105)
-    };
 
     public static Vector3 Move(Vector3 current, Vector3 desired, Bounds map, float feetOffset = FeetOffset)
     {
@@ -350,44 +265,23 @@ public static class RpgWorldGeometry
         return result;
     }
 
-    public static bool Blocked(Vector3 position, Bounds map, float feetOffset)
+    public static bool Blocked(Vector3 position,Bounds map,float feetOffset)
     {
-        var point = new Vector2(
-            (position.x - map.min.x) / map.size.x * 1536,
-            (map.max.y - position.y - feetOffset) / map.size.y * 1024);
-        return !WalkablePixel(point) || !WalkablePixel(point + new Vector2(3, 0)) ||
-            !WalkablePixel(point - new Vector2(3, 0)) || !WalkablePixel(point + new Vector2(0, 3)) ||
-            !WalkablePixel(point - new Vector2(0, 3));
+        var point=new Vector2((position.x-map.min.x)/map.size.x*1536,
+            (map.max.y-position.y-feetOffset)/map.size.y*1024);
+        const float margin=1.74f;
+        return !WalkableExpandedPixel(point)||!WalkableExpandedPixel(point+new Vector2(margin,0))||
+            !WalkableExpandedPixel(point-new Vector2(margin,0))||!WalkableExpandedPixel(point+new Vector2(0,margin))||
+            !WalkableExpandedPixel(point-new Vector2(0,margin));
     }
-
-    private static bool WalkablePixel(Vector2 point)
+    private static bool WalkableExpandedPixel(Vector2 point) => point.x>=4&&point.x<=1532&&point.y>=4&&point.y<=1020&&RpgTownExpansion.Walkable(point);
+    // Legacy quest/NPC pixel coordinates stay anchored to the old 40-unit central village.
+    public static Vector3 PixelPosition(Vector2 point,Bounds map,float feetOffset=FeetOffset) =>
+        ExpandedPixelPosition(ToExpandedPixel(point),map,feetOffset);
+    public static Vector3 ExpandedPixelPosition(Vector2 point,Bounds map,float feetOffset=FeetOffset)
     {
-        if (point.x < 5 || point.x > 1531 || point.y < 5 || point.y > 1019) return false;
-        foreach (var building in Buildings)
-        {
-            var padded = new Rect(building.xMin - 2, building.yMin - 2, building.width + 4, building.height + 4);
-            if (padded.Contains(point)) return false;
-        }
-        foreach (var stall in MarketStalls) if (stall.Contains(point)) return false;
-        bool inside = false;
-        for (int i = 0, j = Square.Length - 1; i < Square.Length; j = i++)
-            if ((Square[i].y > point.y) != (Square[j].y > point.y) &&
-                point.x < (Square[j].x - Square[i].x) * (point.y - Square[i].y) / (Square[j].y - Square[i].y) + Square[i].x)
-                inside = !inside;
-        if (inside) return true;
-        foreach (var road in Roads)
-        {
-            var segment = road.b - road.a;
-            float t = Mathf.Clamp01(Vector2.Dot(point - road.a, segment) / segment.sqrMagnitude);
-            if ((point - (road.a + segment * t)).sqrMagnitude <= road.radius * road.radius) return true;
-        }
-        return false;
-    }
-
-    public static Vector3 PixelPosition(Vector2 point, Bounds map, float feetOffset = FeetOffset)
-    {
-        return new Vector3(map.min.x + point.x / 1536 * map.size.x,
-            map.max.y - point.y / 1024 * map.size.y - feetOffset, map.center.z);
+        return new Vector3(map.min.x+point.x/1536*map.size.x,
+            map.max.y-point.y/1024*map.size.y-feetOffset,map.center.z);
     }
 
     public static Vector3 NearestWalkable(Vector3 position, Bounds map)
@@ -400,7 +294,7 @@ public static class RpgWorldGeometry
                 var candidate = position + new Vector3(Mathf.Cos(radians), Mathf.Sin(radians), 0) * radius;
                 if (!Blocked(candidate, map, FeetOffset)) return candidate;
             }
-        var fallback = PixelPosition(new Vector2(768, 600), map);
+        var fallback = PixelPosition(new Vector2(730, 550), map);
         fallback.z = position.z;
         return fallback;
     }

@@ -12,6 +12,13 @@ public sealed class VillageNpcRoutine : MonoBehaviour
     public void Initialize(RpgGame owner,string role,string name)
     {
         game=owner;title=name;label=GetComponentInChildren<TextMesh>();
+        if(role=="district")
+        {
+            Vector3 start=transform.position;
+            route=new[]{start,game.SnapToRoad(start+Vector3.right*1.2f),game.SnapToRoad(start+Vector3.up*1.2f)};
+            activity=name.Contains("Kovář")?"kuje podkovy":name.Contains("Mlynář")?"kontroluje mouku":name.Contains("Rybář")?"opravuje sítě":name.Contains("Selka")?"přebírá zeleninu":name.Contains("Trhovkyně")?"rovná zboží":"hlídá bránu";
+            waitUntil=Time.time+Random.Range(2f,5f);return;
+        }
         Vector2[] points;
         if(role=="guard") { points=new[]{new Vector2(1130,530),new Vector2(1235,530),new Vector2(1300,505),new Vector2(1390,477)};activity="hlídá cestu"; }
         else if(role=="healer") { points=new[]{new Vector2(700,630),new Vector2(670,580),new Vector2(720,540),new Vector2(760,620)};activity="třídí léčivé byliny"; }
