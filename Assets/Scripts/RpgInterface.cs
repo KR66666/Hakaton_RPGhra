@@ -45,7 +45,7 @@ public sealed class RpgInterface : MonoBehaviour
         }
 
         var status = Panel(canvas, "Player status", new Vector2(20, -20), new Vector2(360, 156), new Vector2(0, 1));
-        Label(status, "HAVRANOV • STRÁŽCE VESNICE", new Vector2(18, -12), new Vector2(330, 25), 18, Gold);
+        Label(status, game.IsTestLocation?"TESTOVACÍ LOKACE  [T]":"HAVRANOV • STRÁŽCE VESNICE", new Vector2(18, -12), new Vector2(330, 25), 18, Gold);
         healthFill = Bar(status, new Vector2(18, -48), new Color(0.78f, 0.22f, 0.25f));
         health = Label(status, "", new Vector2(24, -44), new Vector2(310, 24), 17, Color.white);
         staminaFill = Bar(status, new Vector2(18, -80), new Color(0.25f, 0.7f, 0.53f));
@@ -63,6 +63,12 @@ public sealed class RpgInterface : MonoBehaviour
         var characterClick=characterButton.gameObject.AddComponent<Button>();characterClick.targetGraphic=characterButton.GetComponent<Image>();
         characterClick.onClick.AddListener(ShowCharacterUpgrades);
         var characterCaption=Label(characterButton,"POSTAVA  [C]",Vector2.zero,new Vector2(180,38),18,Gold);characterCaption.alignment=TextAnchor.MiddleCenter;
+        if(game.IsTestLocation)
+        {
+            var tools=Panel(canvas,"Test tools",new Vector2(20,102),new Vector2(240,42),new Vector2(0,0));
+            var toolsClick=tools.gameObject.AddComponent<Button>();toolsClick.targetGraphic=tools.GetComponent<Image>();toolsClick.onClick.AddListener(ShowTestTools);
+            var toolsLabel=Label(tools,"TESTOVACÍ NÁSTROJE  [T]",Vector2.zero,new Vector2(240,42),16,Gold);toolsLabel.alignment=TextAnchor.MiddleCenter;
+        }
         var tracker = Panel(canvas, "Quest tracker", new Vector2(-20, -20), new Vector2(370, 166), new Vector2(1, 1));
         Label(tracker, "DENÍK DOBRODRUHA  [Q]", new Vector2(18, -12), new Vector2(335, 26), 18, Gold);
         quest = Label(tracker, "", new Vector2(18, -44), new Vector2(335, 112), 18, new Color(0.88f, 0.9f, 0.92f));
@@ -119,6 +125,7 @@ public sealed class RpgInterface : MonoBehaviour
         combat.text = $"[J / levé tlačítko]  {(game.AttackCooldown > 0 ? "ŠVIH…" : "ÚTOK MEČEM")}      [H]  LEKTVAR ×{state.potions}      ÚTOK {state.Damage}      OBRANA {state.Defense}";
         UpdateMiniMap();
         if(state.trackedQuest>=0 && state.SideQuestStage(state.trackedQuest)==1) quest.text=SideSummary(state.trackedQuest)+"\nSledovaný úkol • Q pro změnu";
+        if(game.IsTestLocation) quest.text="TESTOVACÍ VERZE\nNPC a výbava jsou obnovitelné.\nT • nástroje / F9 • obnovit\nHlavní příběh se nepřepisuje.";
         if (Time.unscaledTime >= toastUntil) toast.text = "";
     }
 
@@ -190,6 +197,7 @@ public sealed class RpgInterface : MonoBehaviour
 
     public void TogglePause()
     {
+        if(game.IsTestLocation){if(IsModal)Close();else ShowTestTools();return;}
         if (game.State.health <= 0) return;
         if (IsModal) { Close(); return; }
         Open("pause", "ODPOČINEK U OHNĚ", "Hra je pozastavena.\n\nPostup se ukládá automaticky každých 30 sekund a po důležitých událostech.\nF5: ručně uložit • F9: načíst uloženou hru.");
@@ -214,6 +222,16 @@ public sealed class RpgInterface : MonoBehaviour
         Action("Vylepšit postavu  [C]",ShowCharacterUpgrades);
         Action("Vypít lektvar", () => { game.DrinkPotion(); ShowInventory(); });
         Action("Zavřít  [I / Esc]", Close);
+    }
+
+    public void ShowTestTools()
+    {
+        if(!game.IsTestLocation)return;
+        Open("testTools","TESTOVACÍ LOKACE", "NPC nahoře • předměty uprostřed • výbava dole • nepřátelé na severu.\n\n[E] rozhovor / vyzkoušet předmět • [T] testovací nástroje\n\nMeče i zbroje +0 až +5 lze nasadit bez placení. Vylepšení postavy je v C.\n\nHráč je nezranitelný. Test nikdy nečte ani nepřepisuje uložený příběh.");
+        Action("Obnovit všechna NPC a předměty",game.ResetTestLocation);
+        Action(game.State.questStage==1?"Vypnout testovací souboj":"Zapnout testovací souboj",game.ToggleTestCombat);
+        Action("Hlavní menu",game.ReturnToMenu);
+        Action("Zpět do testovací lokace",Close);
     }
 
     public void ShowCharacterUpgrades()

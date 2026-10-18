@@ -10,10 +10,10 @@ public static class RpgValidation
     {
         EditorApplication.delayCall += () =>
         {
-            if (!SessionState.GetBool("RPG.Validation.v22", false))
+            if (!SessionState.GetBool("RPG.Validation.v23", false))
             {
                 Run();
-                SessionState.SetBool("RPG.Validation.v22", true);
+                SessionState.SetBool("RPG.Validation.v23", true);
             }
         };
     }
@@ -24,6 +24,28 @@ public static class RpgValidation
         var game=RpgGame.Instance;
         if(game!=null && game.Interface!=null) game.Interface.EnterRoom("merchant");
         else Debug.Log("Start the village first, then preview the shop dialogue.");
+    }
+
+    [MenuItem("Tools/RPG/Check Test Location %#F6")]
+    public static void CheckTestLocation()
+    {
+        var game=RpgGame.Instance;
+        if(game==null||!game.IsTestLocation){Debug.Log("Open Main menu > Lokace > Testovací verze first.");return;}
+        string path=Path.Combine(Application.persistentDataPath,"village-rpg-save.json");
+        string before=File.Exists(path)?File.ReadAllText(path):null;
+        int checks=0;
+        try
+        {
+            Check(game.Enemies.Count==5,"All four bandit variants and commander are present",ref checks);
+            game.Save(false);
+            Check((File.Exists(path)?File.ReadAllText(path):null)==before,"Saving a test never changes the story save",ref checks);
+            float health=game.State.health;game.Damage(9999);
+            Check(game.State.health==health,"Test hero is invulnerable",ref checks);
+            Check(GameObject.Find("Obchodnice Eliška")!=null&&GameObject.Find("Meč +5")!=null&&GameObject.Find("Zbroj +5")!=null,"NPC and highest equipment ranks are in the test location",ref checks);
+            File.WriteAllText(Path.Combine(Application.dataPath,"../Temp/RpgTestLocationValidation.txt"),"PASS: "+checks+" test location checks");
+            Debug.Log("PASS: "+checks+" test location checks");
+        }
+        catch(Exception e){Debug.LogError(e);File.WriteAllText(Path.Combine(Application.dataPath,"../Temp/RpgTestLocationValidation.txt"),"FAIL: "+e);}
     }
 
     [MenuItem("Tools/RPG/Run Gameplay Checks")]
@@ -129,6 +151,10 @@ public static class RpgValidation
             Check(trackedCopy.trackedQuest==2,"Selected quest tracking survives saving",ref checks);
             trackedCopy.trackedQuest=99;trackedCopy.Normalize();
             Check(trackedCopy.trackedQuest>=-1&&trackedCopy.trackedQuest<=2,"Invalid tracking selection is normalized",ref checks);
+            var testState=RpgGame.CreateTestState(true);
+            Check(testState.heroIsBoy&&testState.level==10&&testState.gold==9999&&testState.health==testState.MaxHealth,"Test location gets independent usable starting equipment",ref checks);
+            var secondTest=RpgGame.CreateTestState(false);testState.collected.Add("testPotion");
+            Check(!secondTest.heroIsBoy&&secondTest.collected.Count==0,"Test reset creates fresh independent collections",ref checks);
             CheckNavigation(bounds, ref checks);
             Check(!AtPixelBlocked(120,220,bounds) && AtPixelBlocked(130,150,bounds), "Mill lane is accessible but the mill itself blocks walking",ref checks);
             CheckAllRoadsConnected(bounds,ref checks);
@@ -242,6 +268,7 @@ public static class RpgValidation
     {
         var game = RpgGame.Instance;
         if (game == null) { Debug.LogError("Start SampleScene in Play Mode first."); return; }
+        if(game.IsTestLocation){CheckTestLocation();return;}
         string snapshot = JsonUtility.ToJson(game.State);
         var originalPosition = game.transform.position;
         int checks = 0;
