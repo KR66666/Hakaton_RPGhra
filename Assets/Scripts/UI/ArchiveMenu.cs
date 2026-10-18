@@ -48,7 +48,7 @@ public sealed class ArchiveMenu : MonoBehaviour
         button.GetComponent<RectTransform>().anchoredPosition = new Vector2(-570, y);
     }
 
-    private void Enemies() => content.text = "NÁJEZDNÍK\nSlabší bojovník s 48 zdraví. Pronásleduje tě zblízka. Před úderem zčervená: uhni mezerníkem. Odměna: 35 XP a 12 zlata.\n\nVELITEL VRANEK\nObjeví se po porážce pěti nájezdníků. Má 220 zdraví a silnější, pomalejší úder. Připrav si lektvary a lepší meč.\n\nJ / levé tlačítko: útok. Shift: běh. H: lektvar.";
+    private void Enemies() => content.text = "NÁJEZDNÍK\nSlabší bojovník s 48 zdraví. Souboj je tahový. Vyber útok, krytí, lektvar nebo útěk. Odměna: 12 zlata.\n\nVELITEL VRANEK\nObjeví se po porážce pěti nájezdníků. Má 220 zdraví a silnější, pomalejší úder. Připrav si lektvary a lepší meč.\n\nJ: zahájit tahový souboj. Shift: běh. H: lektvar.";
     private void Locations() => content.text = "HAVRANOV\nStředověká vesnice s tržištěm, hradem a řekou.\n\nNÁMĚSTÍ\nRychtář Radovan zadává hlavní úkol. Obchodnice Eliška prodává lektvary a vylepšuje vybavení. Bylinkářka Mira léčí a vyrábí lektvary.\n\nSEVERNÍ BRÁNA\nÚkryt velitele Vranka. Nejdříve poraz jeho nájezdníky.\n\nZlaté značky: truhly. Zelené značky: byliny.";
     private void Items() => content.text = "ŽELEZNÝ MEČ\nZákladní útok 18. Každé vylepšení přidá 9 poškození.\n\nKOŽENÁ ZBROJ\nKaždé vylepšení snižuje příchozí zranění o 3.\n\nLÉČIVÝ LEKTVAR\nObnoví 60 zdraví. Cena: 15 zlata. Použití: H.\n\nLÉČIVÉ BYLINY\nDvě byliny Mira přemění na jeden lektvar.\n\nTRUHLA\nObsahuje 30 zlata a léčivý lektvar.";
 

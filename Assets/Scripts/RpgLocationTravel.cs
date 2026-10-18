@@ -46,7 +46,7 @@ public sealed partial class RpgGame
             obj.transform.localScale=Vector3.one*.55f;
             var trigger=obj.AddComponent<CircleCollider2D>();trigger.radius=.8f;trigger.isTrigger=true;
             var label=AddLabel(obj.transform,"[E] "+RpgLocations.Name(exit.to),new Vector3(0,1,0),new Color(1,.9f,.65f));
-            label.transform.localScale=Vector3.one/.55f;label.characterSize=.04f;
+            label.transform.localScale=Vector3.one/.55f;label.characterSize=.05f;
             worldItems.Add(new WorldItem{id=((int)exit.to).ToString(),kind="locationExit",title="Přejít: "+RpgLocations.Name(exit.to),obj=obj});
             worldObjects.Add(obj);
         }
@@ -54,7 +54,7 @@ public sealed partial class RpgGame
     private bool BuildExplorationLocation()
     {
         if(InTown)return false;
-        companionObject=null;AddLocationExits();return true;
+        companionObject=null;AddLocationExits();BuildRitualSite();return true;
     }
     public void TrackLocation(RpgPlace destination)
     {
@@ -73,6 +73,11 @@ public sealed partial class RpgGame
         if(IsTestLocation)return false;
         if(trackedShop&&InTown){position=ShopApproach;title="Obchod • Eliška";return true;}
         RpgLocationExit link=trackedLocation.HasValue?RpgLocations.Find(State.place,trackedLocation.Value):null;
+        if(link==null && State.cycle==1 && State.ritualKnown)
+        {
+            if(State.place==RpgPlace.ChurchRuins){position=RitualPosition;title=State.CellarObjective;return true;}
+            if(InTown)link=RpgLocations.Find(State.place,RpgPlace.ChurchRuins);
+        }
         if(link==null&&!InTown)
             foreach(var candidate in RpgLocations.Exits)if(candidate.from==State.place){link=candidate;break;}
         if(link==null)return false;
@@ -124,7 +129,7 @@ public sealed partial class RpgInterface
         Open("map","LOKACE • "+game.LocationName.ToUpperInvariant(),
             "HAVRANOV\n├ Obchod → sklep obchodu\n├ Knihovna\n├ Zřícenina kostela\n└ Les → Temný les\n\n"+
             RpgLocations.Description(game.State.place)+"\n\nVyber cestu pro označení vstupu na mapce. U vstupu stiskni E.");
-        modalBody.fontSize=21;
+        modalBody.fontSize=26;
         foreach(var link in RpgLocations.Exits)
         {
             if(link.from!=game.State.place)continue;

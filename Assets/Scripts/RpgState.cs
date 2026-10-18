@@ -7,30 +7,59 @@ public sealed class RpgState
 {
     public int version = 1;
     public RpgPlace place = RpgPlace.Town;
-    // 0 guide, 1 elder, 2 shop, 3 cellar invitation, 4 rats, 5 note, 6 decoded, 7 returned.
+    // 0 guide, 1 elder, 2 shop, 3 invitation, 4 cellar, 6 candles, 7 ritual instruction.
     public int cellarQuest;
+    public int candleStoryVersion = 1;
+    public int cycle = 1;
+    public const int FirstCycleCandles = 3;
+    public int candles;
+    public List<string> defeatedNpcs = new List<string>();
+    public bool NpcDefeated(string id) => defeatedNpcs.Contains(id);
+    public bool DefeatNpc(string id)
+    {
+        if(string.IsNullOrEmpty(id) || NpcDefeated(id))return false;
+        defeatedNpcs.Add(id);ResolveNpcClues();return true;
+    }
+    public void ResolveNpcClues()
+    {
+        if(cycle!=1)return;
+        if(NpcDefeated("guard") && cellarQuest==0)cellarQuest=1;
+        if(NpcDefeated("elder") && cellarQuest==1)cellarQuest=2;
+        if(NpcDefeated("merchant") && cellarQuest==2)cellarQuest=3;
+    }
+    public bool ritualKnown;
+    public bool ritualFailed;
+    public bool CollectCandles(bool rush)
+    {
+        if(cycle!=1 || health<=0 || cellarQuest<3 || cellarQuest>4 || candles!=0)return false;
+        candles=FirstCycleCandles;cellarQuest=6;
+        if(rush)health=Mathf.Max(1,health-20);
+        return true;
+    }
+    public bool ExplainRitual()
+    {
+        if(cycle!=1 || cellarQuest!=6 || candles!=FirstCycleCandles || ritualKnown)return false;
+        ritualKnown=true;cellarQuest=7;RewardQuest("candles");return true;
+    }
+    public bool CanPerformRitual => cycle==1 && place==RpgPlace.ChurchRuins && ritualKnown && candles==FirstCycleCandles && health>0;
+    public RpgState BeginSecondCycle()
+    {
+        if(!CanPerformRitual)return null;
+        var next=CreateNew(heroIsBoy);
+        next.cycle=2;next.ritualFailed=true;next.deaths=deaths+1;
+        next.upgradePoints=upgradePoints;next.unlockedSkills=new List<int>(unlockedSkills);
+        next.rewardedQuests=new List<string>(rewardedQuests);next.health=next.MaxHealth;
+        return next;
+    }
     public int guideSeenStage = -1;
-    public bool NeedsGuideInstruction => currentArea==0 && guideSeenStage!=cellarQuest &&
+    public bool NeedsGuideInstruction => !NpcDefeated("guard") && cycle==1 && currentArea==0 && guideSeenStage!=cellarQuest &&
         (cellarQuest==0 || cellarQuest==1 || cellarQuest==2 || cellarQuest==6);
     public bool cellarNoteTaken, cellarNoteOpened;
-    public string CellarObjective => cellarQuest == 0 ? "Promluv s Petrem Křížem u mostu." :
+    public string CellarObjective => cycle==2 ? "Druhý cyklus začal. Pamatuješ si neúspěšný rituál. Prozkoumej svět." : cellarQuest == 0 ? "Promluv s Petrem Křížem u mostu." :
         cellarQuest == 1 ? "Zeptej se dědy Matěje na náměstí na svíčky." :
-        cellarQuest < 4 ? "Zeptej se obchodnice Elišky na sklep." :
-        cellarQuest < 6 ? "Prozkoumej sklep a nalezený lístek." :
-        cellarQuest == 6 ? "Ukaž Petrovi rozluštěný vzkaz." : "Tajemství sklepa vyřešeno.";
-    public bool OpenCellarNote()
-    {
-        if (!cellarNoteTaken || cellarNoteOpened) return false;
-        cellarNoteOpened = true; cellarQuest = 6; return true;
-    }
-    public bool FinishCellarQuest()
-    {
-        if (cellarQuest != 6 || !cellarNoteOpened) return false;
-        cellarQuest = 7;
-        if(!completedAreas.Contains(0))completedAreas.Add(0);
-        if(currentArea==0)questStage=2;
-        gold += 45; potions += 2; AddExperience(60); return true;
-    }
+        cellarQuest < 4 ? (NpcDefeated("merchant")?"Prozkoumej opuštěný obchod a sejdi do sklepa.":"Zeptej se obchodnice Elišky na sklep.") :
+        cellarQuest < 6 ? "Ve sklepě získej tři svíčky. Můžeš také utéct a vrátit se." :
+        cellarQuest == 6 ? (NpcDefeated("guard")?"Přečti průvodcovy poznámky v mobilu [Q].":"Vrať se k průvodci a řekni mu, že máš svíčky.") : "Dojdi do zříceniny kostela a proveď rituál u trojúhelníku [E].";
     public int currentArea;
     public int travelCompanion;
     public bool travelByCart;
@@ -39,7 +68,7 @@ public sealed class RpgState
     public bool AreaUnlocked(int area) => area >= 0 && area < RpgCampaign.Names.Length && (area == 0 || completedAreas.Contains(area - 1));
     public string TravelProblem(int area, int companion, bool cart)
     {
-        if (!AreaUnlocked(area)) return "Nejprve dokonči předchozí úroveň.";
+        if (!AreaUnlocked(area)) return "Nejprve dokonči předchozí oblast.";
         if (health <= 0) return "Nejprve se nech oživit.";
         if (companion < 0 || companion > 2) return "Vyber platný doprovod.";
         if (companion == 1 && deliveryQuest != 2 && cellarQuest == 0) return "Petr se přidá po splnění Zásilky pro strážného.";
@@ -71,6 +100,7 @@ public sealed class RpgState
         state.Normalize();state.health=state.MaxHealth;state.stamina=state.MaxStamina;
         return state;
     }
+    // Legacy save fields; no longer used for progression.
     public int level = 1;
     public int experience;
     public int gold = 35;
@@ -79,14 +109,25 @@ public sealed class RpgState
     public int weaponLevel;
     public int armorLevel;
     public int vitalityRank, strengthRank, agilityRank;
-    public int UpgradePoints => Mathf.Max(0, level-1-vitalityRank-strengthRank-agilityRank);
+    public int skillSystemVersion;
+    public int upgradePoints;
+    public List<int> unlockedSkills = new List<int>();
+    public List<string> rewardedQuests = new List<string>();
+    public int UpgradePoints => upgradePoints;
+    public bool HasSkill(int id) => unlockedSkills.Contains(id);
+    public float DodgeChance => HasSkill(2)?.15f:0;
+    public float InstantWinChance => HasSkill(3)?.10f:0;
+    public bool RewardQuest(string id)
+    {
+        string key=cycle+":"+id;
+        if(rewardedQuests.Contains(key))return false;
+        rewardedQuests.Add(key);upgradePoints++;return true;
+    }
     public bool UpgradeAttribute(int attribute)
     {
-        if(UpgradePoints<=0 || attribute<0 || attribute>2)return false;
-        int rank=attribute==0?vitalityRank:attribute==1?strengthRank:agilityRank;
-        if(rank>=5)return false;
-        if(attribute==0){vitalityRank++;health=Mathf.Min(MaxHealth,health+15);}
-        else if(attribute==1)strengthRank++;else agilityRank++;
+        if(upgradePoints<=0 || attribute<0 || attribute>3 || HasSkill(attribute))return false;
+        upgradePoints--;unlockedSkills.Add(attribute);
+        if(attribute==0)health=Mathf.Min(MaxHealth,health+20);
         return true;
     }
     public float health = 100;
@@ -101,32 +142,25 @@ public sealed class RpgState
     public int herbsQuest;
     public int suppliesQuest;
     public int deliveryQuest;
+    public List<int> knownSideQuests = new List<int>();
+    public bool KnowsSideQuest(int id) => id>=0 && id<=2 && (SideQuestStage(id)>0 || knownSideQuests.Contains(id));
+    public bool DiscoverSideQuest(int id)
+    {
+        if(id<0 || id>2 || KnowsSideQuest(id))return false;
+        knownSideQuests.Add(id);return true;
+    }
     public bool parcelDelivered;
     public long gardenReadyAt;
     public List<string> collected = new List<string>();
     public List<string> defeated = new List<string>();
 
-    public int MaxHealth => 100 + (level - 1) * 20 + vitalityRank*15;
+    public int MaxHealth => 100 + (HasSkill(0)?20:0);
     public int MaxStamina => 100;
-    public int Damage => 18 + (level - 1) * 4 + weaponLevel * 9 + strengthRank*3;
+    public int Damage => 18 + weaponLevel * 9 + (HasSkill(1)?6:0);
     public int Defense => armorLevel * 3;
-    public int NextLevelExperience => 50 + (level - 1) * 40;
     public bool CanFinishQuest => questStage == 1 && banditsDefeated >= 5 && bossDefeated;
 
-    public bool AddExperience(int amount)
-    {
-        experience += Mathf.Max(0, amount);
-        bool leveled = false;
-        while (experience >= NextLevelExperience && level < 30)
-        {
-            experience -= NextLevelExperience;
-            level++;
-            health = MaxHealth;
-            stamina = 100;
-            leveled = true;
-        }
-        return leveled;
-    }
+    public bool AddExperience(int amount) => false; // Compatibility for older editor tools.
 
     public bool DrinkPotion()
     {
@@ -160,7 +194,7 @@ public sealed class RpgState
         questStage = 2;
         gold += 150;
         potions += 3;
-        AddExperience(150);
+        RewardQuest("main:"+currentArea);
         return true;
     }
 
@@ -183,10 +217,10 @@ public sealed class RpgState
     public bool FinishSideQuest(int id)
     {
         if (!SideQuestReady(id)) return false;
-        if (id == 0) { herbs -= 4; gold += 25; potions += 2; AddExperience(45); }
-        else if (id == 1) { gold += 60; AddExperience(60); }
-        else { gold += 40; potions++; AddExperience(35); }
-        SetSideQuestStage(id, 2);
+        if (id == 0) { herbs -= 4; gold += 25; potions += 2; }
+        else if (id == 1) { gold += 60; }
+        else { gold += 40; potions++; }
+        SetSideQuestStage(id, 2);RewardQuest("side:"+id);
         return true;
     }
 
@@ -199,6 +233,38 @@ public sealed class RpgState
 
     public void Normalize()
     {
+        defeatedNpcs=defeatedNpcs ?? new List<string>();
+        defeatedNpcs.RemoveAll(string.IsNullOrEmpty);
+        defeatedNpcs=new List<string>(new HashSet<string>(defeatedNpcs));
+        cycle=Mathf.Clamp(cycle,1,2);
+        ResolveNpcClues();
+        currentArea=Mathf.Clamp(currentArea,0,RpgCampaign.Names.Length-1);
+        unlockedSkills=unlockedSkills ?? new List<int>();
+        unlockedSkills.RemoveAll(id=>id<0 || id>3);
+        unlockedSkills=new List<int>(new HashSet<int>(unlockedSkills));
+        rewardedQuests=rewardedQuests ?? new List<string>();
+        if(skillSystemVersion==0)
+        {
+            if(vitalityRank>0 && !HasSkill(0))unlockedSkills.Add(0);
+            if(strengthRank>0 && !HasSkill(1))unlockedSkills.Add(1);
+            if(agilityRank>0 && !HasSkill(2))unlockedSkills.Add(2);
+            for(int id=0;id<3;id++)if(SideQuestStage(id)==2)RewardQuest("side:"+id);
+            if(questStage==2)RewardQuest("main:"+currentArea);
+            if(cellarQuest==7 && ritualKnown)RewardQuest("candles");
+            skillSystemVersion=1;
+        }
+        upgradePoints=Mathf.Clamp(upgradePoints,0,100000);
+        knownSideQuests=knownSideQuests ?? new List<int>();
+        knownSideQuests.RemoveAll(id=>id<0 || id>2);
+        // Old note saves rejoin the candle branch without keeping the obsolete reward ending.
+        if(candleStoryVersion==0 || (cellarQuest>=6 && candles==0 && !ritualFailed))
+        {
+            if(cellarQuest>=6){candles=FirstCycleCandles;cellarQuest=6;ritualKnown=false;}
+            candleStoryVersion=1;
+        }
+        if(cellarQuest==5)cellarQuest=4;
+        cycle=Mathf.Clamp(cycle,1,2);
+        candles=candles>=FirstCycleCandles?FirstCycleCandles:0;
         place = RpgLocations.Normalize(place);
         currentArea = Mathf.Clamp(currentArea, 0, RpgCampaign.Names.Length - 1);
         completedAreas = completedAreas ?? new List<int>();
@@ -207,11 +273,7 @@ public sealed class RpgState
         areaProgress.RemoveAll(p => p == null);
         foreach (var progress in areaProgress) progress.defeated = progress.defeated ?? new List<string>();
         if (questStage == 2 && !completedAreas.Contains(currentArea)) completedAreas.Add(currentArea);
-        level = Mathf.Clamp(level, 1, 30);
-        vitalityRank=Mathf.Clamp(vitalityRank,0,Mathf.Min(5,level-1));
-        strengthRank=Mathf.Clamp(strengthRank,0,Mathf.Min(5,level-1-vitalityRank));
-        agilityRank=Mathf.Clamp(agilityRank,0,Mathf.Min(5,level-1-vitalityRank-strengthRank));
-        experience = Mathf.Clamp(experience, 0, 100000);
+        level=1;experience=0;vitalityRank=strengthRank=agilityRank=0;
         gold = Mathf.Clamp(gold, 0, 1000000);
         potions = Mathf.Clamp(potions, 0, 999);
         herbs = Mathf.Clamp(herbs, 0, 999);

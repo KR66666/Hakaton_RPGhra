@@ -95,16 +95,35 @@ public sealed class RpgSettings : MonoBehaviour
         SettingButton("Celá obrazovka: "+(Screen.fullScreen?"ano":"ne"),-82,()=>{Screen.fullScreen=!Screen.fullScreen;Save();Build();});
         SettingButton("Kvalita: "+QualitySettings.names[QualitySettings.GetQualityLevel()],-154,()=>{QualitySettings.SetQualityLevel((QualitySettings.GetQualityLevel()+1)%QualitySettings.names.Length);Save();Build();});
         SettingButton("V-Sync: "+(QualitySettings.vSyncCount>0?"zapnutý":"vypnutý"),-226,()=>{QualitySettings.vSyncCount=QualitySettings.vSyncCount>0?0:1;Save();Build();});
-        MainMenu.Label("Keys",panel.transform,"WASD pohyb • E rozhovor • J útok • C postava • M mapa • Esc zpět",18,new Vector2(0,-287),new Vector2(1150,32));
+        SettingButton("Rozhraní hry • skrýt panely",-287,BuildHudSettings);
         var reset=SettingButton("Obnovit výchozí",-350,()=>{master=.7f;music=.3f;effects=.7f;mute=false;QualitySettings.vSyncCount=1;QualitySettings.SetQualityLevel(defaultQuality);Screen.fullScreen=defaultFullscreen;Save();Build();});
         reset.GetComponent<RectTransform>().anchoredPosition=new Vector2(-240,-350);
         var close=SettingButton("Zpět • uložit",-350,Close);close.GetComponent<RectTransform>().anchoredPosition=new Vector2(240,-350);
         if(EventSystem.current!=null)EventSystem.current.SetSelectedGameObject(close.gameObject);
     }
+    private void BuildHudSettings()
+    {
+        Build();
+        foreach(Transform child in panel.transform)
+            if(child.name!="Shade"){child.gameObject.SetActive(false);Destroy(child.gameObject);}
+        MainMenu.Label("HUD title",panel.transform,"ZOBRAZENÍ HRY",36,new Vector2(0,310),new Vector2(1100,70));
+        string[] sections={"controls","quest","navigation"};
+        string[] names={"Nápověda + Souboj / Lektvar","Panel aktuálního úkolu","Tlačítka Mapa / Postava"};
+        for(int i=0;i<sections.Length;i++)
+        {
+            string section=sections[i];
+            SettingButton(names[i]+": "+(RpgHudPreferences.Visible(section)?"zobrazeno":"skryto"),160-i*100,()=>{
+                RpgHudPreferences.SetVisible(section,!RpgHudPreferences.Visible(section));BuildHudSettings();
+            });
+        }
+        MainMenu.Label("HUD keys",panel.transform,"F2 rychle skryje / zobrazí všechny tři panely.\nI otevře mobil s inventářem, Q otevře úkoly.\nM a C fungují i se skrytými tlačítky.",22,new Vector2(0,-160),new Vector2(1100,150));
+        SettingButton("Zpět do nastavení",-320,Build);
+    }
     private Button SettingButton(string title,float y,UnityEngine.Events.UnityAction action)
     {
-        var button=MainMenu.Button(panel.transform,title,y,action);button.GetComponent<RectTransform>().sizeDelta=new Vector2(440,58);
-        var text=button.GetComponentInChildren<Text>();text.fontSize=24;text.rectTransform.sizeDelta=new Vector2(420,54);return button;
+        float width=y>-300?700:440;
+        var button=MainMenu.Button(panel.transform,title,y,action);button.GetComponent<RectTransform>().sizeDelta=new Vector2(width,58);
+        var text=button.GetComponentInChildren<Text>();text.fontSize=30;text.rectTransform.sizeDelta=new Vector2(width-20,54);return button;
     }
     private void Volume(string title,float y,float value,System.Action<float> changed)
     {
