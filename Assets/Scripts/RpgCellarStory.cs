@@ -128,7 +128,7 @@ public sealed partial class RpgInterface
             var eye=Rect(rat,"Oko",new Vector2(22,-3),new Vector2(4,4));eye.gameObject.AddComponent<Image>().color=Color.black;
         }
         game.AdvanceCellarQuest(4);cellarAnimating=false;
-        Open("cellarRats",game.State.heroIsBoy?"HLAVNÍ HRDINA":"ARABELLA","Áá! Ona nelhala — tady opravdu jsou krysy!\n\nVzpomeneš si na radu: zpátky ke schodům, pomalu!");
+        Open("cellarRats",game.State.HeroName,"Áá! Ona nelhala — tady opravdu jsou krysy!\n\nVzpomeneš si na radu: zpátky ke schodům, pomalu!");
         Action("Utéct ke schodům",()=>StartCoroutine(CellarEscape(actor)));
         Action("Opatrně ustoupit",()=>StartCoroutine(CellarEscape(actor)));
     }

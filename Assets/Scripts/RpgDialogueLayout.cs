@@ -15,7 +15,7 @@ public static class RpgDialogueLayout
         switch(kind)
         {
             case "guideInstruction":case "cellarGuide":case "guard":case "mayor":case "healer":
-            case "merchant":case "shopDialogue":case "resident":case "entrance":case "sideQuest":
+            case "merchant":case "shopDialogue":case "heroShopDialogue":case "resident":case "entrance":case "sideQuest":
             case "cellarElder":case "cellarMerchant":case "cellarWalk":case "cellarRats":
             case "cellarEscape":case "cellarNote":case "cellarClue":return true;
             default:return false;
@@ -66,6 +66,9 @@ public sealed partial class RpgInterface
         art.anchorMin=Vector2.zero;art.anchorMax=Vector2.one;art.pivot=new Vector2(.5f,0);
         art.offsetMin=new Vector2(8,0);art.offsetMax=new Vector2(-8,-8);
         var image=art.gameObject.AddComponent<UnityEngine.UI.Image>();image.sprite=RpgPortraitFit.VisibleSprite(ConversationPortrait(kind,speaker));image.preserveAspect=true;image.raycastTarget=false;
+        // Bring Petr's face closer while keeping the portrait clipped to its frame.
+        if(kind=="guideInstruction"||kind=="cellarGuide"||kind=="guard")
+            art.localScale=new Vector3(1.65f,1.65f,1);
         // Seat the portrait behind a small wooden lip: the source's cut waist
         // meets the frame instead of floating visibly above its lower edge.
         var lip=Rect(conversationPortrait,"Spodní hrana rámu",Vector2.zero,new Vector2(RpgDialogueLayout.Portrait.width-4,7));
@@ -102,14 +105,14 @@ public sealed partial class RpgInterface
     private Sprite ConversationPortrait(string kind,string speaker)
     {
         if(kind=="guideInstruction"||kind=="cellarGuide"||kind=="guard")return GuidePortrait();
-        if(kind=="shopDialogue"&&(speaker=="ARABELLA"||speaker=="HRDINA"))return game.State.heroIsBoy?game.HeroSprite:Resources.Load<Sprite>("ArabellaPortrait");
+        if(kind=="heroShopDialogue")return game.State.heroIsBoy?game.HeroSprite:RpgPortraitFit.ArabellaShop();
         if(kind=="merchant"||kind=="shopDialogue"||kind=="cellarMerchant"||kind=="entrance")return Resources.Load<Sprite>("MerchantPortrait");
         if(kind=="mayor")return MedievalNpcAppearance.Get("mayor");
         if(kind=="healer")return MedievalNpcAppearance.Get("healer");
         if(kind=="cellarElder")return MedievalNpcAppearance.Get("healer",3);
         if(kind=="sideQuest")return speaker.Contains("MIRU")?MedievalNpcAppearance.Get("healer"):
             speaker.Contains("ZÁSOBY")?MedievalNpcAppearance.Get("mayor"):Resources.Load<Sprite>("MerchantPortrait");
-        if(kind.StartsWith("cellar"))return game.State.heroIsBoy?game.HeroSprite:Resources.Load<Sprite>("ArabellaPortrait");
+        if(kind.StartsWith("cellar"))return game.State.heroIsBoy?game.HeroSprite:RpgPortraitFit.ArabellaShop();
         return MedievalNpcAppearance.Get("villager");
     }
 }

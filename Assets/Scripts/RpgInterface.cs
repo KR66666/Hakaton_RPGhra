@@ -271,7 +271,7 @@ public sealed partial class RpgInterface : MonoBehaviour
     {
         if(game.State.health<=0)return;
         var s=game.State;
-        Open("character","POSTAVA • VYLEPŠENÍ",$"{(s.heroIsBoy?"Hrdina":"Arabella")} • úroveň {s.level}\nVolné body: {s.UpgradePoints} • jeden bod za každou novou úroveň\n\nVitalita {s.vitalityRank}/5: +15 maximálního zdraví za bod\nSíla {s.strengthRank}/5: +3 poškození za bod\nHbitost {s.agilityRank}/5: +4 % rychlosti za bod\n\nZdraví {s.MaxHealth} • Útok {s.Damage} • Rychlost +{s.agilityRank*4} %\nMeč +{s.weaponLevel} • Zbroj +{s.armorLevel} (vylepšuje obchodnice)");
+        Open("character","POSTAVA • VYLEPŠENÍ",$"{s.HeroName} • úroveň {s.level}\nVolné body: {s.UpgradePoints} • jeden bod za každou novou úroveň\n\nVitalita {s.vitalityRank}/5: +15 maximálního zdraví za bod\nSíla {s.strengthRank}/5: +3 poškození za bod\nHbitost {s.agilityRank}/5: +4 % rychlosti za bod\n\nZdraví {s.MaxHealth} • Útok {s.Damage} • Rychlost +{s.agilityRank*4} %\nMeč +{s.weaponLevel} • Zbroj +{s.armorLevel} (vylepšuje obchodnice)");
         for(int i=0;i<3;i++)
         {
             int attribute=i;int rank=i==0?s.vitalityRank:i==1?s.strengthRank:s.agilityRank;
@@ -376,10 +376,11 @@ public sealed partial class RpgInterface : MonoBehaviour
         var background=backdrop.gameObject.AddComponent<Image>();background.sprite=Resources.Load<Sprite>("ShopInterior");background.color=Color.white;RpgVisualTheme.Picture(background,false,3);
         var aspect=backdrop.gameObject.AddComponent<AspectRatioFitter>();aspect.aspectMode=AspectRatioFitter.AspectMode.EnvelopeParent;
         aspect.aspectRatio=background.sprite!=null?background.sprite.rect.width/background.sprite.rect.height:16f/9f;
+
     }
     private void ShowShopDialogue(int line)
     {
-        string hero=game.State.heroIsBoy?"HRDINA":"ARABELLA";
+        string hero=game.State.HeroName;
         string[] speakers={"OBCHODNICE",hero,"OBCHODNICE",hero};
         string[] lines={
             "Vítej v mém obchodě. Cesta do Havranova byla jistě dlouhá. Co pro tebe mohu udělat?",
@@ -387,7 +388,7 @@ public sealed partial class RpgInterface : MonoBehaviour
             "Mám léčivé lektvary a mohu ti vylepšit meč i zbroj. A pokud chceš pomoci, čeká tu zásilka pro strážného Petra.",
             "Děkuji. Ukažte mi prosím zboží. Chci si poslechnout, s čím vám mohu pomoci."};
         line=Mathf.Clamp(line,0,lines.Length-1);
-        Open("shopDialogue",speakers[line],lines[line]);
+        Open(line%2==1?"heroShopDialogue":"shopDialogue",speakers[line],lines[line]);
         if(line<lines.Length-1) Action("Pokračovat →",()=>ShowShopDialogue(line+1));
         else
         {

@@ -10,10 +10,10 @@ public static class RpgValidation
     {
         EditorApplication.delayCall += () =>
         {
-            if (!SessionState.GetBool("RPG.Validation.v34", false))
+            if (!SessionState.GetBool("RPG.Validation.v35", false))
             {
                 Run();
-                SessionState.SetBool("RPG.Validation.v34", true);
+                SessionState.SetBool("RPG.Validation.v35", true);
             }
         };
     }
@@ -184,6 +184,12 @@ public static class RpgValidation
             }
             finally { animation.Dispose(); }
             var campaign = new RpgState();
+            var namedHero=RpgState.CreateNew(false,"  Eliška  ");
+            Check(namedHero.HeroName=="Eliška","Custom hero name keeps accents and trims outer spaces",ref checks);
+            var namedCopy=JsonUtility.FromJson<RpgState>(JsonUtility.ToJson(namedHero));namedCopy.Normalize();
+            Check(namedCopy.HeroName=="Eliška","Custom hero name survives save round trip",ref checks);
+            Check(new RpgState().HeroName=="Rosalina"&&new RpgState{heroIsBoy=true}.HeroName=="Henri","Older saves retain default hero names",ref checks);
+            Check(RpgState.CleanHeroName("\n <b>Ada</b> ",false)=="bAda/b"&&RpgState.CleanHeroName(new string('x',40),false).Length==24,"Names cannot inject rich text and fit the dialogue heading",ref checks);
             Check(campaign.AreaUnlocked(0) && !campaign.AreaUnlocked(1), "Campaign starts with only first level unlocked", ref checks);
             Check(!campaign.EnterArea(1,0,false,false) && campaign.gold==35, "Locked travel cannot mutate state", ref checks);
             campaign.completedAreas.Add(0); campaign.questStage=2;

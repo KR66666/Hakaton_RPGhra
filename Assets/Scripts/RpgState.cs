@@ -64,10 +64,22 @@ public sealed class RpgState
         return true;
     }
     public bool heroIsBoy;
-    // Appearance is independent of gameplay attributes.
-    public static RpgState CreateNew(bool boy)
+    public string heroName;
+    public string HeroName => CleanHeroName(heroName,heroIsBoy);
+    public static string CleanHeroName(string name,bool boy)
     {
-        var state=new RpgState { heroIsBoy=boy };
+        if(string.IsNullOrWhiteSpace(name))return boy?"Henri":"Rosalina";
+        var clean=new System.Text.StringBuilder();
+        foreach(char c in name.Trim())
+            if(!char.IsControl(c)&&c!='<'&&c!='>')clean.Append(c);
+        string result=clean.ToString().Trim();
+        if(result.Length>24)result=result.Substring(0,24).TrimEnd();
+        return string.IsNullOrWhiteSpace(result)?(boy?"Henri":"Rosalina"):result;
+    }
+    // Appearance is independent of gameplay attributes.
+    public static RpgState CreateNew(bool boy,string name=null)
+    {
+        var state=new RpgState { heroIsBoy=boy,heroName=CleanHeroName(name,boy) };
         state.Normalize();state.health=state.MaxHealth;state.stamina=state.MaxStamina;
         return state;
     }

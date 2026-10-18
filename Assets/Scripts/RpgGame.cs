@@ -727,7 +727,7 @@ public sealed partial class RpgGame : MonoBehaviour
     public void NewGame()
     {
         if(IsTestLocation){ResetTestLocation();return;}
-        RestoreState(RpgState.CreateNew(State.heroIsBoy));Save(false,true);
+        RestoreState(RpgState.CreateNew(State.heroIsBoy,State.HeroName));Save(false,true);
         Interface.ShowGuideWelcome();
         Notify("Nový příběh začíná. Vyhledej rychtáře Radovana.");
     }

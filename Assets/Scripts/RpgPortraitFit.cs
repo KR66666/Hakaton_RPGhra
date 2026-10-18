@@ -5,6 +5,7 @@ using UnityEngine;
 // changing the artwork or requiring readable texture data at runtime.
 public static class RpgPortraitFit
 {
+    public static Sprite ArabellaShop() => Resources.Load<Sprite>("ArabellaShopPortraitCutout") ?? Resources.Load<Sprite>("ArabellaPortrait");
     private static readonly Dictionary<Sprite,Sprite> cache=new Dictionary<Sprite,Sprite>();
     public static Sprite VisibleSprite(Sprite source)
     {

@@ -17,9 +17,9 @@ public sealed class MainMenu : MonoBehaviour
     private GameObject startPanel;
     private static RpgState pendingGame;
     private static bool pendingNewGame;
-    public static void PrepareNewGame(bool boy)
+    public static void PrepareNewGame(bool boy,string name=null)
     {
-        SelectedHeroIsBoy=boy;LaunchTest=false;pendingGame=RpgState.CreateNew(boy);pendingNewGame=true;
+        SelectedHeroIsBoy=boy;LaunchTest=false;pendingGame=RpgState.CreateNew(boy,name);pendingNewGame=true;
     }
     public static RpgState ConsumePendingGame(out bool newGame)
     {
@@ -99,9 +99,26 @@ public sealed class MainMenu : MonoBehaviour
     {
         var panel=BuildStartPanel("NOVÁ HRA");
         Label("Choose appearance",panel,"Vyber vzhled hlavní postavy. Vlastnosti jsou stejné.",26,new Vector2(0,170),new Vector2(1100,90));
-        Button(panel,"Muž",45,()=>{PrepareNewGame(true);LoadScene(gameplayScene);});
-        Button(panel,"Žena",-55,()=>{PrepareNewGame(false);LoadScene(gameplayScene);});
+        Button(panel,"Muž",45,()=>ShowHeroName(true));
+        Button(panel,"Žena",-55,()=>ShowHeroName(false));
         Button(panel,"Zpět",-155,StartGame);
+    }
+    private void ShowHeroName(bool boy)
+    {
+        var panel=BuildStartPanel("JMÉNO POSTAVY");
+        Label("Name prompt",panel,"Jak se bude tvá postava jmenovat?",28,new Vector2(0,175),new Vector2(1000,60));
+        var fieldRect=Box("Jméno hrdiny",panel,new Vector2(0,65),new Vector2(560,80));
+        var background=fieldRect.gameObject.AddComponent<Image>();
+        background.sprite=PixelButtonSprite();background.type=Image.Type.Sliced;
+        var input=fieldRect.gameObject.AddComponent<InputField>();input.targetGraphic=background;
+        var text=Label("Name text",fieldRect,"",30,Vector2.zero,new Vector2(510,66));text.supportRichText=false;
+        input.textComponent=text;input.characterLimit=24;input.lineType=InputField.LineType.SingleLine;
+        var placeholder=Label("Name placeholder",fieldRect,boy?"Henri":"Rosalina",30,Vector2.zero,new Vector2(510,66));
+        placeholder.color=new Color(.7f,.65f,.5f);input.placeholder=placeholder;
+        Label("Name hint",panel,"Až 24 znaků. Prázdné pole ponechá výchozí jméno.",22,new Vector2(0,-10),new Vector2(1100,45));
+        Button(panel,"Začít dobrodružství",-100,()=>{PrepareNewGame(boy,input.text);LoadScene(gameplayScene);});
+        Button(panel,"Zpět",-200,ShowNewCharacterChoice);
+        EventSystem.current.SetSelectedGameObject(input.gameObject);input.ActivateInputField();
     }
     public void ShowLocations()
     {

@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -70,27 +69,7 @@ public sealed partial class RpgInterface
     private static Sprite GuidePortrait()
     {
         if(guidePortraitSprite!=null)return guidePortraitSprite;
-        var source=Resources.Load<Texture2D>("PetrKrizPortrait");if(source==null)return null;
-        // Only the black backdrop connected to the image edge is transparent.
-        // Enclosed dark clothing and facial pixels retain their original colors.
-        int width=source.width,height=source.height;var pixels=source.GetPixels32();
-        var visited=new bool[pixels.Length];var queue=new Queue<int>();
-        System.Action<int> seed=index=>{
-            if(visited[index])return;visited[index]=true;
-            var c=pixels[index];if(c.r>10||c.g>10||c.b>10)return;
-            pixels[index].a=0;queue.Enqueue(index);
-        };
-        for(int x=0;x<width;x++){seed(x);seed((height-1)*width+x);}
-        for(int y=0;y<height;y++){seed(y*width);seed(y*width+width-1);}
-        while(queue.Count>0)
-        {
-            int index=queue.Dequeue(),x=index%width,y=index/width;
-            if(x>0)seed(index-1);if(x<width-1)seed(index+1);
-            if(y>0)seed(index-width);if(y<height-1)seed(index+width);
-        }
-        var texture=new Texture2D(width,height,TextureFormat.RGBA32,false){filterMode=FilterMode.Point,wrapMode=TextureWrapMode.Clamp};
-        texture.SetPixels32(pixels);texture.Apply(false,true);
-        guidePortraitSprite=Sprite.Create(texture,new Rect(0,0,width,height),new Vector2(.5f,0),100);
-        guidePortraitSprite.name="Petr Kříž • portrét bez okolního pozadí";return guidePortraitSprite;
+        guidePortraitSprite=Resources.Load<Sprite>("PetrKrizPortraitCutout");
+        return guidePortraitSprite;
     }
 }
