@@ -4,7 +4,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
-public sealed class RpgInterface : MonoBehaviour
+public sealed partial class RpgInterface : MonoBehaviour
 {
     public bool IsModal => modal != null && modal.gameObject.activeSelf;
     private RpgGame game;
@@ -26,7 +26,7 @@ public sealed class RpgInterface : MonoBehaviour
     private RectTransform mapContent;
     private int travelCompanion;
     private bool travelCart;
-    private static readonly Color Gold = new Color(0.91f, 0.76f, 0.43f);
+    private static readonly Color Gold = RpgVisualTheme.Gold;
     private static readonly Color Ink = new Color(0.055f, 0.07f, 0.085f, 0.96f);
 
     public void Initialize(RpgGame owner)
@@ -35,7 +35,7 @@ public sealed class RpgInterface : MonoBehaviour
         var obj = new GameObject("RPG Interface", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
         obj.transform.SetParent(transform, false);
         canvas = obj.GetComponent<RectTransform>();
-        var view = obj.GetComponent<Canvas>(); view.renderMode = RenderMode.ScreenSpaceOverlay; view.sortingOrder = 30;
+        var view = obj.GetComponent<Canvas>(); view.renderMode = RenderMode.ScreenSpaceOverlay; view.sortingOrder = 30;view.pixelPerfect=true;
         var scaler = obj.GetComponent<CanvasScaler>(); scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1600, 900); scaler.matchWidthOrHeight = 0.5f;
         if (EventSystem.current == null)
@@ -46,9 +46,9 @@ public sealed class RpgInterface : MonoBehaviour
 
         var status = Panel(canvas, "Player status", new Vector2(20, -20), new Vector2(360, 156), new Vector2(0, 1));
         Label(status, game.IsTestLocation?"TESTOVACÍ LOKACE  [T]":"HAVRANOV • STRÁŽCE VESNICE", new Vector2(18, -12), new Vector2(330, 25), 18, Gold);
-        healthFill = Bar(status, new Vector2(18, -48), new Color(0.78f, 0.22f, 0.25f));
+        healthFill = Bar(status, new Vector2(18, -48), new Color(.20f,.84f,.68f));
         health = Label(status, "", new Vector2(24, -44), new Vector2(310, 24), 17, Color.white);
-        staminaFill = Bar(status, new Vector2(18, -80), new Color(0.25f, 0.7f, 0.53f));
+        staminaFill = Bar(status, new Vector2(18, -80), new Color(.92f,.75f,.30f));
         stamina = Label(status, "", new Vector2(24, -76), new Vector2(310, 24), 17, Color.white);
         experienceFill = Bar(status, new Vector2(18, -111), new Color(0.4f, 0.57f, 0.85f));
         stats = Label(status, "", new Vector2(24, -107), new Vector2(320, 38), 15, Color.white);
@@ -69,14 +69,14 @@ public sealed class RpgInterface : MonoBehaviour
             var toolsClick=tools.gameObject.AddComponent<Button>();toolsClick.targetGraphic=tools.GetComponent<Image>();toolsClick.onClick.AddListener(ShowTestTools);
             var toolsLabel=Label(tools,"TESTOVACÍ NÁSTROJE  [T]",Vector2.zero,new Vector2(240,42),16,Gold);toolsLabel.alignment=TextAnchor.MiddleCenter;
         }
-        var tracker = Panel(canvas, "Quest tracker", new Vector2(-20, -20), new Vector2(370, 166), new Vector2(1, 1));
+        var tracker = Panel(canvas, "Quest tracker", new Vector2(-20, -300), new Vector2(370, 166), new Vector2(1, 1));
         Label(tracker, "DENÍK DOBRODRUHA  [Q]", new Vector2(18, -12), new Vector2(335, 26), 18, Gold);
         quest = Label(tracker, "", new Vector2(18, -44), new Vector2(335, 112), 18, new Color(0.88f, 0.9f, 0.92f));
 
-        var miniBox=Panel(canvas,"Mini map",new Vector2(-20,-205),new Vector2(250,198),new Vector2(1,1));
+        var miniBox=Panel(canvas,"Mini map",new Vector2(-20,-86),new Vector2(250,198),new Vector2(1,1));
         Label(miniBox,"MAPKA • modrá = ty",new Vector2(10,-168),new Vector2(230,25),14,Gold);
         miniMap=Rect(miniBox,"Village overview",new Vector2(10,-10),new Vector2(230,153));
-        var miniImage=miniMap.gameObject.AddComponent<Image>();miniImage.sprite=game.MapSprite;miniImage.color=new Color(.8f,.8f,.8f);miniImage.raycastTarget=false;
+        var miniImage=miniMap.gameObject.AddComponent<Image>();miniImage.sprite=game.MapSprite;miniImage.color=new Color(.8f,.8f,.8f);miniImage.raycastTarget=false;miniImage.color=Color.white;miniImage.material=RpgVisualTheme.FantasyAtmosphere();
         var miniClick=miniBox.gameObject.AddComponent<Button>();miniClick.targetGraphic=miniBox.GetComponent<Image>();miniClick.onClick.AddListener(ShowWorldMap);
         for(int i=0;i<8;i++)enemyDots.Add(MapDot("Enemy",new Color(.95f,.25f,.2f),5));
         miniGoal=MapDot("Quest goal",Gold,9);miniPlayer=MapDot("Player",Color.cyan,7);
@@ -98,7 +98,7 @@ public sealed class RpgInterface : MonoBehaviour
 
         var shade = Panel(canvas, "Modal shade", Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
         shade.anchorMin = Vector2.zero; shade.anchorMax = Vector2.one; shade.offsetMin = shade.offsetMax = Vector2.zero;
-        shade.GetComponent<Image>().color = new Color(0, 0, 0, 0.68f);
+        shade.GetComponent<Image>().sprite=null;shade.GetComponent<Image>().color = new Color(0, 0, 0, 0.40f);
         modal = shade;
         var box = Panel(shade, "Dialog", Vector2.zero, new Vector2(760, 650), new Vector2(0.5f, 0.5f));
         var outline = box.gameObject.AddComponent<Outline>(); outline.effectColor = new Color(0.5f, 0.4f, 0.23f); outline.effectDistance = new Vector2(2, 2);
@@ -107,12 +107,14 @@ public sealed class RpgInterface : MonoBehaviour
         modalBody.alignment = TextAnchor.UpperLeft;
         actions = Rect(box, "Actions", new Vector2(32, -378), new Vector2(696, 245));
         modal.gameObject.SetActive(false);
+        BuildThemedHud();
     }
 
     private void Update()
     {
         if (game == null || game.State == null) return;
         var state = game.State;
+        UpdateThemedHud();
         health.text = $"ZDRAVÍ    {Mathf.CeilToInt(state.health)} / {state.MaxHealth}";
         stamina.text = $"VÝDRŽ    {Mathf.CeilToInt(state.stamina)} / 100";
         stats.text = $"ÚROVEŇ {state.level}    •    {state.experience}/{state.NextLevelExperience} XP    •    {state.gold} zl.";
@@ -176,7 +178,9 @@ public sealed class RpgInterface : MonoBehaviour
 
     private string QuestSummary()
     {
+        if(game.State.cellarQuest > 0 && game.State.cellarQuest < 7) return "TAJEMSTVÍ SKLEPA\n" + game.State.CellarObjective;
         var state = game.State;
+        if(state.currentArea==0) return "POKOJNÝ HAVRANOV\n"+(state.cellarQuest==7?"Vesnický příběh dokončen. Další cesta: [M].":state.CellarObjective);
         if (state.questStage == 0) return "VESNICE V OHROŽENÍ\nPromluv si s rychtářem Radovanem.\nHledej zlaté jméno na náměstí.";
         if (state.questStage == 2) return "OCHRÁNCE HAVRANOVA\nVesnice je zachráněna.\nProzkoumej mapu a vylepši vybavení.";
         return $"VESNICE V OHROŽENÍ\nNájezdníci  {Mathf.Min(5, state.banditsDefeated)} / 5\nVelitel  {(state.bossDefeated ? "poražen" : state.banditsDefeated >= 5 ? "severně od náměstí" : "odhal jeho úkryt")}\n{(state.CanFinishQuest ? "Vrať se k rychtáři pro odměnu!" : "Útok: J / levé tlačítko myši")}";
@@ -189,6 +193,8 @@ public sealed class RpgInterface : MonoBehaviour
 
     public void Close()
     {
+        if(cellarAnimating) return;
+        ResetGuideDialogue();
         if (game.State.health <= 0 && currentModal == "death") return;
         LeaveRoomVisuals();
         game.RestoreOutdoorPlayer();
@@ -197,6 +203,7 @@ public sealed class RpgInterface : MonoBehaviour
 
     public void TogglePause()
     {
+        if(cellarAnimating) return;
         if(game.IsTestLocation){if(IsModal)Close();else ShowTestTools();return;}
         if (game.State.health <= 0) return;
         if (IsModal) { Close(); return; }
@@ -255,6 +262,7 @@ public sealed class RpgInterface : MonoBehaviour
         if (currentModal == "journal") { Close(); return; }
         Open("journal", "DENÍK ÚKOLŮ", QuestSummary() + "\n\nVEDLEJŠÍ PŘÍBĚHY\n" + SideSummary(0) + "\n" + SideSummary(1) + "\n" + SideSummary(2) + "\n\nODMĚNY (zlato / XP): hlavní 150/150 • byliny 25/45 • zásoby 60/60 • zásilka 40/35.\nPodrobnosti a sledování otevřeš tlačítkem.");
         modalBody.fontSize = 18;
+        Action("Tajemství sklepa • deník a lístek", ShowCellarJournal);
         Action("Sledovat hlavní úkol",()=>game.TrackQuest(-1));
         Action("Byliny pro Miru", () => ShowSideQuest(0, false));
         Action("Ztracené zásoby", () => ShowSideQuest(1, false));
@@ -265,6 +273,13 @@ public sealed class RpgInterface : MonoBehaviour
     public void ShowMayor()
     {
         var state = game.State;
+        if(state.currentArea==0 && !game.IsTestLocation)
+        {
+            Open("mayor", "RYCHTÁŘ RADOVAN", "V Havranově žijeme pokojně. Lidé tu pracují, obchodují a starají se o své domy. Petr Kříž tě provede vesnicí. Zeptej se ho na cestu a na svíčky pro výpravu.\n\n"+state.CellarObjective);
+            Action("Úkol: Ztracené zásoby",()=>ShowSideQuest(1,true));
+            Action("Odejít",Close);
+            return;
+        }
         if (state.questStage == 0)
         {
             Open("mayor", "RYCHTÁŘ RADOVAN", "Havranov obsadili nájezdníci. Lidé se bojí vyjít ven. Pomůžeš nám?\n\nPoraz alespoň 5 nájezdníků. Potom se ukáže jejich velitel Vranek u severní brány. Zneškodni ho a vrať se sem.\n\nOdměna: 150 zlata, 150 XP a 3 lektvary.");
@@ -294,7 +309,8 @@ public sealed class RpgInterface : MonoBehaviour
     {
         if(kind!="merchant")return;
         BuildRoom(kind);
-        if(kind == "merchant") ShowShopDialogue(0); else if(kind == "healer") ShowHealer(); else ShowMayor();
+        if(kind == "merchant" && game.State.cellarQuest >= 2 && game.State.cellarQuest < 6) ShowCellarMerchant();
+        else if(kind == "merchant") ShowShopDialogue(0); else if(kind == "healer") ShowHealer(); else ShowMayor();
     }
     private void BuildRoom(string kind)
     {
@@ -330,7 +346,7 @@ public sealed class RpgInterface : MonoBehaviour
         heroImage.sprite=Resources.Load<Sprite>(game.State.heroIsBoy?"HeroBoyStepA":"HeroUserStepA");
         Label(roomView,"TVOJE POSTAVA",new Vector2(190,-835),new Vector2(230,35),20,Gold);
         modalTitle.transform.parent.GetComponent<RectTransform>().anchoredPosition=new Vector2(300,0);
-        modal.GetComponent<Image>().color=new Color(0,0,0,.22f);
+        modal.GetComponent<Image>().color=new Color(0,0,0,.12f);
     }
     private void LeaveRoomVisuals()
     {
@@ -346,7 +362,7 @@ public sealed class RpgInterface : MonoBehaviour
             modalBody.rectTransform.anchoredPosition=new Vector2(32,-85);modalBody.rectTransform.sizeDelta=new Vector2(696,290);
             actions.anchoredPosition=new Vector2(32,-378);actions.sizeDelta=new Vector2(696,245);
         }
-        if(modal!=null) modal.GetComponent<Image>().color=new Color(0,0,0,.68f);
+        if(modal!=null) modal.GetComponent<Image>().color=new Color(0,0,0,.4f);
     }
 
     private void BuildShopScene()
@@ -355,7 +371,7 @@ public sealed class RpgInterface : MonoBehaviour
         roomView.gameObject.AddComponent<Image>().color=new Color(.1f,.06f,.03f);
         var backdrop=Rect(roomView,"Shop background",Vector2.zero,Vector2.zero);
         backdrop.anchorMin=Vector2.zero;backdrop.anchorMax=Vector2.one;backdrop.pivot=Vector2.one*.5f;backdrop.offsetMin=backdrop.offsetMax=Vector2.zero;
-        var background=backdrop.gameObject.AddComponent<Image>();background.sprite=Resources.Load<Sprite>("ShopInterior");background.color=Color.white;
+        var background=backdrop.gameObject.AddComponent<Image>();background.sprite=Resources.Load<Sprite>("ShopInterior");background.color=Color.white;RpgVisualTheme.Picture(background,false,3);
         var aspect=backdrop.gameObject.AddComponent<AspectRatioFitter>();aspect.aspectMode=AspectRatioFitter.AspectMode.EnvelopeParent;
         aspect.aspectRatio=background.sprite!=null?background.sprite.rect.width/background.sprite.rect.height:16f/9f;
         arabellaPortrait=RoomPortrait("Arabella", "ArabellaPortrait",new Vector2(40,246));
@@ -377,7 +393,7 @@ public sealed class RpgInterface : MonoBehaviour
             image.sprite=Sprite.Create(original.texture,crop,new Vector2(.5f,0),original.pixelsPerUnit);
             portraitCrops.Add(image.sprite);
         }
-        image.preserveAspect=true;image.raycastTarget=false;
+        image.preserveAspect=true;image.raycastTarget=false;RpgVisualTheme.Picture(image,false,5);
         return image;
     }
     private void ShopDialogLayout(string speaker)
@@ -418,6 +434,7 @@ public sealed class RpgInterface : MonoBehaviour
         Action("Koupit lektvar • 15 zl.", () => { game.BuyPotion(); ShowMerchant(); });
         Action(state.weaponLevel >= 5 ? "Meč • maximální stupeň" : $"Vylepšit meč • {40 + state.weaponLevel * 30} zl.", () => { game.Upgrade(true); ShowMerchant(); });
         Action(state.armorLevel >= 5 ? "Zbroj • maximální stupeň" : $"Vylepšit zbroj • {40 + state.armorLevel * 30} zl.", () => { game.Upgrade(false); ShowMerchant(); });
+        Action("Tajemství sklepa", ShowCellarMerchant);
         Action("Úkol: Zásilka pro strážného", () => ShowSideQuest(2, true));
         Action("Odejít", Close);
     }
@@ -472,6 +489,7 @@ public sealed class RpgInterface : MonoBehaviour
 
     public void ShowGuard()
     {
+        if(game.State.cellarQuest != 7) { ShowCellarGuide(); return; }
         var state = game.State;
         string message = state.deliveryQuest == 1 && !state.parcelDelivered
             ? "Neseš zásilku od Elišky? Výborně, čekám na ni celé ráno. Předej mi ji a vyřiď jí mé poděkování."
@@ -512,7 +530,7 @@ public sealed class RpgInterface : MonoBehaviour
             bool roof = (x%7<3 && y%6<3);
             var tile=Rect(mapContent,"Tile",new Vector2(x*24,-y*22),new Vector2(24,22));
             var image=tile.gameObject.AddComponent<Image>(); image.raycastTarget=false;
-            image.color=water ? new Color(.22f,.43f,.53f) : road ? new Color(.62f,.55f,.4f) : roof ? new Color(.4f,.23f,.15f) : new Color(.21f+(x+y)%3*.02f,.31f,.19f);
+            image.color=water ? new Color(.17f,.65f,.72f) : road ? new Color(.92f,.79f,.48f) : roof ? new Color(.73f,.39f,.20f) : new Color(.39f+(x+y)%3*.035f,.66f,.22f);
         }
         Vector2[] points={new Vector2(348,145),new Vector2(348,50),new Vector2(565,145),new Vector2(155,112)};
         for(int i=0;i<RpgCampaign.Names.Length;i++)
@@ -544,7 +562,7 @@ public sealed class RpgInterface : MonoBehaviour
         var state=game.State;
         bool unlocked=state.AreaUnlocked(area),done=state.completedAreas.Contains(area);
         string problem=state.TravelProblem(area,companion,cart);
-        string who=companion==0?"Sám / sama":companion==1?"Strážný Petr • pomáhá v boji":"Mira • léčí během cesty";
+        string who=companion==0?"Sám / sama":companion==1?"Petr • občasná rada, bez doprovodu":"Mira • léčí během cesty";
         Open("travel",RpgCampaign.Names[area],
             (done?"DOKONČENO • můžeš projít znovu":unlocked?"DOSTUPNÁ ÚROVEŇ":"ZAMČENO")+
             "\n\nPodmínka: "+(area==0?"dostupné od začátku":"dokončit "+RpgCampaign.Names[area-1])+
@@ -575,6 +593,7 @@ public sealed class RpgInterface : MonoBehaviour
 
     private void Open(string kind, string title, string body)
     {
+        ResetGuideDialogue();
         if (InRoom && (kind == "map" || kind == "pause" || kind == "death" || kind == "travel" || kind == "character")) LeaveRoomVisuals();
         if (mapContent != null) { mapContent.gameObject.SetActive(false); Destroy(mapContent.gameObject); mapContent = null; }
         currentModal = kind;
@@ -585,15 +604,26 @@ public sealed class RpgInterface : MonoBehaviour
             var child = actions.GetChild(i); child.gameObject.SetActive(false); child.SetParent(null); Destroy(child.gameObject);
         }
         modal.gameObject.SetActive(true);
-        if(shopScene) ShopDialogLayout(kind=="shopDialogue"?title:"OBCHODNICE");
+        if(kind=="cellarGuide" || kind=="guideInstruction" || kind=="guard") BuildGuideDialogue();
+        else if(shopScene) ShopDialogLayout(kind=="shopDialogue"?title:"OBCHODNICE");
+        else if(roomView!=null && kind.StartsWith("cellar"))
+        {
+            var box=modalTitle.transform.parent.GetComponent<RectTransform>();
+            Anchor(box,new Vector2(.5f,0),new Vector2(0,20));box.sizeDelta=new Vector2(1480,244);
+            modal.GetComponent<Image>().color=Color.clear;
+            modalTitle.rectTransform.anchoredPosition=new Vector2(28,-14);modalTitle.rectTransform.sizeDelta=new Vector2(990,36);
+            modalBody.rectTransform.anchoredPosition=new Vector2(28,-60);modalBody.rectTransform.sizeDelta=new Vector2(980,162);modalBody.fontSize=21;
+            actions.anchoredPosition=new Vector2(1050,-24);actions.sizeDelta=new Vector2(400,210);
+        }
     }
 
     private void Action(string title, Action callback)
     {
         int index = actions.childCount;
-        float width=shopScene?380:696, height=shopScene?34:42, spacing=shopScene?42:50;
+        float width=guideDialogueActive?400:shopScene?380:roomView!=null&&currentModal.StartsWith("cellar")?400:696, height=guideDialogueActive?50:shopScene?34:currentModal=="journal"||currentModal=="merchant"?32:42, spacing=guideDialogueActive?62:shopScene?42:currentModal=="journal"||currentModal=="merchant"?38:50;
         var rect = Rect(actions, title, new Vector2(0, -index * spacing), new Vector2(width, height));
-        var image = rect.gameObject.AddComponent<Image>(); image.color = new Color(0.16f, 0.21f, 0.23f);
+        var image = rect.gameObject.AddComponent<Image>(); image.sprite=MainMenu.PixelButtonSprite();image.type=Image.Type.Sliced;image.color=Color.white;
+        if(guideDialogueActive){image.sprite=MainMenu.PixelButtonSprite();image.type=Image.Type.Sliced;image.color=Color.white;}
         var button = rect.gameObject.AddComponent<Button>(); button.targetGraphic = image;
         var colors = button.colors; colors.highlightedColor = new Color(1, 0.88f, 0.6f); colors.pressedColor = new Color(0.6f, 0.8f, 0.7f); button.colors = colors;
         button.onClick.AddListener(() => callback());
@@ -615,7 +645,7 @@ public sealed class RpgInterface : MonoBehaviour
     private RectTransform Panel(Transform parent, string name, Vector2 position, Vector2 size, Vector2 anchor)
     {
         var rect = Rect(parent, name, Vector2.zero, size); Anchor(rect, anchor, position);
-        var image = rect.gameObject.AddComponent<Image>(); image.color = Ink;
+        var image = rect.gameObject.AddComponent<Image>(); RpgVisualTheme.Panel(image);
         return rect;
     }
 

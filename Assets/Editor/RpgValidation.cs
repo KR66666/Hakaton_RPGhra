@@ -10,12 +10,36 @@ public static class RpgValidation
     {
         EditorApplication.delayCall += () =>
         {
-            if (!SessionState.GetBool("RPG.Validation.v23", false))
+            if (!SessionState.GetBool("RPG.Validation.v30", false))
             {
                 Run();
-                SessionState.SetBool("RPG.Validation.v23", true);
+                SessionState.SetBool("RPG.Validation.v30", true);
             }
         };
+    }
+
+    [MenuItem("Tools/RPG/Preview Petr Dialogue %#F9")]
+    public static void PreviewPetrDialogue()
+    {
+        var game=RpgGame.Instance;
+        if(game!=null && game.Interface!=null)game.Interface.ShowGuideInstruction();
+        else Debug.Log("Start the village first to preview Petr's portrait dialogue.");
+    }
+
+    [MenuItem("Tools/RPG/Start Test Location %#F11")]
+    public static void StartTestLocation()
+    {
+        if(EditorApplication.isPlaying) return;
+        MainMenu.LaunchTest=true;
+        EditorApplication.EnterPlaymode();
+    }
+
+    [MenuItem("Tools/RPG/Preview Cellar Story %#F10")]
+    public static void PreviewCellarStory()
+    {
+        var game=RpgGame.Instance;
+        if(game==null || !game.IsTestLocation) {Debug.Log("Open the test location to preview the cellar without changing the story save.");return;}
+        game.State.cellarQuest=3; game.Interface.EnterRoom("merchant");
     }
 
     [MenuItem("Tools/RPG/Preview Shop Dialogue %#F7")]
@@ -55,6 +79,34 @@ public static class RpgValidation
         int checks = 0;
         try
         {
+            Check(!RpgGame.AllowsHostileCombat(0,false,1),"Village stays peaceful even with an old combat quest save",ref checks);
+            Check(RpgGame.AllowsHostileCombat(1,false,1),"Combat remains available on an expedition",ref checks);
+            Check(!RpgGame.AllowsHostileCombat(0,true,0) && RpgGame.AllowsHostileCombat(0,true,1),"Test combat requires explicit activation",ref checks);
+            Check(Resources.Load<Shader>("Shaders/BrightPixelArt")!=null,"Pixel palette shader is included in builds",ref checks);
+            Check(RpgVisualTheme.Frame.border.x>0 && RpgVisualTheme.Frame.texture.filterMode==FilterMode.Point,"Shared UI frame keeps crisp sliced pixel borders",ref checks);
+            foreach(string icon in new[]{"heart","sword","potion","herb","testarmor","chest","supply"})
+                Check(RpgVisualTheme.Icon(icon)!=null && RpgVisualTheme.Icon(icon).texture.filterMode==FilterMode.Point,"Crisp pixel icon: "+icon,ref checks);
+            var guideTravel=new RpgState{deliveryQuest=2};
+            Check(guideTravel.EnterArea(0,1,false,false) && guideTravel.travelCompanion==0,"Petr advice never selects a following actor",ref checks);
+            Check(RpgVisualTheme.FantasyAtmosphere().GetFloat("_Natural")==1,"Fantasy atmosphere preserves native artwork detail",ref checks);
+            var guideState=new RpgState();
+            Check(guideState.NeedsGuideInstruction,"Guide introduces the objective automatically",ref checks);
+            guideState.guideSeenStage=0;
+            Check(!guideState.NeedsGuideInstruction,"Confirmed guide instruction does not repeat",ref checks);
+            guideState.cellarQuest=2;
+            Check(guideState.NeedsGuideInstruction,"Next objective gets a new guide instruction",ref checks);
+            guideState.guideSeenStage=2;
+            var guideSave=JsonUtility.FromJson<RpgState>(JsonUtility.ToJson(guideState));
+            Check(!guideSave.NeedsGuideInstruction,"Guide confirmation persists in saved progress",ref checks);
+            var story = new RpgState();
+            Check(!story.OpenCellarNote() && !story.FinishCellarQuest(), "Cellar note and rewards require progress", ref checks);
+            story.cellarNoteTaken=true; story.cellarQuest=5;
+            Check(story.OpenCellarNote() && story.cellarQuest==6 && !story.OpenCellarNote(), "Read note once and unlock clue",ref checks);
+            int previousGold=story.gold;
+            Check(story.FinishCellarQuest() && story.gold==previousGold+45 && story.cellarQuest==7 && !story.FinishCellarQuest(), "Cellar reward cannot duplicate",ref checks);
+            Check(story.completedAreas.Contains(0) && story.AreaUnlocked(1),"Peaceful cellar quest unlocks next location without attacking villagers",ref checks);
+            var storySave=JsonUtility.FromJson<RpgState>(JsonUtility.ToJson(story));
+            Check(storySave.cellarNoteOpened && storySave.cellarNoteTaken && storySave.cellarQuest==7,"Cellar progress survives save",ref checks);
             var state = new RpgState();
             Check(state.level == 1 && state.MaxHealth == 100 && state.Damage == 18, "Initial stats", ref checks);
             Check(!state.FinishQuest(), "Cannot claim an unaccepted quest", ref checks);
@@ -106,10 +158,17 @@ public static class RpgValidation
             {
                 Check(animation.Frame(0,0) != animation.Frame(0,1), "Supplied feet alternate", ref checks);
                 Check(animation.Frame(0,0,false) != animation.Frame(0,0,true), "Boy and girl have distinct appearances", ref checks);
-                for(int direction=0;direction<4;direction++)
-                    Check(animation.Frame(direction,0) == animation.Frame(0,0), "All directions rotate the same supplied artwork", ref checks);
+                Check(animation.Frame(3,1)!=animation.Frame(3,2) && animation.Frame(3,2)!=animation.Frame(3,3),"Profile walk alternates visible leg poses",ref checks);
+                Check(PlayerMovement.DirectionalWalkingFrame(.01f)==1 && PlayerMovement.DirectionalWalkingFrame(.31f)==2 && PlayerMovement.DirectionalWalkingFrame(.61f)==3 && PlayerMovement.DirectionalWalkingFrame(.91f)==4,"Four supplied foot poses play at readable walking cadence",ref checks);
+                Check(animation.HasDirectional,"Supplied front/back/side strips load",ref checks);
+                Check(animation.Frame(1,0)!=animation.Frame(0,0),"North uses the supplied back view",ref checks);
+                Check(animation.Frame(2,0)==animation.Frame(3,0),"Left and right share mirrored side artwork",ref checks);
+                Check(animation.Frame(0,3)!=animation.Frame(0,2),"Fourth supplied walking pose remains available",ref checks);
+                var originalMap=AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Characters/MedievalTown.png");
+                var fantasyMap=Resources.Load<Sprite>("FantasyVillage");
+                Check(fantasyMap!=null && Vector3.Distance(originalMap.bounds.size,fantasyMap.bounds.size)<.001f,"New artwork preserves exact gameplay map bounds",ref checks);
                 Check(animation.Frame(0,0,true).name=="Boy idle" && animation.Frame(0,1,true).name=="Boy left foot" && animation.Frame(0,2,true).name=="Boy right foot", "Boy has distinct overhead standing and steps", ref checks);
-                Check(animation.Frame(0,0,false).name=="Girl idle" && animation.Frame(0,1,false).name=="Girl left foot" && animation.Frame(0,2,false).name=="Girl right foot", "Girl has distinct overhead standing and steps", ref checks);
+                Check(animation.Frame(0,0,false).name=="Heroine Front 0" && animation.Frame(1,0,false).name=="Heroine Back 0" && animation.Frame(3,0,false).name=="Heroine Left 2", "Heroine uses exact supplied directional frames", ref checks);
                 state.heroIsBoy = true;
                 Check(JsonUtility.FromJson<RpgState>(JsonUtility.ToJson(state)).heroIsBoy, "Hero choice survives saving", ref checks);
                 Check(Mathf.Abs(Mathf.DeltaAngle(PlayerMovement.FacingAngle(Vector2.down), 0)) < 0.01f &&
@@ -278,7 +337,7 @@ public static class RpgValidation
             game.RestoreState(new RpgState());
             var movement = game.GetComponent<PlayerMovement>();
             var appearance = game.GetComponent<SpriteRenderer>();
-            var opposite = movement.WalkingSprite(0, 2);
+            var opposite = movement.WalkingSprite(0, movement.UsesDirectionalHero?PlayerMovement.DirectionalWalkingFrame(.525f):2);
             Check(opposite != null, "Second walking step loads in the running game", ref checks);
             movement.MoveInDirection(Vector2.down, 0);
             var idle = appearance.sprite;
@@ -287,13 +346,13 @@ public static class RpgValidation
             movement.MoveInDirection(Vector2.zero, 0.1f);
             Check(appearance.sprite == idle, "Standing still restores idle pose", ref checks);
             movement.MoveInDirection(Vector2.up, 0.15f);
-            Check(Mathf.Abs(Mathf.DeltaAngle(movement.transform.eulerAngles.z, 180)) < 0.01f, "Walking north rotates the same sprite", ref checks);
+            Check(Mathf.Abs(Mathf.DeltaAngle(movement.transform.eulerAngles.z, movement.UsesDirectionalHero?0:180)) < 0.01f, "Walking north selects upright back view or original boy rotation", ref checks);
             movement.MoveInDirection(Vector2.zero, 0);
-            Check(Mathf.Abs(Mathf.DeltaAngle(movement.transform.eulerAngles.z, 180)) < 0.01f, "Stopping preserves north-facing rotation", ref checks);
+            Check(Mathf.Abs(Mathf.DeltaAngle(movement.transform.eulerAngles.z, movement.UsesDirectionalHero?0:180)) < 0.01f, "Stopping preserves the selected north-facing view", ref checks);
             movement.MoveInDirection(Vector2.left, 0.15f);
-            Check(Mathf.Abs(Mathf.DeltaAngle(movement.transform.eulerAngles.z, -90)) < 0.01f, "Walking left mirrors the side view", ref checks);
+            Check(Mathf.Abs(Mathf.DeltaAngle(movement.transform.eulerAngles.z, movement.UsesDirectionalHero?0:-90)) < 0.01f, "Walking left keeps upright side artwork", ref checks);
             movement.MoveInDirection(Vector2.right, 0.15f);
-            Check(Mathf.Abs(Mathf.DeltaAngle(movement.transform.eulerAngles.z, 90)) < 0.01f, "Walking right uses an unmirrored side view", ref checks);
+            Check(Mathf.Abs(Mathf.DeltaAngle(movement.transform.eulerAngles.z, movement.UsesDirectionalHero?0:90)) < 0.01f, "Walking right uses an unmirrored side view", ref checks);
             game.RestoreState(new RpgState());
             game.State.trackedQuest=2;game.State.deliveryQuest=1;game.State.parcelDelivered=false;
             Check(game.TryTrackedGoal(out var deliveryTarget,out var deliveryTitle) && deliveryTitle.Contains("Petrovi"),"Delivery tracker locates the roaming guard",ref checks);

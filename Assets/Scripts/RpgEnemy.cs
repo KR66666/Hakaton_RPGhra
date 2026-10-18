@@ -20,6 +20,7 @@ public sealed class RpgEnemy : MonoBehaviour
         maxHealth = health = (boss ? 220 : 48) + game.State.currentArea * (boss ? 35 : 10);
         appearance = gameObject.AddComponent<SpriteRenderer>();
         appearance.sprite = MedievalNpcAppearance.Get(boss ? "boss" : "bandit", id.Length > 0 ? id[id.Length-1] % 4 : 0);
+        RpgVisualTheme.World(appearance);
         tint = Color.white;
         appearance.color = tint; appearance.sortingOrder = 3;
         transform.localScale = Vector3.one * (boss ? 1.25f : 0.85f);
@@ -31,7 +32,7 @@ public sealed class RpgEnemy : MonoBehaviour
         if (game == null || Dead || game.BlockMovement) return;
         appearance.color = Time.time < hitUntil ? Color.white : preparing ? new Color(1, 0.25f, 0.15f) : tint;
         label.text = (IsBoss ? "VELITEL VRANEK" : "Nájezdník") + "\n" + Mathf.CeilToInt(health) + " / " + Mathf.CeilToInt(maxHealth);
-        if (game.State.questStage == 0) return;
+        if (!game.HostileCombatAllowed) { preparing=false; return; }
         Vector2 delta = game.Player.position - transform.position;
         float distance = delta.magnitude;
         if (preparing)
@@ -70,7 +71,7 @@ public sealed class RpgEnemy : MonoBehaviour
 
     public void Hit(int amount, Vector2 direction)
     {
-        if (Dead || game.State.questStage == 0) return;
+        if (Dead || !game.HostileCombatAllowed) return;
         health = Mathf.Max(0, health - amount);
         hitUntil = Time.time + 0.16f;
         preparing = false;

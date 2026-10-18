@@ -86,7 +86,7 @@ public sealed class RpgSettings : MonoBehaviour
         panel.GetComponent<Canvas>().renderMode=RenderMode.ScreenSpaceOverlay;panel.GetComponent<Canvas>().sortingOrder=200;
         var scaler=panel.GetComponent<CanvasScaler>();scaler.uiScaleMode=CanvasScaler.ScaleMode.ScaleWithScreenSize;scaler.referenceResolution=new Vector2(1600,900);scaler.matchWidthOrHeight=.5f;
         var shade=new GameObject("Shade",typeof(RectTransform),typeof(Image));shade.transform.SetParent(panel.transform,false);
-        var r=shade.GetComponent<RectTransform>();r.anchorMin=Vector2.zero;r.anchorMax=Vector2.one;r.offsetMin=r.offsetMax=Vector2.zero;shade.GetComponent<Image>().color=new Color(.025f,.025f,.03f,.98f);
+        var r=shade.GetComponent<RectTransform>();r.anchorMin=Vector2.zero;r.anchorMax=Vector2.one;r.offsetMin=r.offsetMax=Vector2.zero;RpgVisualTheme.Panel(shade.GetComponent<Image>());
         MainMenu.Label("Title",panel.transform,"NASTAVENÍ",40,new Vector2(0,355),new Vector2(900,60));
         Volume("Celková hlasitost",270,master,v=>master=v);
         Volume("Hudba",175,music,v=>music=v);

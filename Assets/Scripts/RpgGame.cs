@@ -6,11 +6,13 @@ using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
 [DisallowMultipleComponent]
-public sealed class RpgGame : MonoBehaviour
+public sealed partial class RpgGame : MonoBehaviour
 {
     public static RpgGame Instance { get; private set; }
     public RpgState State { get; private set; }
     public bool IsTestLocation { get; private set; }
+    public static bool AllowsHostileCombat(int area, bool testLocation, int quest) => quest == 1 && (area > 0 || testLocation);
+    public bool HostileCombatAllowed => AllowsHostileCombat(State.currentArea, IsTestLocation, State.questStage);
     public RpgInterface Interface { get; private set; }
     public bool IsEnteringRoom { get; private set; }
     public bool BlockMovement => RpgSettings.CapturesInput || IsEnteringRoom || !Application.isFocused || Interface != null && Interface.IsModal || State == null || State.health <= 0;
@@ -69,11 +71,15 @@ public sealed class RpgGame : MonoBehaviour
         playerColor = playerRenderer.color;
         var background = GameObject.Find("Background");
         if (background != null) map = background.GetComponent<SpriteRenderer>();
+        var fantasyMap=Resources.Load<Sprite>("FantasyVillage");
+        if(map!=null && fantasyMap!=null){map.sprite=fantasyMap;map.sharedMaterial=RpgVisualTheme.FantasyAtmosphere();}
         IsTestLocation=MainMenu.LaunchTest;MainMenu.LaunchTest=false;
         State = IsTestLocation ? CreateTestState(MainMenu.SelectedHeroIsBoy ?? false) : ReadSave() ?? new RpgState();
         if (MainMenu.SelectedHeroIsBoy.HasValue)
         { State.heroIsBoy = MainMenu.SelectedHeroIsBoy.Value; MainMenu.SelectedHeroIsBoy = null; }
         State.Normalize();
+        if(State.travelCompanion==1)State.travelCompanion=0;
+        HeroSprite=actorAppearance.Frame(0,0,State.heroIsBoy);
         if (State.health <= 0) State.health = State.MaxHealth;
         PlacePlayer();
         nextSave = Time.unscaledTime + 30;
@@ -87,11 +93,12 @@ public sealed class RpgGame : MonoBehaviour
         Interface.Initialize(this);
         BuildWorld();
         Notify(IsTestLocation?"TESTOVACÍ LOKACE • E vyzkoušet • T nástroje • hlavní příběh se nepřepisuje":"Vítej v Havranově. Promluv si s rychtářem [E].", 7);
+        if(!IsTestLocation)Interface.ShowGuideWelcome();
     }
 
     private void Update()
     {
-        if (State == null || Interface == null || IsEnteringRoom || RpgSettings.CapturesInput) return;
+        if (State == null || Interface == null || Interface.StoryAnimating || IsEnteringRoom || RpgSettings.CapturesInput) return;
         var keyboard = Keyboard.current;
         if (keyboard != null && Application.isFocused)
         {
@@ -121,6 +128,12 @@ public sealed class RpgGame : MonoBehaviour
         }
         if (playerRenderer != null)
             playerRenderer.color = Time.time < nextDamage && State.health > 0 ? Color.Lerp(playerColor, Color.red, 0.65f) : playerColor;
+        if(!IsTestLocation && !BlockMovement && !Interface.InRoom && State.NeedsGuideInstruction)
+        {
+            State.guideSeenStage=State.cellarQuest;
+            Interface.ShowGuideInstruction();
+            Save(false);
+        }
         UpdateCompanion();
         UpdatePrompt();
         if (Time.unscaledTime >= nextSave && State.health > 0)
@@ -175,7 +188,7 @@ public sealed class RpgGame : MonoBehaviour
 
     public void Damage(int amount)
     {
-        if (IsTestLocation) return;
+        if (IsTestLocation || State.currentArea == 0) return;
         if (BlockMovement || Time.time < nextDamage || Time.time < dodgeUntil) return;
         int damage = Mathf.Max(1, amount - State.Defense);
         State.health = Mathf.Max(0, State.health - damage);
@@ -210,8 +223,9 @@ public sealed class RpgGame : MonoBehaviour
         if(IsTestLocation){BuildTestLocation();return;}
         AddPerson("mayor", "Rychtář Radovan", "mayor", new Vector2(-2.1f, 0.8f), new Color(0.85f, 0.72f, 0.35f));
         AddShopEntrance();
+        AddPerson("elder", "Děda Matěj", "elder", new Vector2(-4, 1.3f), Color.white);
         AddPerson("healer", "Bylinkářka Mira", "healer", new Vector2(-1.6f, -2.2f), new Color(0.55f, 1, 0.7f));
-        AddPerson("guard", "Strážný Petr", "guard", new Vector2(13.5f, 3.3f), new Color(0.6f, 0.7f, 1));
+        AddPerson("guard", "Petr Kříž • průvodce", "guard", new Vector2(13.5f, 3.3f), new Color(0.6f, 0.7f, 1));
         AddPickup("chest1", "Opuštěná truhla", "chest", new Vector2(4.6f, 3), new Color(1, 0.75f, 0.25f));
         AddPickup("chest2", "Kupecká truhla", "chest", new Vector2(-4.5f, -2.8f), new Color(1, 0.75f, 0.25f));
         AddPickup("herb1", "Léčivé byliny", "herb", new Vector2(-3.1f, 2.7f), new Color(0.4f, 1, 0.6f));
@@ -248,7 +262,8 @@ public sealed class RpgGame : MonoBehaviour
         AddPerson("mayor","Rychtář Radovan","mayor",new Vector2(-2,2.8f),Color.white);
         AddPerson("merchant","Obchodnice Eliška","merchant",new Vector2(0,2.8f),Color.white);
         AddPerson("healer","Bylinkářka Mira","healer",new Vector2(2,2.8f),Color.white);
-        AddPerson("guard","Strážný Petr","guard",new Vector2(4,2.8f),Color.white);
+        AddPerson("guard","Petr Kříž • průvodce","guard",new Vector2(4,2.8f),Color.white);
+        AddPerson("elder","Děda Matěj","elder",new Vector2(6,2.8f),Color.white);
         AddPickup("testTools","Testovací nástroje [T]","testgear",new Vector2(-3,0),Color.cyan);
         AddPickup("testPotion","Léčivý lektvar","testpotion",new Vector2(-2,1.2f),new Color(.8f,.2f,.4f));
         AddPickup("herbTest","Léčivé byliny","herb",new Vector2(0,1.2f),Color.green);
@@ -274,6 +289,14 @@ public sealed class RpgGame : MonoBehaviour
 
     private void SpawnEnemy(string id, Vector2 position, bool boss)
     {
+        if(State.currentArea == 0 && !IsTestLocation)
+        {
+            if(boss) return;
+            string[] residents={"Pekař Ondřej", "Tesař Jakub", "Selka Anna", "Kupec Václav", "Mlynář Jan", "Švadlena Marie"};
+            int index=id.Length>0 && char.IsDigit(id[id.Length-1]) ? (id[id.Length-1]-'0')%residents.Length : 0;
+            AddPerson(id, residents[index], "villager", position, Color.white);
+            return;
+        }
         if (State.defeated.Contains(id)) return;
         if (State.currentArea > 0) position = RpgCampaign.Starts[State.currentArea] + (position - new Vector2(0, 2)) * 0.55f;
         position = SnapToRoad(position);
@@ -290,12 +313,13 @@ public sealed class RpgGame : MonoBehaviour
         obj.transform.position = SnapToRoad(position);
         obj.transform.localScale = Vector3.one * 0.9f;
         var renderer = obj.AddComponent<SpriteRenderer>();
-        renderer.sprite = MedievalNpcAppearance.Get(kind); renderer.color = Color.white; renderer.sortingOrder = 2;
+        renderer.sprite = MedievalNpcAppearance.Get(kind == "elder" ? "healer" : kind, kind == "elder" ? 3 : 0);
+        RpgVisualTheme.World(renderer); renderer.color = Color.white; renderer.sortingOrder = 2;
         var npcLabel=AddLabel(obj.transform, title, new Vector3(0, 0.9f, 0), new Color(1, 0.9f, 0.58f));
         if(IsTestLocation)npcLabel.characterSize=.04f;
         worldItems.Add(new WorldItem { id = id, title = title, kind = kind, obj = obj });
         worldObjects.Add(obj);
-        if(!IsTestLocation) obj.AddComponent<VillageNpcRoutine>().Initialize(this,kind,title);
+        if(!IsTestLocation && kind!="elder") obj.AddComponent<VillageNpcRoutine>().Initialize(this,kind,title);
     }
     private Vector3 ShopApproach => RpgWorldGeometry.PixelPosition(new Vector2(744,411),map.bounds);
     private void AddShopEntrance()
@@ -313,7 +337,7 @@ public sealed class RpgGame : MonoBehaviour
         var obj = new GameObject(title);
         obj.transform.position = SnapToRoad(position);
         var renderer = obj.AddComponent<SpriteRenderer>();
-        renderer.sprite = MarkerSprite(); renderer.color = tint; renderer.sortingOrder = 3;
+        renderer.sprite = RpgVisualTheme.Icon(kind); renderer.color = Color.white; renderer.sortingOrder = 3;
         obj.transform.localScale = new Vector3(0.35f, 0.35f, 1);
         if(IsTestLocation){var label=AddLabel(obj.transform,title,new Vector3(0,1.2f,0),Color.white);label.transform.localScale=new Vector3(1/.35f,1/.35f,1);}
         worldItems.Add(new WorldItem { id = id, title = title, kind = kind, obj = obj });
@@ -402,6 +426,8 @@ public sealed class RpgGame : MonoBehaviour
         if(item.kind=="mayor") Interface.ShowMayor();
         else if(item.kind=="healer") Interface.ShowHealer();
         else if(item.kind=="guard") Interface.ShowGuard();
+        else if(item.kind=="elder") Interface.ShowCellarElder();
+        else if(item.kind=="villager") Interface.ShowResident(item.title);
         else if (item.kind == "garden")
         {
             long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -472,13 +498,16 @@ public sealed class RpgGame : MonoBehaviour
 
     private void BuildCompanion()
     {
+        if(companionObject!=null){worldObjects.Remove(companionObject);Destroy(companionObject);}
         companionObject = null;
-        if (State.travelCompanion == 0) return;
-        companionObject = new GameObject(State.travelCompanion == 1 ? "Doprovod Petr" : "Doprovod Mira");
+        // Petr is a portrait adviser, never a following world actor (including older saves).
+        if (State.travelCompanion != 2) return;
+        companionObject = new GameObject(State.travelCompanion != 2 ? "Petr Kříž • průvodce" : "Doprovod Mira");
         companionObject.transform.position = SnapToRoad(transform.position + Vector3.left);
         var renderer = companionObject.AddComponent<SpriteRenderer>();
-        renderer.sprite = MedievalNpcAppearance.Get(State.travelCompanion == 1 ? "guard" : "healer"); renderer.sortingOrder = 3;
+        renderer.sprite = MedievalNpcAppearance.Get(State.travelCompanion != 2 ? "guard" : "healer"); renderer.sortingOrder = 3;
         renderer.color = Color.white;
+        RpgVisualTheme.World(renderer);
         companionObject.transform.localScale = Vector3.one * .75f;
         AddLabel(companionObject.transform, companionObject.name, new Vector3(0,.9f,0), Color.cyan);
         worldObjects.Add(companionObject);
@@ -491,12 +520,7 @@ public sealed class RpgGame : MonoBehaviour
             companionObject.transform.position = MoveEnemy(current, Vector3.MoveTowards(current, transform.position, Time.deltaTime * 3.8f));
         if (State.travelCompanion == 2 && Time.time >= nextCompanionHeal && State.health < State.MaxHealth)
         { State.health = Mathf.Min(State.MaxHealth, State.health + 5); nextCompanionHeal = Time.time + 8; }
-        if (State.travelCompanion == 1 && Time.time >= nextCompanionHeal)
-        {
-            foreach (var enemy in Enemies)
-                if (enemy != null && !enemy.Dead && Vector2.Distance(enemy.transform.position, companionObject.transform.position) < 2)
-                { enemy.Hit(8, Facing); nextCompanionHeal = Time.time + 2; break; }
-        }
+
     }
 
     public void TrackQuest(int id)
@@ -507,6 +531,17 @@ public sealed class RpgGame : MonoBehaviour
     public bool TryTrackedGoal(out Vector3 position,out string description)
     {
         position=transform.position;description="";
+        if (State.cellarQuest > 0 && State.cellarQuest < 7 && State.currentArea == 0)
+        {
+            string cellarTargetKind = State.cellarQuest == 1 ? "elder" : State.cellarQuest == 6 ? "guard" : "shop";
+            var storyTarget = worldItems.Find(i => i.kind == cellarTargetKind && i.obj != null);
+            if(storyTarget != null) { position=storyTarget.obj.transform.position; description=State.CellarObjective; return true; }
+        }
+        if(State.currentArea==0 && State.cellarQuest==0 && State.trackedQuest<0)
+        {
+            var guide=worldItems.Find(i=>i.kind=="guard" && i.obj!=null);
+            if(guide!=null){position=guide.obj.transform.position;description="Promluv s průvodcem Petrem Křížem";return true;}
+        }
         int quest=State.trackedQuest;
         if(quest>=0 && State.SideQuestStage(quest)!=1)quest=-1;
         string kind=null;

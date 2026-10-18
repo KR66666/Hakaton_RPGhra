@@ -97,3 +97,16 @@ Hrdinové jsou opět o cca 12 % menší (měřítko 0,60). Malá mapa vpravo uka
 Průchodnost celé vesnice: opravené rozpojené západní a severní cesty, doplněné severovýchodní a jižní spojnice a cesta kolem mlýna. Kolize menší postavy má půdorys 3 px a budovy 2 px rezervu; střechy zůstávají blokované, stejně tak tráva a voda mimo most. Automatická kontrola prochází po 4px vzorkovací síti všechny cesty a vyžaduje jejich spojení s náměstím.
 
 Hlavní menu > Lokace > Testovací verze: samostatný čerstvý test nad mapou vesnice. Čtyři NPC, léčivý lektvar, byliny, záhonek, truhla, obě zásilky, meče a zbroje +0 až +5, čtyři vzhledy nájezdníků a velitel. E zkouší objekty, T/Esc otevře testovací nástroje (obnovit obsah, zapnout/vypnout souboj, návrat do hlavního menu). Hráč je nezranitelný, začíná na úrovni 10 se zlatem a lektvary; C zkouší vylepšení. Ukládání i načítání hlavního příběhu jsou v testovacím režimu vypnuté, F9 obnovuje test. Normální Hrát vždy spouští příběh.
+
+## Tajemství sklepa
+U východního mostu promluv s Petrem Křížem [E] a vyraz s ním. Děda Matěj na náměstí tě pošle za Eliškou pro svíčky. V obchodě se rozhodni, zda sestoupíš do sklepa. Po setkání s krysami zvol ústup, u schodů vezmi a otevři lístek, nebo pokračuj bez něj. Pro lístek se lze vrátit. Vzkaz najdeš v deníku [Q] → Tajemství sklepa. Ukaž ho Petrovi pro jednorázovou odměnu. Průběh se ukládá. V testovací lokaci lze ukázku otevřít přes Tools → RPG → Preview Cellar Story (Ctrl+Shift+F10).
+
+Havranov je pokojná vesnice: místní obyvatelé neútočí a hráč jim neubližuje. Šest řemeslníků a sousedů chodí po cestách, zastavuje se u práce a nabízí rozhovor [E]. Dokončením Tajemství sklepa se odemkne další lokace [M], takže postup nevyžaduje boj s vesničany. Nepřátelé patří do dalších výprav; v testu se boj zapíná výslovně.
+
+## Jednotný světlý pixelový vzhled
+Mapa, postavy, obchod a portréty sdílejí barevnou pixelovou paletu; zeleň je výraznější, kámen teplejší a voda tyrkysová. Rozložení mapy a kolize zůstávají stejné. Herní panely, dialogy, menu, archiv i nastavení používají společné rámečky. Zdraví ukazuje také deset srdíček; meč a lektvar mají vlastní sloty. Předměty ve světě mají ikony meče, zbroje, lektvaru, bylin nebo truhly. Úprava se aplikuje při spuštění, původní obrázky se nepřepisují.
+
+## Detailní fantasy mapa a dodané směrové snímky
+Aktuální mapa `Assets/Resources/FantasyVillage.png` nahrazuje pouze kresbu pozadí: zachovává světové rozměry 40 × 26,6667, cesty, domy i původní kolize. Vykresluje se v nativním rozlišení bez předchozího barevného a pixelizačního filtru. Hrdinka používá přesné dodané JPG pásy v `Assets/Resources/HeroDirectional/`: zepředu, zezadu a z boku; opačný bok se zrcadlí. Čtyři fáze chůze a klidová póza mají společnou velikost a nepřepisují nastavení pohybu. Čísla pod snímky se oříznou, okolní bílé pozadí odstraní kód. Kluk si zachovává své původní obrázky.
+
+Petr Kříž je nyní občasný portrétní rádce. Při vstupu do hlavní hry se jeho uvítací okno vysune a text se postupně vypíše. Nechodí za hráčem a rada nevytváří fyzický doprovod; starší volba Petra jako doprovodu se ignoruje. Další rady přicházejí u důležitých kroků úkolu. Boční chůze hrdinky střídá otevřené a zavřené kroky ze čtyř dodaných snímků, druhý bok se zrcadlí. Fantasy mapa má jemnější chladnější stíny při zachování plných detailů a kolizí.

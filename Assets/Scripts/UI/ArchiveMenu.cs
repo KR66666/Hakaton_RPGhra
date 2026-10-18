@@ -21,6 +21,10 @@ public sealed class ArchiveMenu : MonoBehaviour
         scaler.referenceResolution = new Vector2(1920, 1080);
         scaler.matchWidthOrHeight = 0.5f;
 
+        var backdrop=new GameObject("Pixelový rám kroniky",typeof(RectTransform),typeof(Image));
+        backdrop.transform.SetParent(canvas.transform,false);var br=backdrop.GetComponent<RectTransform>();
+        br.anchorMin=Vector2.zero;br.anchorMax=Vector2.one;br.offsetMin=br.offsetMax=Vector2.zero;
+        RpgVisualTheme.Panel(backdrop.GetComponent<Image>());
         MainMenu.Label("Title", canvas.transform, "KRONIKA HAVRANOVA", 44, new Vector2(0, 360), new Vector2(1200, 80));
         content = MainMenu.Label("Content", canvas.transform, "", 27, new Vector2(230, 30), new Vector2(850, 540));
         content.alignment = TextAnchor.UpperLeft;

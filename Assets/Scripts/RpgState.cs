@@ -6,6 +6,30 @@ using UnityEngine;
 public sealed class RpgState
 {
     public int version = 1;
+    // 0 guide, 1 elder, 2 shop, 3 cellar invitation, 4 rats, 5 note, 6 decoded, 7 returned.
+    public int cellarQuest;
+    public int guideSeenStage = -1;
+    public bool NeedsGuideInstruction => currentArea==0 && guideSeenStage!=cellarQuest &&
+        (cellarQuest==0 || cellarQuest==1 || cellarQuest==2 || cellarQuest==6);
+    public bool cellarNoteTaken, cellarNoteOpened;
+    public string CellarObjective => cellarQuest == 0 ? "Promluv s Petrem Křížem u mostu." :
+        cellarQuest == 1 ? "Zeptej se dědy Matěje na náměstí na svíčky." :
+        cellarQuest < 4 ? "Zeptej se obchodnice Elišky na sklep." :
+        cellarQuest < 6 ? "Prozkoumej sklep a nalezený lístek." :
+        cellarQuest == 6 ? "Ukaž Petrovi rozluštěný vzkaz." : "Tajemství sklepa vyřešeno.";
+    public bool OpenCellarNote()
+    {
+        if (!cellarNoteTaken || cellarNoteOpened) return false;
+        cellarNoteOpened = true; cellarQuest = 6; return true;
+    }
+    public bool FinishCellarQuest()
+    {
+        if (cellarQuest != 6 || !cellarNoteOpened) return false;
+        cellarQuest = 7;
+        if(!completedAreas.Contains(0))completedAreas.Add(0);
+        if(currentArea==0)questStage=2;
+        gold += 45; potions += 2; AddExperience(60); return true;
+    }
     public int currentArea;
     public int travelCompanion;
     public bool travelByCart;
@@ -17,7 +41,7 @@ public sealed class RpgState
         if (!AreaUnlocked(area)) return "Nejprve dokonči předchozí úroveň.";
         if (health <= 0) return "Nejprve se nech oživit.";
         if (companion < 0 || companion > 2) return "Vyber platný doprovod.";
-        if (companion == 1 && deliveryQuest != 2) return "Petr se přidá po splnění Zásilky pro strážného.";
+        if (companion == 1 && deliveryQuest != 2 && cellarQuest == 0) return "Petr se přidá po splnění Zásilky pro strážného.";
         if (companion == 2 && herbsQuest != 2) return "Mira se přidá po splnění Bylin pro Miru.";
         if (cart && gold < 10) return "Na vůz potřebuješ 10 zlata.";
         return null;
@@ -30,7 +54,7 @@ public sealed class RpgState
         previous.quest = questStage; previous.bandits = banditsDefeated; previous.boss = bossDefeated;
         previous.defeated = new List<string>(defeated);
         var target = areaProgress.Find(p => p.area == area);
-        currentArea = area; travelCompanion = companion; travelByCart = cart;
+        currentArea = area; travelCompanion = companion==1?0:companion; travelByCart = cart;
         if (cart) gold -= 10;
         questStage = replay || target == null ? (area == 0 ? 0 : 1) : target.quest;
         banditsDefeated = replay || target == null ? 0 : target.bandits;

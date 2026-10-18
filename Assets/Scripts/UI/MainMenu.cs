@@ -41,7 +41,7 @@ public sealed class MainMenu : MonoBehaviour
         backdropRect.offsetMin = backdropRect.offsetMax = Vector2.zero;
         var castle = backdrop.GetComponent<Image>();
         castle.sprite = Resources.Load<Sprite>("MainMenuCastle");
-        castle.color = Color.white; castle.raycastTarget = false;
+        castle.color = Color.white; castle.raycastTarget = false;RpgVisualTheme.Picture(castle,false,4);
         var aspect = backdrop.AddComponent<AspectRatioFitter>();
         aspect.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
         aspect.aspectRatio = castle.sprite != null ? castle.sprite.rect.width / castle.sprite.rect.height : 1.5f;
@@ -83,7 +83,7 @@ public sealed class MainMenu : MonoBehaviour
     {
         if(locationsPanel!=null) {locationsPanel.SetActive(true);return;}
         var rect=Box("Locations",menuRoot,Vector2.zero,Vector2.zero);rect.anchorMin=Vector2.zero;rect.anchorMax=Vector2.one;rect.offsetMin=rect.offsetMax=Vector2.zero;locationsPanel=rect.gameObject;
-        var shade=locationsPanel.AddComponent<Image>();shade.color=new Color(.025f,.035f,.045f,.98f);
+        var shade=locationsPanel.AddComponent<Image>();RpgVisualTheme.Panel(shade);
         Label("Locations title",rect,"LOKACE",54,new Vector2(0,290),new Vector2(1000,80));
         Label("Test description",rect,"TESTOVACÍ VERZE\nVšechna NPC, předměty, výbava a nepřátelé na jednom místě.\nTest začíná s vlastní výbavou a zlato ani postup z příběhu nemění.",25,new Vector2(0,140),new Vector2(1100,160));
         Button(rect,"Testovací verze",-10,()=>{LaunchTest=true;LoadScene(gameplayScene);});
@@ -112,7 +112,7 @@ public sealed class MainMenu : MonoBehaviour
     }
 
     private static Sprite pixelButton;
-    private static Sprite PixelButtonSprite()
+    internal static Sprite PixelButtonSprite()
     {
         if (pixelButton != null) return pixelButton;
         var texture = new Texture2D(16,16,TextureFormat.RGBA32,false) { filterMode=FilterMode.Point, wrapMode=TextureWrapMode.Clamp };
@@ -120,15 +120,15 @@ public sealed class MainMenu : MonoBehaviour
         for(int y=0;y<16;y++) for(int x=0;x<16;x++)
         {
             int edge=Mathf.Min(x,15-x,y,15-y);
-            Color32 c = edge==0 ? new Color32(24,19,22,255) : edge==1 ? new Color32(180,139,74,255) :
-                edge==2 ? new Color32(84,57,39,255) : new Color32(55,49,43,255);
-            if(edge>2 && y>11) c=new Color32(73,63,48,255);
-            if(edge>2 && y<4) c=new Color32(38,33,32,255);
+            Color32 c = edge==0 ? new Color32(48,32,27,255) : edge==1 ? new Color32(248,203,115,255) :
+                edge==2 ? new Color32(157,95,48,255) : new Color32(30,66,62,255);
+            if(edge>2 && y>11) c=new Color32(46,87,76,255);
+            if(edge>2 && y<4) c=new Color32(21,46,45,255);
             if((x<2||x>13)&&(y<2||y>13)) c=new Color32(0,0,0,0);
             pixels[y*16+x]=c;
         }
         texture.SetPixels32(pixels);texture.Apply(false,true);
-        pixelButton=Sprite.Create(texture,new Rect(0,0,16,16),Vector2.one*.5f,16,0,SpriteMeshType.FullRect,new Vector4(4,4,4,4));
+        pixelButton=Sprite.Create(texture,new Rect(0,0,16,16),Vector2.one*.5f,100,0,SpriteMeshType.FullRect,new Vector4(4,4,4,4));
         pixelButton.name="16px medieval button";return pixelButton;
     }
 
@@ -159,7 +159,7 @@ public sealed class MainMenu : MonoBehaviour
         text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         text.text = content;
         text.fontSize = size;
-        text.color = new Color(0.92f, 0.94f, 0.98f);
+        text.color = RpgVisualTheme.Cream;
         text.alignment = TextAnchor.MiddleCenter;
         text.raycastTarget = false;
         var shadow = text.gameObject.AddComponent<Shadow>();

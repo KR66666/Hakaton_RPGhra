@@ -68,7 +68,7 @@ public sealed class PlayerMovement : MonoBehaviour
         if (distance > 0.0001f && character != null && walkingAnimation != null)
         {
             walkedDistance += distance;
-            ShowWalkingFrame(WalkingFrame(walkedDistance));
+            ShowWalkingFrame(UsesDirectionalHero?DirectionalWalkingFrame(walkedDistance):WalkingFrame(walkedDistance));
         }
         else StopWalking();
     }
@@ -107,12 +107,14 @@ public sealed class PlayerMovement : MonoBehaviour
         int phase = Mathf.FloorToInt(Mathf.Max(0, distance) / 0.2f) % 4;
         return phase == 0 ? 1 : phase == 2 ? 2 : 0;
     }
+    public bool UsesDirectionalHero => walkingAnimation!=null && walkingAnimation.HasDirectional && !(RpgGame.Instance?.State?.heroIsBoy ?? false);
+    public static int DirectionalWalkingFrame(float distance) => 1+Mathf.FloorToInt(Mathf.Max(0,distance)/.3f)%4;
     public Sprite WalkingSprite(int direction, int step) => walkingAnimation?.Frame(direction, step, RpgGame.Instance != null && RpgGame.Instance.State != null && RpgGame.Instance.State.heroIsBoy);
 
     public void PlayEntranceStep(Vector2 direction,float distance)
     {
         if(direction.sqrMagnitude>.0001f) facing=direction.normalized;
-        ShowWalkingFrame(WalkingFrame(distance));
+        ShowWalkingFrame(UsesDirectionalHero?DirectionalWalkingFrame(distance):WalkingFrame(distance));
     }
 
     private void StopWalking()
@@ -135,14 +137,14 @@ public sealed class PlayerMovement : MonoBehaviour
         if (character == null || walkingAnimation == null) return;
         int orientation = FacingIndex(facing);
         character.sprite = walkingAnimation.Frame(orientation, step, RpgGame.Instance != null && RpgGame.Instance.State != null && RpgGame.Instance.State.heroIsBoy);
-        character.flipX = false;
-        transform.rotation = Quaternion.Euler(0, 0, FacingAngle(facing));
+        character.flipX = UsesDirectionalHero && orientation==2;
+        transform.rotation = UsesDirectionalHero?Quaternion.identity:Quaternion.Euler(0, 0, FacingAngle(facing));
     }
 
     private void OnDestroy() { walkingAnimation?.Dispose(); }
 }
 
-// Three genuine overhead poses per hero. All movement headings rotate this same set.
+// Supplied directional heroine frames; the existing boy keeps his original overhead artwork.
 public sealed class HeroWalkAnimation
 {
     [System.Serializable] public sealed class FrameDefinition { public float x,y,width,height,ppu; }
@@ -166,7 +168,8 @@ public sealed class HeroWalkAnimation
             frames[i/3,i%3]=sprite;owned.Add(sprite);
         }
     }
-    public Sprite Frame(int direction,int step,bool boy=false) => frames[boy?1:0,Mathf.Clamp(step,0,2)];
+    public bool HasDirectional => RpgDirectionalHero.Available;
+    public Sprite Frame(int direction,int step,bool boy=false) => !boy && HasDirectional ? RpgDirectionalHero.Frame(direction,step) : frames[boy?1:0,Mathf.Clamp(step,0,2)];
     public void Dispose()
     {
         foreach(var sprite in owned)

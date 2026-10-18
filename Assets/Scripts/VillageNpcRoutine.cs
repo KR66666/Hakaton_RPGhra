@@ -15,6 +15,17 @@ public sealed class VillageNpcRoutine : MonoBehaviour
         Vector2[] points;
         if(role=="guard") { points=new[]{new Vector2(1130,530),new Vector2(1235,530),new Vector2(1300,505),new Vector2(1390,477)};activity="hlídá cestu"; }
         else if(role=="healer") { points=new[]{new Vector2(700,630),new Vector2(670,580),new Vector2(720,540),new Vector2(760,620)};activity="třídí léčivé byliny"; }
+        else if(role=="villager")
+        {
+            points=new[]{new Vector2(710,490),new Vector2(800,510),new Vector2(830,600),new Vector2(740,620)};
+            if(name.Contains("Pekař"))activity="připravuje chléb";
+            else if(name.Contains("Tesař"))activity="opravuje stánek";
+            else if(name.Contains("Selka"))activity="přebírá zeleninu";
+            else if(name.Contains("Kupec"))activity="rovná zboží";
+            else if(name.Contains("Mlynář"))activity="kontroluje pytle mouky";
+            else activity="zašívá látku";
+            next=Random.Range(0,points.Length);
+        }
         else { points=new[]{new Vector2(710,490),new Vector2(800,510),new Vector2(830,600),new Vector2(740,620)};activity="kontroluje tržiště"; }
         var map=GameObject.Find("Background").GetComponent<SpriteRenderer>().bounds;
         route=new Vector3[points.Length];
