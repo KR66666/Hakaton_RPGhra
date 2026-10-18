@@ -9,9 +9,15 @@ public sealed class VillageNpcRoutine : MonoBehaviour
     private int next;
     private float waitUntil, stalledFor;
     private TextMesh label;
+    private bool isMatej;
+    private bool isPetr;
+    private SpriteRenderer matejRenderer;
+    private Vector2 matejFacing=Vector2.down;
+    private float matejDistance;
     public void Initialize(RpgGame owner,string role,string name)
     {
         game=owner;title=name;label=GetComponentInChildren<TextMesh>();
+        isMatej=role=="elder";isPetr=role=="guard";if(isMatej||isPetr)matejRenderer=GetComponent<SpriteRenderer>();
         if(role=="district")
         {
             Vector3 start=transform.position;
@@ -20,6 +26,12 @@ public sealed class VillageNpcRoutine : MonoBehaviour
             waitUntil=Time.time+Random.Range(2f,5f);return;
         }
         Vector2[] points;
+        if(role=="elder")
+        {
+            Vector3 start=transform.position;
+            route=new[]{start,game.SnapToRoad(start+Vector3.right*.8f),game.SnapToRoad(start+Vector3.down*.7f)};
+            activity="odpočívá na náměstí";waitUntil=Time.time+Random.Range(3f,7f);return;
+        }
         if(role=="guard") { points=new[]{new Vector2(1130,530),new Vector2(1235,530),new Vector2(1300,505),new Vector2(1390,477)};activity="hlídá cestu"; }
         else if(role=="healer") { points=new[]{new Vector2(700,630),new Vector2(670,580),new Vector2(720,540),new Vector2(760,620)};activity="třídí léčivé byliny"; }
         else if(role=="villager")
@@ -41,15 +53,26 @@ public sealed class VillageNpcRoutine : MonoBehaviour
     }
     private void Update()
     {
-        if(game==null || game.BlockMovement || route==null)return;
+        if(game==null || game.BlockMovement || route==null){MatejPose(Vector2.zero);return;}
         if(Vector2.Distance(transform.position,game.Player.position)<1.2f)
-        { if(label!=null)label.text=title+"\n[E] Promluvit";return; }
-        if(Time.time<waitUntil) { if(label!=null)label.text=title+"\n"+activity;return; }
+        { if(label!=null)label.text=title+"\n[E] Promluvit";MatejPose(Vector2.zero);return; }
+        if(Time.time<waitUntil) { if(label!=null)label.text=title+"\n"+activity;MatejPose(Vector2.zero);return; }
         if(label!=null)label.text=title;
         Vector3 before=transform.position;
         transform.position=game.MoveResident(transform,Vector3.MoveTowards(before,route[next],Time.deltaTime*.7f));
+        MatejPose(transform.position-before);
         stalledFor=Vector2.Distance(before,transform.position)<.001f?stalledFor+Time.deltaTime:0;
         if(Vector2.Distance(transform.position,route[next])<.15f || stalledFor>2)
         { next=(next+1)%route.Length;waitUntil=Time.time+Random.Range(3f,7f);stalledFor=0; }
+    }
+    private void MatejPose(Vector2 movement)
+    {
+        if((!isMatej&&!isPetr)||matejRenderer==null)return;
+        bool moving=movement.sqrMagnitude>.000001f;
+        if(moving){matejFacing=movement;matejDistance+=movement.magnitude;}else matejDistance=0;
+        int direction=PlayerMovement.FacingIndex(matejFacing);
+        int step=moving?PlayerMovement.DirectionalWalkingFrame(matejDistance):0;
+        matejRenderer.sprite=isPetr?RpgDirectionalHero.PetrFrame(direction,step):RpgDirectionalHero.MatejFrame(direction,step);
+        matejRenderer.flipX=direction==2;
     }
 }

@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 97830a35badd428f912178ca20611ebb
+guid: 50089884cc6d46468a484eec01a47a38
 TextureImporter:
   serializedVersion: 13
   mipmaps:
     enableMipMap: 0
-  isReadable: 0
+  isReadable: 1
   textureSettings:
     serializedVersion: 2
     filterMode: 0
@@ -13,7 +13,7 @@ TextureImporter:
     wrapV: 1
   textureCompression: 0
   spriteMode: 1
-  spritePixelsToUnits: 369.43972835314
+  spritePixelsToUnits: 100
   spriteMeshType: 1
   spriteAlignment: 9
   spritePivot: {x: 0.5, y: 0.5}
