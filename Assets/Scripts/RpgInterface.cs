@@ -94,7 +94,7 @@ public sealed partial class RpgInterface : MonoBehaviour
 
         var controls = Panel(canvas, "Controls", new Vector2(0, 16), new Vector2(1000, 62), new Vector2(0.5f, 0));
         combat = Label(controls, "", new Vector2(18, -8), new Vector2(964, 23), 17, Gold);
-        var keys = Label(controls, "WASD  pohyb   •   Shift  běh   •   Mezerník  úhyb   •   I  batoh   •   Q  deník   •   M  mapa   •   C  postava   •   Esc  pauza", new Vector2(18, -33), new Vector2(964, 23), 16, RpgVisualTheme.Cream);
+        var keys = Label(controls, "WASD  pohyb   •   Shift  běh   •   I  batoh   •   Q  deník   •   M  mapa   •   C  postava   •   Esc  pauza", new Vector2(18, -33), new Vector2(964, 23), 16, RpgVisualTheme.Cream);
         keys.alignment = TextAnchor.MiddleCenter;
         keys.resizeTextForBestFit=true;keys.resizeTextMinSize=14;keys.resizeTextMaxSize=16;
         combat.alignment = TextAnchor.MiddleCenter;
@@ -116,6 +116,7 @@ public sealed partial class RpgInterface : MonoBehaviour
         modalBody.alignment = TextAnchor.UpperLeft;
         actions = Rect(box, "Actions", new Vector2(32, -378), new Vector2(696, 245));
         modal.gameObject.SetActive(false);
+        controlsWidget=controls;questWidget=tracker;mapWidget=mapButton;characterWidget=characterButton;
         BuildThemedHud();
         // Put game widgets in their own layer so a conversation can hide the HUD
         // without disabling input, the modal, or the transition fade.
@@ -126,30 +127,40 @@ public sealed partial class RpgInterface : MonoBehaviour
         foreach(Transform child in canvas)
             if(child!=hudRoot&&child!=modal&&child.GetComponent<EventSystem>()==null)widgets.Add(child);
         foreach(var widget in widgets)widget.SetParent(hudRoot,false);
+        // Scale each HUD widget around its existing screen anchor; text and its
+        // containing frame grow together, preserving best-fit label ratios.
+        foreach(var widget in widgets)widget.localScale=Vector3.one*1.25f;
+        mapButton.anchoredPosition=new Vector2(-105,-20);
+        characterButton.anchoredPosition=new Vector2(105,-20);
+        tracker.anchoredPosition=new Vector2(-20,-290);
+        goalPanel.anchoredPosition=new Vector2(0,-270);
+        toast.rectTransform.anchoredPosition=new Vector2(0,-365);
+        interactionPanel.anchoredPosition=new Vector2(0,108);
         hudRoot.SetAsFirstSibling();
     }
 
     private void Update()
     {
         if (game == null || game.State == null) return;
+        UpdateHudVisibility();
         var state = game.State;
         locationTitle.text=game.IsTestLocation?"TESTOVACÍ LOKACE [T]":game.LocationName.ToUpperInvariant();
         UpdateThemedHud();
         health.text = $"ZDRAVÍ    {Mathf.CeilToInt(state.health)} / {state.MaxHealth}";
         stamina.text = $"VÝDRŽ    {Mathf.CeilToInt(state.stamina)} / 100";
-        stats.text = $"ÚROVEŇ {state.level}    •    {state.experience}/{state.NextLevelExperience} XP    •    {state.gold} zl.";
+        stats.text = $"BODY VYLEPŠENÍ: {state.UpgradePoints}    •    {state.gold} zl.";
         healthFill.fillAmount = state.health / state.MaxHealth;
         staminaFill.fillAmount = state.stamina / 100;
-        experienceFill.fillAmount = (float)state.experience / state.NextLevelExperience;
+        experienceFill.transform.parent.gameObject.SetActive(false);
         int active = (state.herbsQuest == 1 ? 1 : 0) + (state.suppliesQuest == 1 ? 1 : 0) + (state.deliveryQuest == 1 ? 1 : 0);
         quest.text = QuestSummary() + (active > 0 ? $"\nVedlejší úkoly: {active}  [Q]" : "");
         hint.text = game.NearbyPrompt;
         interactionPanel.gameObject.SetActive(!string.IsNullOrEmpty(hint.text)&&!IsModal);
-        combat.text = $"J  útok     •     H  lektvar ×{state.potions}     •     E  rozhovor / předmět";
+        combat.text = $"J  souboj     •     H  lektvar ×{state.potions}     •     E  rozhovor / předmět";
         UpdateMiniMap();
         if(state.trackedQuest>=0 && state.SideQuestStage(state.trackedQuest)==1) quest.text=SideSummary(state.trackedQuest)+"\nSledovaný úkol • Q pro změnu";
         if(game.IsTestLocation) quest.text="TESTOVACÍ VERZE\nNPC a výbava jsou obnovitelné.\nT • nástroje / F9 • obnovit\nHlavní příběh se nepřepisuje.";
-        else if(!game.InTown)quest.text=game.LocationName.ToUpperInvariant()+"\n"+RpgLocations.Description(state.place);
+        else if(!game.InTown)quest.text=game.LocationName.ToUpperInvariant()+"\n"+state.CellarObjective;
         if (Time.unscaledTime >= toastUntil) toast.text = "";
     }
 
@@ -203,12 +214,11 @@ public sealed partial class RpgInterface : MonoBehaviour
 
     private string QuestSummary()
     {
-        if(game.State.cellarQuest > 0 && game.State.cellarQuest < 7) return "TAJEMSTVÍ SKLEPA\n" + game.State.CellarObjective;
+        if(game.State.currentArea==0) return "CYKLUS "+game.State.cycle+" • SVÍČKY A RITUÁL\n" + game.State.CellarObjective;
         var state = game.State;
-        if(state.currentArea==0) return "POKOJNÝ HAVRANOV\n"+(state.cellarQuest==7?"Vesnický příběh dokončen. Další cesta: [M].":state.CellarObjective);
         if (state.questStage == 0) return "VESNICE V OHROŽENÍ\nPromluv si s rychtářem Radovanem.\nHledej zlaté jméno na náměstí.";
         if (state.questStage == 2) return "OCHRÁNCE HAVRANOVA\nVesnice je zachráněna.\nProzkoumej mapu a vylepši vybavení.";
-        return $"VESNICE V OHROŽENÍ\nNájezdníci  {Mathf.Min(5, state.banditsDefeated)} / 5\nVelitel  {(state.bossDefeated ? "poražen" : state.banditsDefeated >= 5 ? "severně od náměstí" : "odhal jeho úkryt")}\n{(state.CanFinishQuest ? "Vrať se k rychtáři pro odměnu!" : "Útok: J / levé tlačítko myši")}";
+        return $"VESNICE V OHROŽENÍ\nNájezdníci  {Mathf.Min(5, state.banditsDefeated)} / 5\nVelitel  {(state.bossDefeated ? "poražen" : state.banditsDefeated >= 5 ? "severně od náměstí" : "odhal jeho úkryt")}\n{(state.CanFinishQuest ? "Vrať se k rychtáři pro odměnu!" : "J: zahájit tahový souboj")}";
     }
 
     public void Notify(string message, float duration)
@@ -218,7 +228,7 @@ public sealed partial class RpgInterface : MonoBehaviour
 
     public void Close()
     {
-        if(cellarAnimating) return;
+        if(cellarAnimating || game.InBattle) return;
         ResetGuideDialogue();
         if (game.State.health <= 0 && currentModal == "death") return;
         LeaveRoomVisuals();
@@ -229,16 +239,16 @@ public sealed partial class RpgInterface : MonoBehaviour
 
     public void TogglePause()
     {
-        if(cellarAnimating) return;
+        if(cellarAnimating || game.InBattle) return;
         if(game.IsTestLocation){if(IsModal)Close();else ShowTestTools();return;}
         if (game.State.health <= 0) return;
         if (IsModal) { Close(); return; }
         Open("pause", "ODPOČINEK U OHNĚ", "Hra je pozastavena.\n\nPostup se ukládá automaticky každých 30 sekund a po důležitých událostech.\nF5: ručně uložit • F9: načíst uloženou hru.");
-        Action("Mapa úrovní  [M]", ShowWorldMap);
+        Action("Mapa oblastí  [M]", ShowWorldMap);
         Action("Pokračovat", Close);
         Action("Uložit hru", () => game.Save());
         Action("Hlavní nabídka", game.ReturnToMenu);
-        Action("Nový příběh…", ConfirmNewGame);
+        Action("Nastavení • zobrazení panelů", RpgSettings.Show);
     }
 
     public void ToggleInventory()
@@ -251,7 +261,12 @@ public sealed partial class RpgInterface : MonoBehaviour
     private void ShowInventory()
     {
         var state = game.State;
-        Open("inventory", "BATOH A VYBAVENÍ", $"Zlato: {state.gold}     |     Léčivé lektvary: {state.potions}\nLéčivé byliny: {state.herbs}   •   Zásoby pro vesnici: {state.SuppliesFound}/2\nBalíček pro Petra: {(state.deliveryQuest == 1 && !state.parcelDelivered ? "v batohu" : state.parcelDelivered ? "doručen" : "nepřevzat")}\n\nŽelezný meč +{state.weaponLevel}   •   Útok {state.Damage}\nKožená zbroj +{state.armorLevel}   •   Obrana {state.Defense}\n\nÚroveň {state.level}   •   {state.experience}/{state.NextLevelExperience} XP\nLektvar obnoví 60 zdraví. Vybavení vylepšuje Eliška.");
+        string questItems="";
+        if(state.KnowsSideQuest(0) || state.herbs>0)questItems+=$"\nLéčivé byliny: {state.herbs}";
+        if(state.KnowsSideQuest(1) || state.SuppliesFound>0)questItems+=$"\nZásoby pro vesnici: {state.SuppliesFound}/2";
+        if(state.KnowsSideQuest(2))questItems+="\nBalíček pro Petra: "+(state.parcelDelivered?"doručen":state.deliveryQuest==1?"v batohu":"nepřevzat");
+        Open("inventory", "BATOH A VYBAVENÍ", $"Rituální svíčky: {state.candles}/3   •   Cyklus {state.cycle}\nZlato: {state.gold}     |     Léčivé lektvary: {state.potions}"+questItems+
+            $"\n\nŽelezný meč +{state.weaponLevel}   •   Útok {state.Damage}\nKožená zbroj +{state.armorLevel}   •   Obrana {state.Defense}\n\nBody vylepšení: {state.UpgradePoints}\nLektvar obnoví 60 zdraví. Vybavení vylepšuje Eliška.");
         Action("Vylepšit postavu  [C]",ShowCharacterUpgrades);
         Action("Vypít lektvar", () => { game.DrinkPotion(); ShowInventory(); });
         Action("Zavřít  [I / Esc]", Close);
@@ -260,7 +275,7 @@ public sealed partial class RpgInterface : MonoBehaviour
     public void ShowTestTools()
     {
         if(!game.IsTestLocation)return;
-        Open("testTools","TESTOVACÍ LOKACE", "NPC nahoře • předměty uprostřed • výbava dole • nepřátelé na severu.\n\n[E] rozhovor / vyzkoušet předmět • [T] testovací nástroje\n\nMeče i zbroje +0 až +5 lze nasadit bez placení. Vylepšení postavy je v C.\n\nHráč je nezranitelný. Test nikdy nečte ani nepřepisuje uložený příběh.");
+        Open("testTools","TESTOVACÍ LOKACE", "NPC nahoře • předměty uprostřed • výbava dole • nepřátelé na severu.\n\n[E] rozhovor / vyzkoušet předmět • [T] testovací nástroje\n\nMeče i zbroje +0 až +5 lze nasadit bez placení. Vylepšení postavy je v C.\n\nSouboj je tahový. Test nikdy nečte ani nepřepisuje uložený příběh.");
         Action("Obnovit všechna NPC a předměty",game.ResetTestLocation);
         Action(game.State.questStage==1?"Vypnout testovací souboj":"Zapnout testovací souboj",game.ToggleTestCombat);
         Action("Hlavní menu",game.ReturnToMenu);
@@ -271,13 +286,13 @@ public sealed partial class RpgInterface : MonoBehaviour
     {
         if(game.State.health<=0)return;
         var s=game.State;
-        Open("character","POSTAVA • VYLEPŠENÍ",$"{s.HeroName} • úroveň {s.level}\nVolné body: {s.UpgradePoints} • jeden bod za každou novou úroveň\n\nVitalita {s.vitalityRank}/5: +15 maximálního zdraví za bod\nSíla {s.strengthRank}/5: +3 poškození za bod\nHbitost {s.agilityRank}/5: +4 % rychlosti za bod\n\nZdraví {s.MaxHealth} • Útok {s.Damage} • Rychlost +{s.agilityRank*4} %\nMeč +{s.weaponLevel} • Zbroj +{s.armorLevel} (vylepšuje obchodnice)");
-        for(int i=0;i<3;i++)
+        Open("character","DOVEDNOSTI • ODEMČENÍ",$"{s.HeroName} • úroveň {s.level}\nVolné body: {s.UpgradePoints}\nZa dokončený úkol získáš 1 bod. Každá dovednost stojí 1 bod a odemyká se pouze jednou.\n\nVitalita: +20 maximálního zdraví.\nSilný úder: +6 poškození.\nÚhyb: 15% šance vyhnout se zásahu v souboji.\nRozhodující úder: 10% šance okamžitě porazit běžného nepřítele při útoku. Na velitele neplatí.");
+        string[] names={"Vitalita","Silný úder","Úhyb","Rozhodující úder"};
+        for(int i=0;i<4;i++)
         {
-            int attribute=i;int rank=i==0?s.vitalityRank:i==1?s.strengthRank:s.agilityRank;
-            string name=i==0?"Vitalita":i==1?"Síla":"Hbitost";
-            Action(rank>=5?name+" • maximum":name+" • vylepšit za 1 bod",()=>game.UpgradeCharacter(attribute));
-            actions.GetChild(actions.childCount-1).GetComponent<Button>().interactable=s.UpgradePoints>0&&rank<5;
+            int skill=i;
+            Action(names[i]+(s.HasSkill(i)?" • odemčeno":" • odemknout za 1 bod"),()=>game.UpgradeCharacter(skill));
+            actions.GetChild(actions.childCount-1).GetComponent<Button>().interactable=s.UpgradePoints>0&&!s.HasSkill(i);
         }
         Action("Zavřít",Close);
     }
@@ -286,13 +301,23 @@ public sealed partial class RpgInterface : MonoBehaviour
     {
         if (game.State.health <= 0) return;
         if (currentModal == "journal") { Close(); return; }
-        Open("journal", "DENÍK ÚKOLŮ", QuestSummary() + "\n\nVEDLEJŠÍ PŘÍBĚHY\n" + SideSummary(0) + "\n" + SideSummary(1) + "\n" + SideSummary(2) + "\n\nODMĚNY (zlato / XP): hlavní 150/150 • byliny 25/45 • zásoby 60/60 • zásilka 40/35.\nPodrobnosti a sledování otevřeš tlačítkem.");
-        modalBody.fontSize = 18;
-        Action("Tajemství sklepa • deník a lístek", ShowCellarJournal);
+        ShowPhoneJournal();
+    }
+    private void ShowPhoneJournal()
+    {
+        string body=QuestSummary();
+        for(int id=0;id<3;id++)
+            if(game.State.KnowsSideQuest(id))body+="\n\n"+SideSummary(id);
+        Open("journal", "DENÍK ÚKOLŮ", body);
+        modalBody.fontSize = 23;
+        Action(game.State.NpcDefeated("guard")?"Průvodcovy poznámky":"Svíčky a rituál • příběhový deník",game.State.NpcDefeated("guard")?(Action)ShowFallenGuideNotes:ShowCellarJournal);
         Action("Sledovat hlavní úkol",()=>game.TrackQuest(-1));
-        Action("Byliny pro Miru", () => ShowSideQuest(0, false));
-        Action("Ztracené zásoby", () => ShowSideQuest(1, false));
-        Action("Zásilka pro strážného", () => ShowSideQuest(2, false));
+        string[] names={"Byliny pro Miru","Ztracené zásoby","Zásilka pro strážného"};
+        for(int id=0;id<3;id++)
+        {
+            int questId=id;
+            if(game.State.KnowsSideQuest(id))Action(names[id],()=>ShowSideQuest(questId,false));
+        }
         Action("Zavřít  [Q / Esc]", Close);
     }
 
@@ -302,24 +327,26 @@ public sealed partial class RpgInterface : MonoBehaviour
         if(state.currentArea==0 && !game.IsTestLocation)
         {
             Open("mayor", "RYCHTÁŘ RADOVAN", "V Havranově žijeme pokojně. Lidé tu pracují, obchodují a starají se o své domy. Petr Kříž tě provede vesnicí. Zeptej se ho na cestu a na svíčky pro výpravu.\n\n"+state.CellarObjective);
+            NpcChallenge("mayor");
             Action("Úkol: Ztracené zásoby",()=>ShowSideQuest(1,true));
             Action("Odejít",Close);
             return;
         }
         if (state.questStage == 0)
         {
-            Open("mayor", "RYCHTÁŘ RADOVAN", "Havranov obsadili nájezdníci. Lidé se bojí vyjít ven. Pomůžeš nám?\n\nPoraz alespoň 5 nájezdníků. Potom se ukáže jejich velitel Vranek u severní brány. Zneškodni ho a vrať se sem.\n\nOdměna: 150 zlata, 150 XP a 3 lektvary.");
+            Open("mayor", "RYCHTÁŘ RADOVAN", "Havranov obsadili nájezdníci. Lidé se bojí vyjít ven. Pomůžeš nám?\n\nPoraz alespoň 5 nájezdníků. Potom se ukáže jejich velitel Vranek u severní brány. Zneškodni ho a vrať se sem.\n\nOdměna: 150 zlata, 1 bod vylepšení a 3 lektvary.");
             Action("Přijmout úkol", game.AcceptQuest);
         }
         else if (state.CanFinishQuest)
         {
-            Open("mayor", "RYCHTÁŘ RADOVAN", "Vranek padl? Pak je Havranov konečně svobodný! Přijmi naši vděčnost i slíbenou odměnu.\n\n150 zlata • 150 XP • 3 léčivé lektvary");
+            Open("mayor", "RYCHTÁŘ RADOVAN", "Vranek padl? Pak je Havranov konečně svobodný! Přijmi naši vděčnost i slíbenou odměnu.\n\n150 zlata • 1 bod vylepšení • 3 léčivé lektvary");
             Action("Převzít odměnu", game.ClaimReward);
         }
         else
         {
             Open("mayor", "RYCHTÁŘ RADOVAN", state.questStage == 2 ? "V Havranově pro tebe budou dveře vždy otevřené, ochránce. Prozkoumej vesnici a odpočiň si." : "Drž se, příteli. Nakup si lektvary a nezapomeň na úhyb. Zdraví je cennější než zlato.\n\n" + QuestSummary());
         }
+        NpcChallenge("mayor");
         Action("Úkol: Ztracené zásoby", () => ShowSideQuest(1, true));
         Action("Odejít", Close);
     }
@@ -327,7 +354,7 @@ public sealed partial class RpgInterface : MonoBehaviour
     public void ShowRoomEntrance(string kind, string title)
     {
         if(kind!="merchant") return;
-        Open("entrance", "VEJÍT DOVNITŘ?", title + " tě zve dál.\n\nChceš vejít do místnosti a promluvit si?");
+        Open("entrance", "VEJÍT DOVNITŘ?", game.State.NpcDefeated("merchant")?"Obchod je opuštěný. Můžeš prozkoumat místnost a schody do sklepa.":title + " tě zve dál.\n\nChceš vejít do místnosti a promluvit si?");
         Action("Vejít do místnosti", () => game.BeginRoomEntry(kind));
         Action("Odmítnout • zůstat venku", Close);
     }
@@ -335,6 +362,7 @@ public sealed partial class RpgInterface : MonoBehaviour
     {
         if(kind!="merchant")return;
         BuildRoom(kind);
+        if(game.State.NpcDefeated("merchant")){ShowEmptyShop();return;}
         if(kind == "merchant" && game.State.cellarQuest >= 2 && game.State.cellarQuest < 6) ShowCellarMerchant();
         else if(kind == "merchant") ShowShopDialogue(0); else if(kind == "healer") ShowHealer(); else ShowMayor();
     }
@@ -395,6 +423,7 @@ public sealed partial class RpgInterface : MonoBehaviour
             Action("Prohlédnout zboží",ShowMerchant);
             Action("Převzít úkol od obchodnice",()=>ShowSideQuest(2,true));
         }
+        NpcChallenge("merchant");
         Action("Odejít z obchodu",Close);
     }
 
@@ -405,7 +434,7 @@ public sealed partial class RpgInterface : MonoBehaviour
         Action("Koupit lektvar • 15 zl.", () => { game.BuyPotion(); ShowMerchant(); });
         Action(state.weaponLevel >= 5 ? "Meč • maximální stupeň" : $"Vylepšit meč • {40 + state.weaponLevel * 30} zl.", () => { game.Upgrade(true); ShowMerchant(); });
         Action(state.armorLevel >= 5 ? "Zbroj • maximální stupeň" : $"Vylepšit zbroj • {40 + state.armorLevel * 30} zl.", () => { game.Upgrade(false); ShowMerchant(); });
-        Action("Tajemství sklepa", ShowCellarMerchant);
+        NpcChallenge("merchant");
         Action("Úkol: Zásilka pro strážného", () => ShowSideQuest(2, true));
         Action("Odejít", Close);
     }
@@ -416,6 +445,7 @@ public sealed partial class RpgInterface : MonoBehaviour
         Open("healer", "MIRA • BYLINKÁŘKA", $"„S odvahou opatrně. S bylinami ti ale ráda pomohu.“\n\nZdraví: {Mathf.CeilToInt(state.health)} / {state.MaxHealth}\nZlato: {state.gold}   •   Byliny: {state.herbs}   •   Lektvary: {state.potions}\n\nNasbírané byliny přeměním na léčivé lektvary.\nZa 10 zlata tě úplně uzdravím.");
         Action("Vyléčit • 10 zl.", () => { game.Heal(); ShowHealer(); });
         Action("Vyrobit lektvar • 2 byliny", () => { game.CraftPotion(); ShowHealer(); });
+        NpcChallenge("healer");
         Action("Úkol: Byliny pro Miru", () => ShowSideQuest(0, true));
         Action("Odejít", Close);
     }
@@ -426,6 +456,7 @@ public sealed partial class RpgInterface : MonoBehaviour
         string name = id == 0 ? "Byliny pro Miru" : id == 1 ? "Ztracené zásoby" : "Zásilka pro strážného";
         int stage = state.SideQuestStage(id);
         if (stage == 2) return "✓ " + name + " • splněno";
+        if(state.NpcDefeated(id==0?"healer":id==1?"mayor":"merchant"))return name+" • zadavatel poražen, nelze odevzdat";
         if (stage == 0) return name + " • zadává " + (id == 0 ? "Mira" : id == 1 ? "Radovan" : "Eliška");
         if (state.SideQuestReady(id)) return name + " • vrať se pro odměnu";
         return name + " • " + (id == 0 ? $"byliny {Mathf.Min(state.herbs, 4)}/4" : id == 1 ? $"zásoby {state.SuppliesFound}/2" : "doruč balíček Petrovi");
@@ -434,12 +465,15 @@ public sealed partial class RpgInterface : MonoBehaviour
     public void ShowSideQuest(int id, bool atGiver)
     {
         var state = game.State;
+        if(id<0 || id>2)return;
+        if(atGiver){if(state.DiscoverSideQuest(id))game.Save(false);}
+        else if(!state.KnowsSideQuest(id))return;
         string title = id == 0 ? "BYLINY PRO MIRU" : id == 1 ? "ZTRACENÉ ZÁSOBY" : "ZÁSILKA PRO STRÁŽNÉHO";
         string story = id == 0
-            ? "Mira potřebuje 4 léčivé byliny pro nemocné vesničany. Sbírej zelené značky nebo Miřin záhonek západně od středu náměstí; dorůstá každých 45 sekund.\n\nPři odevzdání spotřebuješ 4 byliny.\nOdměna: 25 zlata, 45 XP a 2 lektvary."
+            ? "Mira potřebuje 4 léčivé byliny pro nemocné vesničany. Sbírej zelené značky nebo Miřin záhonek západně od středu náměstí; dorůstá každých 45 sekund.\n\nPři odevzdání spotřebuješ 4 byliny.\nOdměna: 25 zlata, 1 bod vylepšení a 2 lektvary."
             : id == 1
-            ? "Radovan hledá dvě bedny zásob. Jedna zůstala severně od náměstí, druhá na cestě k mostu na východě. Hledej oranžové značky, seber je [E] a vrať se k rychtáři.\n\nOdměna: 60 zlata a 60 XP."
-            : "Eliška potřebuje doručit balíček strážnému Petrovi. Stojí na východní cestě u kamenného mostu. Promluv s ním [E] a pak se vrať k Elišce.\n\nOdměna: 40 zlata, 35 XP a 1 lektvar.";
+            ? "Radovan hledá dvě bedny zásob. Jedna zůstala severně od náměstí, druhá na cestě k mostu na východě. Hledej oranžové značky, seber je [E] a vrať se k rychtáři.\n\nOdměna: 60 zlata a 1 bod vylepšení."
+            : "Eliška potřebuje doručit balíček strážnému Petrovi. Stojí na východní cestě u kamenného mostu. Promluv s ním [E] a pak se vrať k Elišce.\n\nOdměna: 40 zlata, 1 bod vylepšení a 1 lektvar.";
         Open("sideQuest", title, story + "\n\n" + SideSummary(id));
         if (atGiver && state.SideQuestStage(id) == 0)
             Action("Přijmout úkol", () => game.AcceptSideQuest(id));
@@ -447,7 +481,7 @@ public sealed partial class RpgInterface : MonoBehaviour
             Action("Odevzdat úkol a získat odměnu", () => game.CompleteSideQuest(id));
         else if (!atGiver && state.SideQuestStage(id) != 2)
             Action("Úkol přijmeš a odevzdáš u zadavatele", () => game.Notify("Vyhledej zadavatele ve vesnici."));
-        if(state.SideQuestStage(id)==1) Action("Sledovat na mapce",()=>game.TrackQuest(id));
+        if(state.SideQuestStage(id)==1 && !state.NpcDefeated(id==0?"healer":id==1?"mayor":"merchant")) Action("Sledovat na mapce",()=>game.TrackQuest(id));
         Action(atGiver ? "Zpět k rozhovoru" : "Zpět do deníku", () =>
         {
             if (!atGiver) { currentModal = null; ToggleJournal(); }
@@ -458,21 +492,11 @@ public sealed partial class RpgInterface : MonoBehaviour
         Action("Zavřít", Close);
     }
 
-    public void ShowGuard()
-    {
-        if(game.State.cellarQuest != 7) { ShowCellarGuide(); return; }
-        var state = game.State;
-        string message = state.deliveryQuest == 1 && !state.parcelDelivered
-            ? "Neseš zásilku od Elišky? Výborně, čekám na ni celé ráno. Předej mi ji a vyřiď jí mé poděkování."
-            : state.parcelDelivered ? "Balíček dorazil v pořádku. Eliška na tebe čeká s odměnou." : "Hlídám most, aby se nájezdníci nedostali do vesnice. Pokud chceš pomoci, zeptej se Elišky na zásilku.";
-        Open("guard", "STRÁŽNÝ PETR", message);
-        if (state.deliveryQuest == 1 && !state.parcelDelivered) Action("Předat balíček", game.DeliverParcel);
-        Action("Odejít", Close);
-    }
+    public void ShowGuard() { ShowCellarGuide(); }
 
     public void ShowDeath()
     {
-        Open("death", "PADL JSI V BOJI", "Nájezdníci tě přemohli. Mira tě může zachránit a přivést zpátky na náměstí.\n\nZtratíš 10 zlata, ale zachováš si zkušenosti, předměty i splněné části úkolu. Přeživší nepřátelé se uzdraví.");
+        Open("death", "PADL JSI V BOJI", "Souboj skončil porážkou. Znovu se probereš na náměstí.\n\nZtratíš 10 zlata, ale zachováš si odemčené dovednosti, předměty i splněné části úkolu. Přeživší nepřátelé se uzdraví.");
         Action("Vrátit se do vesnice", () => { currentModal = null; game.Respawn(); });
         Action("Hlavní nabídka", game.ReturnToMenu);
     }
@@ -480,8 +504,8 @@ public sealed partial class RpgInterface : MonoBehaviour
     public void ShowVictory()
     {
         var state = game.State;
-        Open("victory", "HAVRANOV JE ZACHRÁNĚN", $"Velitel Vranek je poražen a vesnice oslavuje svého ochránce.\n\nOdměna přidána: 150 zlata, 150 XP a 3 lektvary.\n\nDosažená úroveň: {state.level}\nZískané zlato: {state.gold}\n\nMůžeš pokračovat v průzkumu a vylepšování vybavení.");
-        Action("Mapa • další úroveň / opakování", ShowWorldMap);
+        Open("victory", "HAVRANOV JE ZACHRÁNĚN", $"Velitel Vranek je poražen a vesnice oslavuje svého ochránce.\n\nOdměna přidána: 150 zlata, 1 bod vylepšení a 3 lektvary.\n\nBody vylepšení: {state.UpgradePoints}\nZískané zlato: {state.gold}\n\nMůžeš pokračovat v průzkumu a vylepšování vybavení.");
+        Action("Mapa • další oblast / opakování", ShowWorldMap);
         Action("Pokračovat v dobrodružství", Close);
         Action("Uložit a odejít do nabídky", game.ReturnToMenu);
     }
@@ -524,8 +548,8 @@ public sealed partial class RpgInterface : MonoBehaviour
         Vector3 pos=game.Player.position;
         var dot=Rect(mapContent,"Player position",new Vector2(Mathf.Clamp01((pos.x+20)/40)*680,-Mathf.Clamp01((15.333f-pos.y)/26.666f)*250),new Vector2(10,10));
         dot.gameObject.AddComponent<Image>().color=Color.cyan;
-        Action("Modrá tečka = tvoje poloha • zlatá značka = aktuální úroveň",()=>{});
-        Action("Klikni na úroveň • zelená = splněná",()=>{});
+        Action("Modrá tečka = tvoje poloha • zlatá značka = aktuální oblast",()=>{});
+        Action("Klikni na oblast • zelená = splněná",()=>{});
         Action("Zavřít mapu",Close);
     }
     private void ShowTravel(int area, int companion, bool cart)
@@ -536,21 +560,21 @@ public sealed partial class RpgInterface : MonoBehaviour
         string problem=state.TravelProblem(area,companion,cart);
         string who=companion==0?"Sám / sama":companion==1?"Petr • občasná rada, bez doprovodu":"Mira • léčí během cesty";
         Open("travel",RpgCampaign.Names[area],
-            (done?"DOKONČENO • můžeš projít znovu":unlocked?"DOSTUPNÁ ÚROVEŇ":"ZAMČENO")+
+            (done?"DOKONČENO • můžeš projít znovu":unlocked?"DOSTUPNÁ OBLAST":"ZAMČENO")+
             "\n\nPodmínka: "+(area==0?"dostupné od začátku":"dokončit "+RpgCampaign.Names[area-1])+
             "\nCesta: "+(cart?"vozem • 10 zlata":"pěšky • zdarma")+"\nDoprovod: "+who+
             "\n\nPetr: dokončit Zásilku pro strážného. Mira: dokončit Byliny pro Miru."+
             "\n"+(problem??"Všechny podmínky splněné.")+
-            "\n\nČtyři bojové úrovně ve stejné vesnici. Cíl: porazit 5 nájezdníků a velitele, odměnu převzít u Radovana.");
-        modalBody.fontSize=18;
+            "\n\nČtyři bojové oblasti ve stejné vesnici. Cíl: porazit 5 nájezdníků a velitele, odměnu převzít u Radovana.");
+        modalBody.fontSize=23;
         if(unlocked)
         {
             Action("Doprovod: "+who+" • změnit",()=>ShowTravel(area,(companion+1)%3,cart));
             Action("Způsob cesty: "+(cart?"vůz":"pěšky")+" • změnit",()=>ShowTravel(area,companion,!cart));
             if(problem==null)
             {
-                if(area==state.currentArea && !done) Action("Pokračovat v této úrovni",Close);
-                else Action(done?"Projít úroveň znovu":"Vyrazit do úrovně",()=>game.TravelToArea(area,companion,cart,done));
+                if(area==state.currentArea && !done) Action("Pokračovat v této oblasti",Close);
+                else Action(done?"Projít oblast znovu":"Vyrazit do oblasti",()=>game.TravelToArea(area,companion,cart,done));
             }
         }
         Action("Zpět na mapu",ShowWorldMap);
@@ -571,7 +595,7 @@ public sealed partial class RpgInterface : MonoBehaviour
         if (InRoom && (kind == "map" || kind == "pause" || kind == "death" || kind == "travel" || kind == "character")) LeaveRoomVisuals();
         if (mapContent != null) { mapContent.gameObject.SetActive(false); Destroy(mapContent.gameObject); mapContent = null; }
         currentModal = kind;
-        modalBody.fontSize = 22;
+        modalBody.fontSize = 28;
         modalTitle.text = title; modalBody.text = body;
         for (int i = actions.childCount - 1; i >= 0; i--)
         {
@@ -583,22 +607,25 @@ public sealed partial class RpgInterface : MonoBehaviour
             ApplyConversationLayout(kind,title);
             if(kind=="cellarGuide"||kind=="guideInstruction"||kind=="guard")BuildGuideDialogue();
         }
+        else if(PhoneOpen)ApplyPhoneLayout();
+        else ApplyScrollableBody(new Rect(32,94,836,280),28);
     }
 
     private void Action(string title, Action callback)
     {
         int index=actions.childCount;
-        float width=conversationActive?RpgDialogueLayout.ButtonWidth:696;
-        float height=conversationActive?RpgDialogueLayout.ButtonHeight:currentModal=="journal"?32:42;
-        float spacing=currentModal=="journal"?38:50;
-        var position=conversationActive?RpgDialogueLayout.ButtonPosition(index):new Vector2(0,-index*spacing);
+        float width=PhoneOpen?260:conversationActive?RpgDialogueLayout.ButtonWidth:836;
+        float height=PhoneOpen?58:conversationActive?RpgDialogueLayout.ButtonHeight:50;
+        float spacing=58;
+        var position=PhoneOpen?new Vector2(index%2*276,-index/2*72):conversationActive?RpgDialogueLayout.ButtonPosition(index):new Vector2(0,-index*spacing);
         var rect=Rect(actions,title,position,new Vector2(width,height));
-        var image=rect.gameObject.AddComponent<Image>();RpgVisualTheme.Panel(image);
+        var image=rect.gameObject.AddComponent<Image>();
+        if(PhoneOpen)image.color=new Color(.10f,.22f,.29f);else RpgVisualTheme.Panel(image);
         var button=rect.gameObject.AddComponent<Button>();button.targetGraphic=image;
         var colors=button.colors;colors.highlightedColor=new Color(1,.88f,.6f);colors.pressedColor=new Color(.6f,.7f,.6f);button.colors=colors;
         button.onClick.AddListener(()=>callback());
-        var text=Label(rect,title,new Vector2(12,0),new Vector2(width-24,height),conversationActive?19:21,Gold);
-        text.alignment=TextAnchor.MiddleCenter;text.resizeTextForBestFit=true;text.resizeTextMinSize=16;text.resizeTextMaxSize=conversationActive?19:21;
+        var text=Label(rect,title,new Vector2(12,0),new Vector2(width-24,height),PhoneOpen?22:conversationActive?24:26,PhoneOpen?new Color(.78f,.94f,.96f):Gold);
+        text.alignment=TextAnchor.MiddleCenter;text.resizeTextForBestFit=true;text.resizeTextMinSize=20;text.resizeTextMaxSize=PhoneOpen?22:conversationActive?24:26;
     }
     private void SetGameplayHudVisible(bool visible)
     {

@@ -3,13 +3,13 @@ using UnityEngine;
 // One geometry for all conversations, regardless of speaker or backdrop.
 public static class RpgDialogueLayout
 {
-    public static readonly Vector2 Size=new Vector2(1320,430);
-    public static readonly Rect Portrait=new Rect(24,22,238,386);
-    public static readonly Rect Title=new Rect(286,22,1008,38);
-    public static readonly Rect Body=new Rect(286,76,1008,210);
-    public static readonly Rect Actions=new Rect(286,310,1008,98);
-    public const float ButtonWidth=320,ButtonHeight=46;
-    public static Vector2 ButtonPosition(int index) => new Vector2(index%3*344,-index/3*52);
+    public static readonly Vector2 Size=new Vector2(1320,540);
+    public static readonly Rect Portrait=new Rect(24,22,238,496);
+    public static readonly Rect Title=new Rect(286,22,1008,44);
+    public static readonly Rect Body=new Rect(286,84,1008,210);
+    public static readonly Rect Actions=new Rect(286,314,1008,204);
+    public const float ButtonWidth=492,ButtonHeight=60;
+    public static Vector2 ButtonPosition(int index) => new Vector2(index%2*516,-index/2*72);
     public static bool IsConversation(string kind)
     {
         switch(kind)
@@ -42,13 +42,15 @@ public sealed partial class RpgInterface
         foreach(var item in new[]{conversationPortrait,conversationViewport,conversationScrollBar})
             if(item!=null){item.gameObject.SetActive(false);Destroy(item.gameObject);}
         conversationPortrait=conversationViewport=conversationScrollBar=null;conversationActive=false;
-        Anchor(box,new Vector2(.5f,.5f),Vector2.zero);box.sizeDelta=new Vector2(760,650);
+        if(phoneChrome!=null){phoneChrome.gameObject.SetActive(false);Destroy(phoneChrome.gameObject);phoneChrome=null;}
+        modalTitle.resizeTextForBestFit=false;modalTitle.color=Gold;modalBody.color=new Color(.87f,.89f,.91f);
+        Anchor(box,new Vector2(.5f,.5f),Vector2.zero);box.sizeDelta=new Vector2(900,760);
         RpgVisualTheme.Panel(box.GetComponent<UnityEngine.UI.Image>());
-        var outline=box.GetComponent<UnityEngine.UI.Outline>();if(outline!=null)outline.enabled=true;
-        PlaceDialogueRect(modalTitle.rectTransform,new Rect(32,22,650,45));modalTitle.fontSize=30;
-        PlaceDialogueRect(modalBody.rectTransform,new Rect(32,85,696,290));modalBody.fontSize=22;modalBody.lineSpacing=1;
+        var outline=box.GetComponent<UnityEngine.UI.Outline>();if(outline!=null){outline.enabled=true;outline.effectColor=new Color(.5f,.4f,.23f);outline.effectDistance=new Vector2(2,2);}
+        PlaceDialogueRect(modalTitle.rectTransform,new Rect(32,22,836,55));modalTitle.fontSize=38;
+        PlaceDialogueRect(modalBody.rectTransform,new Rect(32,94,836,280));modalBody.fontSize=28;modalBody.lineSpacing=1;
         modalBody.resizeTextForBestFit=false;modalBody.alignment=TextAnchor.UpperLeft;
-        PlaceDialogueRect(actions,new Rect(32,378,696,245));
+        PlaceDialogueRect(actions,new Rect(32,394,836,344));
         modal.GetComponent<UnityEngine.UI.Image>().color=new Color(0,0,0,.4f);
     }
     private void ApplyConversationLayout(string kind,string speaker)
@@ -74,10 +76,16 @@ public sealed partial class RpgInterface
         var lip=Rect(conversationPortrait,"Spodní hrana rámu",Vector2.zero,new Vector2(RpgDialogueLayout.Portrait.width-4,7));
         Anchor(lip,new Vector2(.5f,0),Vector2.zero);
         lip.gameObject.AddComponent<UnityEngine.UI.Image>().color=new Color(.20f,.14f,.085f);
-        PlaceDialogueRect(modalTitle.rectTransform,RpgDialogueLayout.Title);modalTitle.fontSize=27;
+        PlaceDialogueRect(modalTitle.rectTransform,RpgDialogueLayout.Title);modalTitle.fontSize=34;
         PlaceDialogueRect(actions,RpgDialogueLayout.Actions);
 
-        var textArea=RpgDialogueLayout.Body;textArea.width-=16;
+        ApplyScrollableBody(RpgDialogueLayout.Body,28);
+    }
+    private void ApplyScrollableBody(Rect textArea,int fontSize)
+    {
+        var box=modalTitle.transform.parent.GetComponent<RectTransform>();
+        float scrollbarX=textArea.xMax-8;
+        textArea.width-=16;
         conversationViewport=Rect(box,"Text rozhovoru",Vector2.zero,Vector2.zero);PlaceDialogueRect(conversationViewport,textArea);
         conversationViewport.gameObject.AddComponent<UnityEngine.UI.Image>().color=Color.clear;
         conversationViewport.gameObject.AddComponent<UnityEngine.UI.RectMask2D>();
@@ -87,13 +95,13 @@ public sealed partial class RpgInterface
         modalBody.transform.SetParent(conversationViewport,false);
         var body=modalBody.rectTransform;body.anchorMin=new Vector2(0,1);body.anchorMax=new Vector2(1,1);body.pivot=new Vector2(0,1);
         body.anchoredPosition=Vector2.zero;body.sizeDelta=new Vector2(0,textArea.height);
-        modalBody.fontSize=22;modalBody.lineSpacing=1.15f;modalBody.resizeTextForBestFit=false;modalBody.supportRichText=true;
+        modalBody.fontSize=fontSize;modalBody.lineSpacing=1.15f;modalBody.resizeTextForBestFit=false;modalBody.supportRichText=true;
         scroll.content=body;
         conversationTextFit=modalBody.GetComponent<UnityEngine.UI.ContentSizeFitter>()??modalBody.gameObject.AddComponent<UnityEngine.UI.ContentSizeFitter>();
         conversationTextFit.enabled=true;conversationTextFit.horizontalFit=UnityEngine.UI.ContentSizeFitter.FitMode.Unconstrained;
         conversationTextFit.verticalFit=UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
         conversationScrollBar=Rect(box,"Posuvník textu",Vector2.zero,Vector2.zero);
-        PlaceDialogueRect(conversationScrollBar,new Rect(RpgDialogueLayout.Body.xMax-8,textArea.y,8,textArea.height));
+        PlaceDialogueRect(conversationScrollBar,new Rect(scrollbarX,textArea.y,8,textArea.height));
         conversationScrollBar.gameObject.AddComponent<UnityEngine.UI.Image>().color=new Color(.12f,.08f,.05f);
         var bar=conversationScrollBar.gameObject.AddComponent<UnityEngine.UI.Scrollbar>();bar.direction=UnityEngine.UI.Scrollbar.Direction.BottomToTop;
         var handle=Rect(conversationScrollBar,"Úchyt",Vector2.zero,Vector2.zero);

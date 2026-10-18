@@ -51,21 +51,21 @@ public sealed class MainMenu : MonoBehaviour
         var aspect = backdrop.AddComponent<AspectRatioFitter>();
         aspect.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
         aspect.aspectRatio = castle.sprite != null ? castle.sprite.rect.width / castle.sprite.rect.height : 1.5f;
-        Label("Title", canvas.transform, "HAVRANOV", 72, new Vector2(0, 350), new Vector2(920, 96));
-        Label("Subtitle", canvas.transform, "Strážce vesnice • středověké RPG", 26, new Vector2(0, 278), new Vector2(920, 40));
-        Label("Tagline", canvas.transform, "Meč, odvaha a vesnice, která potřebuje hrdinu.", 24, new Vector2(0, -354), new Vector2(920, 40));
-        Label("Controls", canvas.transform, "WASD • pohyb     J • útok     E • rozhovor     I • batoh", 22, new Vector2(0, -406), new Vector2(920, 36));
-        Label("Save hint", canvas.transform, "Nová hra začíná od začátku. Uložený příběh otevři přes Načíst hru.", 20, new Vector2(0, -448), new Vector2(1100, 32));
+        Label("Title", canvas.transform, "HAVRANOV", 72, new Vector2(0, 365), new Vector2(920, 96));
+        Label("Subtitle", canvas.transform, "Strážce vesnice • středověké RPG", 26, new Vector2(0, 255), new Vector2(920, 40));
+        Label("Tagline", canvas.transform, "Meč, odvaha a vesnice, která potřebuje hrdinu.", 24, new Vector2(0, -324), new Vector2(920, 40));
+        Label("Controls", canvas.transform, "WASD • pohyb     J • tahový souboj     E • rozhovor     I • batoh", 22, new Vector2(0, -378), new Vector2(920, 36));
+        Label("Save hint", canvas.transform, "Nová hra začíná od začátku. Uložený příběh otevři přes Načíst hru.", 20, new Vector2(0, -429), new Vector2(1100, 32));
 
         heroSelection = Label("Hero selection", canvas.transform, "Vzhled postavy nemění její vlastnosti.", 24, new Vector2(0, 180), new Vector2(920, 44));
-        var play = Button(canvas.transform, "Hrát", 22, StartGame);
-        Button(canvas.transform, "Lokace", -74, ShowLocations);
-        Button(canvas.transform, "Archiv", -170, OpenArchive);
-        Button(canvas.transform, "Konec", -266, Quit);
+        var play = Button(canvas.transform, "Hrát", 42, StartGame);
+        Button(canvas.transform, "Lokace", -54, ShowLocations);
+        Button(canvas.transform, "Archiv", -150, OpenArchive);
+        Button(canvas.transform, "Konec", -246, Quit);
 
         var settings=Button(canvas.transform,"Nastavení",0,RpgSettings.Show);
         var sr=settings.GetComponent<RectTransform>();sr.anchorMin=sr.anchorMax=new Vector2(1,0);sr.pivot=new Vector2(1,0);sr.anchoredPosition=new Vector2(-30,28);sr.sizeDelta=new Vector2(260,64);
-        var st=settings.GetComponentInChildren<Text>();st.rectTransform.sizeDelta=new Vector2(190,60);st.rectTransform.anchoredPosition=new Vector2(20,0);st.fontSize=23;
+        var st=settings.GetComponentInChildren<Text>();st.rectTransform.sizeDelta=new Vector2(190,60);st.rectTransform.anchoredPosition=new Vector2(20,0);st.fontSize=29;
         var gear=Box("Settings gear",settings.transform,new Vector2(-94,0),new Vector2(34,34));var gi=gear.gameObject.AddComponent<Image>();gi.sprite=RpgSettings.GearSprite();gi.raycastTarget=false;
         if (EventSystem.current == null)
         {
@@ -199,7 +199,8 @@ public sealed class MainMenu : MonoBehaviour
         var text = Box(name, parent, position, dimensions).gameObject.AddComponent<Text>();
         text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         text.text = content;
-        text.fontSize = size;
+        text.fontSize = Mathf.RoundToInt(size*1.25f);
+        text.rectTransform.sizeDelta=new Vector2(dimensions.x,dimensions.y*1.25f);
         text.color = RpgVisualTheme.Cream;
         text.alignment = TextAnchor.MiddleCenter;
         text.raycastTarget = false;

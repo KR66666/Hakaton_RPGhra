@@ -9,8 +9,8 @@ Po stisku **Hrát** zvol **Nová hra** nebo **Načíst hru**. Nová hra otevře 
 | --- | --- |
 | WASD / šipky | Pohyb |
 | Shift | Běh, spotřebovává výdrž |
-| J / levé tlačítko myši | Útok mečem na blízké nepřátele |
-| Mezerník | Krátký úhyb s nezranitelností, stojí 25 výdrže |
+| J | Zahájit tahový souboj s blízkým nepřítelem |
+| C | Dovednosti: odemčení za body z úkolů |
 | E | Rozhovor / sebrání předmětu v dosahu |
 | H | Vypít léčivý lektvar |
 | I | Batoh a vybavení |
@@ -28,7 +28,7 @@ Po stisku **Hrát** zvol **Nová hra** nebo **Načíst hru**. Nová hra otevře 
 5. Na severu se objeví velitel Vranek. Poraz ho a vrať se k Radovanovi pro odměnu.
 6. Po splnění lze pokračovat v průzkumu. Po smrti tě Mira zachrání za ztrátu až 10 zlata.
 
-XP zvyšují úroveň, maximální zdraví a útok. Vybavení lze vylepšit pětkrát.
+Úrovně a XP se nepoužívají. Za dokončený úkol získáš jeden bod, který slouží pouze k jednorázovému odemčení dovednosti. Vybavení lze vylepšit pětkrát.
 Dialogy a inventář pozastavují pohyb i nepřátelskou AI.
 
 ## Vedlejší úkoly
@@ -98,10 +98,14 @@ Průchodnost celé vesnice: opravené rozpojené západní a severní cesty, dop
 
 Hlavní menu > Lokace > Testovací verze: samostatný čerstvý test nad mapou vesnice. Čtyři NPC, léčivý lektvar, byliny, záhonek, truhla, obě zásilky, meče a zbroje +0 až +5, čtyři vzhledy nájezdníků a velitel. E zkouší objekty, T/Esc otevře testovací nástroje (obnovit obsah, zapnout/vypnout souboj, návrat do hlavního menu). Hráč je nezranitelný, začíná na úrovni 10 se zlatem a lektvary; C zkouší vylepšení. Ukládání i načítání hlavního příběhu jsou v testovacím režimu vypnuté, F9 obnovuje test. Normální Hrát vždy spouští příběh.
 
-## Tajemství sklepa
-U východního mostu promluv s Petrem Křížem [E] a vyraz s ním. Děda Matěj na náměstí tě pošle za Eliškou pro svíčky. V obchodě se rozhodni, zda sestoupíš do sklepa. Po setkání s krysami zvol ústup, u schodů vezmi a otevři lístek, nebo pokračuj bez něj. Pro lístek se lze vrátit. Vzkaz najdeš v deníku [Q] → Tajemství sklepa. Ukaž ho Petrovi pro jednorázovou odměnu. Průběh se ukládá. V testovací lokaci lze ukázku otevřít přes Tools → RPG → Preview Cellar Story (Ctrl+Shift+F10).
+## Svíčky a první rituál
+Průvodce Petr → děda Matěj → obchodnice Eliška → sklep. Ve sklepě jsou tři volby: **utéct** (bez svíček, lze se vrátit), **rychle skočit pro svíčky** (3 svíčky, ztráta až 20 HP; zůstane nejméně 1 HP), nebo **opatrně dojít** (3 svíčky bez zranění). Svíčky nelze získat opakovaně. V batohu i příběhovém deníku je jejich počet.
 
-Havranov je pokojná vesnice: místní obyvatelé neútočí a hráč jim neubližuje. Šest řemeslníků a sousedů chodí po cestách, zastavuje se u práce a nabízí rozhovor [E]. Dokončením Tajemství sklepa se odemkne další lokace [M], takže postup nevyžaduje boj s vesničany. Nepřátelé patří do dalších výprav; v testu se boj zapíná výslovně.
+Vrať se k Petrovi a zvol **Mám svíčky • přijmout radu**. Průvodce tě pošle do **zříceniny kostela**; ukazatel cíle označí cestu. U trojúhelníkového obrazce stiskni **E** a potvrď rituál. Tři svíčky se postupně rozsvítí, obrazec zrudne, hrdina zemře a probudí se do **druhého cyklu**. Herní stav a předměty se obnoví na výchozí hodnoty; zůstane vzhled, počet úmrtí a vzpomínka na selhání. Druhý cyklus se automaticky uloží i do zálohy. Jeho další příběh zatím není připraven. První rituál v něm nelze opakovat.
+
+Svíčky, rada průvodce i cyklus se ukládají. Starší uložení s nalezeným vzkazem navážou rozhovorem o svíčkách. Původní lístek a odměna 45 zlata / 60 XP jsou z této větve odstraněny. Kontroly: **Tools → RPG → Check Candle Ritual Story**.
+
+Havranov je pokojná vesnice: obyvatelé nezačínají boj sami, ale hráč je může vyzvat k tahovému souboji v rozhovoru. Šest řemeslníků a sousedů chodí po cestách, zastavuje se u práce a nabízí rozhovor [E]. Do nových lokalit lze přejít přes zlaté značky [E]; hlavní větev vede do zříceniny kostela a nevyžaduje boj s vesničany. Nepřátelé patří do dalších výprav; v testu se boj zapíná výslovně.
 
 ## Jednotný světlý pixelový vzhled
 Mapa, postavy, obchod a portréty sdílejí barevnou pixelovou paletu; zeleň je výraznější, kámen teplejší a voda tyrkysová. Rozložení mapy a kolize zůstávají stejné. Herní panely, dialogy, menu, archiv i nastavení používají společné rámečky. Zdraví ukazuje také deset srdíček; meč a lektvar mají vlastní sloty. Předměty ve světě mají ikony meče, zbroje, lektvaru, bylin nebo truhly. Úprava se aplikuje při spuštění, původní obrázky se nepřepisují.
@@ -116,3 +120,32 @@ Aktuální pozadí `SpaciousVillage.png` má šest velkých budov: obchod, koste
 
 ## Rozšířené středověké město
 Nyní se načítá `MedievalTownExpanded.png`: přibližně trojnásobná plocha, další hrázděné, kamenné i doškové domy, hradní brána, kovárna, tržní čtvrť, vodní mlýn a přístaviště. Nově je historicky přepracovaná i původní knihovna, kostel, obchod a hostinec uprostřed. Cesty kombinují dlažbu a udusané klikaté vozové uličky. Celá průchozí síť je propojená a noví obyvatelé pracují v jednotlivých čtvrtích. Staré pozice hlavních NPC a úkolů se při rozšíření zachovávají.
+
+Text je celkově zvětšený na 1,25× původní velikosti: rozhovory 28, názvy 34 a tlačítka až 24. HUD má společně zvětšené písmo i rámečky; větší text používají také nabídky a nastavení. Dialog má větší rám a dvě tlačítka v řádku; dlouhý text lze posouvat. První rituál vyžaduje tři svíčky, po jedné v každém rohu trojúhelníku.
+
+## Mobil a viditelnost rozhraní
+**I** otevře mobil hlavní postavy v aplikaci Inventář, **Q** v aplikaci Úkoly. V horní části mobilu lze aplikace přepínat, delší obsah posouvat a klávesou Esc mobil odložit. Příběhový deník se otevírá uvnitř mobilu.
+
+**F2** skryje / znovu zobrazí spodní nápovědu, panel aktuálního úkolu a tlačítka Mapa/Postava. Jednotlivé části lze přepnout v **Esc → Nastavení → Rozhraní hry** (také přes nastavení hlavní nabídky). Volby se uchovají mezi spuštěními. Klávesy I, Q, M a C zůstávají funkční i se skrytými panely.
+
+Aktivní záložka mobilu je tmavší. Vedlejší příběhy, jejich popisy a tlačítka se v aplikaci Úkoly zobrazí až po rozhovoru o daném úkolu s jeho zadavatelem. Objevení se ukládá i bez přijetí úkolu; dříve přijaté nebo dokončené úkoly zůstávají známé. Nová hra i druhý cyklus začínají bez objevených vedlejších úkolů. Prázdné položky vedlejších úkolů se před objevením nezobrazují ani v inventáři.
+
+## Tahové souboje a odemykání dovedností
+Úrovně postavy a XP jsou nahrazené body vylepšení. Za odevzdání každého vedlejšího úkolu, dokončení hlavního úkolu oblasti a doručení svíček průvodci získáš jeden bod. Stejnou odměnu nelze v daném cyklu získat opakovaně. Nepřátelé dávají pouze zlato. C otevře nabídku čtyř dovedností za jeden bod; každou lze odemknout pouze jednou:
+- Vitalita: +20 maximálního HP.
+- Silný úder: +6 poškození.
+- Úhyb: 15% šance vyhnout se nepřátelskému zásahu.
+- Rozhodující úder: 10% šance okamžitě porazit běžného nepřítele při útoku, bez účinku na velitele.
+
+Souboj začne při přiblížení k aktivnímu nepříteli nebo klávesou J v jeho dosahu. Hráč volí útok, krytí (poloviční příští zásah), lektvar nebo útěk (50 %). Po platné akci následuje právě jeden tah nepřítele. Zabitý nepřítel už neútočí; neplatné použití lektvaru nespotřebuje tah. Čas, WASD, myš ani mezerník souboj neposouvají. Nelze jej obejít zavřením okna nebo načtením během boje. Ukládá se před začátkem a po dokončení; při ukončení aplikace během boje zůstává poslední stav před soubojem. Po útěku se zranění a použité lektvary uchovají; nepřítel se doplní a počká, než hráč odejde z jeho dosahu.
+
+Body i odemčené dovednosti se ukládají a přežijí příběhový přechod do druhého cyklu. Nová hra začíná bez nich. Starší uložené zvýšení atributů se převede na odpovídající dovednosti a dokončené úkoly dostanou body pouze jednou. Testovací lokace má čtyři samostatné body pro vyzkoušení všech dovedností. Kontroly: Tools → RPG → Check Turn Combat and Skills.
+
+F2 a přepínač spodní nápovědy nyní skrývají také oba panely Souboj / Lektvar.
+
+## Souboj s NPC přes rozhovor
+U obyvatel, průvodce, dědy Matěje, Miry, Radovana i obchodnice je volba **Vyzvat k souboji**. Obchodnici lze vyzvat v rozhovoru, ve sklepní větvi i při prohlížení zboží. Výzva je dostupná u skutečně přítomného NPC (automatické rady průvodce na dálku ji nenabízejí). Následuje běžný tahový souboj; průvodce má 72 HP, ostatní NPC 48 HP.
+
+Vítězství odstraní NPC z lokace a uloží jeho porážku samostatně od nepřátel kampaně. Nevydává body za úkoly, zlato ani postup v počítadle nájezdníků. Po útěku či prohře zůstává NPC k dispozici. Načtení a cestování poražená NPC neobnoví; nový příběh nebo nový cyklus ano. Služby a odevzdávání vedlejších úkolů poraženého zadavatele nejsou dostupné.
+
+Hlavní větev se svíčkami má náhradní stopy: poražený Matěj a Eliška zanechají cestu do obchodu/sklepa, obchod zůstává přístupný. Poražený průvodce zanechá **Průvodcovy poznámky** v mobilu Q; po získání tří svíček lze podle nich odemknout rituál. Tato náhradní cesta přidá stejnou jednorázovou odměnu za svíčky a neblokuje druhý cyklus.

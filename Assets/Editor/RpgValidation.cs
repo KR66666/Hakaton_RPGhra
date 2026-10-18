@@ -10,10 +10,10 @@ public static class RpgValidation
     {
         EditorApplication.delayCall += () =>
         {
-            if (!SessionState.GetBool("RPG.Validation.v35", false))
+            if (!SessionState.GetBool("RPG.Validation.v36", false))
             {
                 Run();
-                SessionState.SetBool("RPG.Validation.v35", true);
+                SessionState.SetBool("RPG.Validation.v36", true);
             }
         };
     }
@@ -98,15 +98,15 @@ public static class RpgValidation
             guideState.guideSeenStage=2;
             var guideSave=JsonUtility.FromJson<RpgState>(JsonUtility.ToJson(guideState));
             Check(!guideSave.NeedsGuideInstruction,"Guide confirmation persists in saved progress",ref checks);
-            var story = new RpgState();
-            Check(!story.OpenCellarNote() && !story.FinishCellarQuest(), "Cellar note and rewards require progress", ref checks);
-            story.cellarNoteTaken=true; story.cellarQuest=5;
-            Check(story.OpenCellarNote() && story.cellarQuest==6 && !story.OpenCellarNote(), "Read note once and unlock clue",ref checks);
-            int previousGold=story.gold;
-            Check(story.FinishCellarQuest() && story.gold==previousGold+45 && story.cellarQuest==7 && !story.FinishCellarQuest(), "Cellar reward cannot duplicate",ref checks);
-            Check(story.completedAreas.Contains(0) && story.AreaUnlocked(1),"Peaceful cellar quest unlocks next location without attacking villagers",ref checks);
-            var storySave=JsonUtility.FromJson<RpgState>(JsonUtility.ToJson(story));
-            Check(storySave.cellarNoteOpened && storySave.cellarNoteTaken && storySave.cellarQuest==7,"Cellar progress survives save",ref checks);
+            checks+=RpgRitualValidation.CheckStory();
+            checks+=RpgTurnCombatValidation.CheckRules();
+            var story=new RpgState{cellarQuest=4};story.CollectCandles(false);story.ExplainRitual();
+            var storySave=JsonUtility.FromJson<RpgState>(JsonUtility.ToJson(story));storySave.Normalize();
+            Check(storySave.candles==3 && storySave.ritualKnown && storySave.cellarQuest==7,"Candles and ritual instruction survive save",ref checks);
+            storySave.place=RpgPlace.ChurchRuins;
+            var second=storySave.BeginSecondCycle();
+            var secondSave=JsonUtility.FromJson<RpgState>(JsonUtility.ToJson(second));secondSave.Normalize();
+            Check(secondSave.cycle==2 && secondSave.ritualFailed && secondSave.candles==0 && secondSave.health==100,"Second cycle survives save",ref checks);
             var state = new RpgState();
             Check(state.level == 1 && state.MaxHealth == 100 && state.Damage == 18, "Initial stats", ref checks);
             Check(!state.FinishQuest(), "Cannot claim an unaccepted quest", ref checks);
@@ -118,13 +118,13 @@ public static class RpgValidation
             Check(state.FinishQuest() && state.questStage == 2 && state.gold == 185 && state.potions == 6, "Quest rewards", ref checks);
             Check(!state.FinishQuest() && state.gold == 185, "Rewards cannot be duplicated", ref checks);
             state = new RpgState();
-            Check(state.AddExperience(175) && state.level == 3 && state.experience == 35 && state.health == 140, "Multiple level gains", ref checks);
+            Check(!state.AddExperience(175) && state.level==1 && state.experience==0 && state.UpgradePoints==0,"Experience no longer grants levels or skills",ref checks);
             Check(!state.DrinkPotion() && state.potions == 3, "Full-health potion is not consumed", ref checks);
             state.health = 20;
             Check(state.DrinkPotion() && state.health == 80 && state.potions == 2, "Potion heals and consumes once", ref checks);
             Check(state.Spend(15) && state.gold == 20 && !state.Spend(21) && !state.Spend(-5), "Gold cannot underflow", ref checks);
             state.weaponLevel = 2; state.armorLevel = 2;
-            Check(state.Damage == 44 && state.Defense == 6, "Equipment scales stats", ref checks);
+            Check(state.Damage == 36 && state.Defense == 6, "Equipment scales stats", ref checks);
             state.collected.Add("chest1"); state.defeated.Add("bandit0");
             var restored = JsonUtility.FromJson<RpgState>(JsonUtility.ToJson(state));
             restored.Normalize();
@@ -209,11 +209,11 @@ public static class RpgValidation
                 MedievalNpcAppearance.Get("boss") != MedievalNpcAppearance.Get("bandit"), "Bandits have variants and commander has unique armor", ref checks);
             var upgraded=new RpgState();
             Check(!upgraded.UpgradeAttribute(0)&&upgraded.UpgradePoints==0,"Cannot upgrade without earned points",ref checks);
-            upgraded.AddExperience(175);
-            Check(upgraded.UpgradePoints==2&&upgraded.UpgradeAttribute(0)&&upgraded.UpgradeAttribute(1),"Level gains grant spendable attribute points",ref checks);
-            Check(upgraded.UpgradePoints==0&&upgraded.MaxHealth==155&&upgraded.Damage==29&&!upgraded.UpgradeAttribute(2),"Upgrade effects apply and points cannot be overspent",ref checks);
+            upgraded.RewardQuest("test1");upgraded.RewardQuest("test2");
+            Check(upgraded.UpgradePoints==2&&upgraded.UpgradeAttribute(0)&&upgraded.UpgradeAttribute(1),"Quest rewards unlock skills",ref checks);
+            Check(upgraded.UpgradePoints==0&&upgraded.MaxHealth==120&&upgraded.Damage==24&&!upgraded.UpgradeAttribute(2),"Upgrade effects apply and points cannot be overspent",ref checks);
             var upgradedCopy=JsonUtility.FromJson<RpgState>(JsonUtility.ToJson(upgraded));upgradedCopy.Normalize();
-            Check(upgradedCopy.vitalityRank==1&&upgradedCopy.strengthRank==1&&upgradedCopy.UpgradePoints==0,"Attribute upgrades survive save round trip",ref checks);
+            Check(upgradedCopy.HasSkill(0)&&upgradedCopy.HasSkill(1)&&upgradedCopy.UpgradePoints==0,"Attribute upgrades survive save round trip",ref checks);
             upgradedCopy.level=30;upgradedCopy.vitalityRank=5;
             Check(!upgradedCopy.UpgradeAttribute(0)&&!upgradedCopy.UpgradeAttribute(-1),"Attribute caps and invalid choices are rejected",ref checks);
             var tracked=new RpgState { trackedQuest=2 };
@@ -222,7 +222,7 @@ public static class RpgValidation
             trackedCopy.trackedQuest=99;trackedCopy.Normalize();
             Check(trackedCopy.trackedQuest>=-1&&trackedCopy.trackedQuest<=2,"Invalid tracking selection is normalized",ref checks);
             var testState=RpgGame.CreateTestState(true);
-            Check(testState.heroIsBoy&&testState.level==10&&testState.gold==9999&&testState.health==testState.MaxHealth,"Test location gets independent usable starting equipment",ref checks);
+            Check(testState.heroIsBoy&&testState.level==1 && testState.UpgradePoints==4&&testState.gold==9999&&testState.health==testState.MaxHealth,"Test location gets independent usable starting equipment",ref checks);
             var secondTest=RpgGame.CreateTestState(false);testState.collected.Add("testPotion");
             Check(!secondTest.heroIsBoy&&secondTest.collected.Count==0,"Test reset creates fresh independent collections",ref checks);
             CheckNavigation(bounds, ref checks);
@@ -251,7 +251,7 @@ public static class RpgValidation
             restored.Normalize();
             Check(restored.herbsQuest == 2 && restored.suppliesQuest == 2 && restored.deliveryQuest == 2 && restored.parcelDelivered, "Side quests survive save round trip", ref checks);
             restored = JsonUtility.FromJson<RpgState>("{\"version\":1,\"level\":2,\"gold\":80}"); restored.Normalize();
-            Check(restored.level == 2 && restored.gold == 80 && restored.herbsQuest == 0 && restored.suppliesQuest == 0 && restored.deliveryQuest == 0, "Existing saves gain new quests without losing progress", ref checks);
+            Check(restored.level == 1 && restored.gold == 80 && restored.herbsQuest == 0 && restored.suppliesQuest == 0 && restored.deliveryQuest == 0, "Existing saves gain new quests without losing progress", ref checks);
             Directory.CreateDirectory(Path.GetDirectoryName(report));
             File.WriteAllText(report, $"PASS: {checks} gameplay checks\n" + DateTime.UtcNow.ToString("O"));
             Debug.Log($"RPG: {checks} gameplay checks passed.");
@@ -385,11 +385,11 @@ public static class RpgValidation
             Check(game.State.questStage == 1 && game.Enemies.Count == 6, "Quest and encounter creation", ref checks);
             var first = game.Enemies[0];
             first.Hit(1000, Vector2.right);
-            Check(game.State.banditsDefeated == 1 && game.State.gold == 47, "Combat gives XP and loot", ref checks);
+            Check(game.State.banditsDefeated == 1 && game.State.gold == 47, "Combat gives loot without skill points", ref checks);
             first.Hit(1000, Vector2.right);
             Check(game.State.banditsDefeated == 1 && game.State.gold == 47, "A corpse cannot give duplicate loot", ref checks);
             for (int i = 1; i < 5; i++) game.Enemies[i].Hit(1000, Vector2.right);
-            Check(game.State.banditsDefeated == 5 && game.State.level == 3, "Combat levels player", ref checks);
+            Check(game.State.banditsDefeated == 5 && game.State.level == 1 && game.State.UpgradePoints==0, "Combat does not award levels or skill points", ref checks);
             RpgEnemy boss = null;
             foreach (var enemy in game.Enemies) if (enemy.IsBoss) boss = enemy;
             Check(boss != null, "Boss unlocks after five kills", ref checks);

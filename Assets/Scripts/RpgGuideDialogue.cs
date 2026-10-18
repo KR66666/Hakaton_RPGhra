@@ -46,7 +46,10 @@ public sealed partial class RpgInterface
     }
     public void ShowGuideWelcome()
     {
+        if(game.State.NpcDefeated("guard")){ShowFallenGuideNotes();return;}
+        if(game.State.cycle==2){ShowCellarGuide();return;}
         Open("guideInstruction","PETR KŘÍŽ • RÁDCE","Vítej v Havranově! Jsem Petr Kříž. Tohle je tvůj příběh — prozkoumávej vesnici, mluv s lidmi a rozhoduj se po svém. Občas se ti ozvu s užitečnou radou.\n\n"+game.State.CellarObjective);
+        NpcChallenge("guard");
         Action("Začít dobrodružství",()=>{
             if(game.State.currentArea==0 && game.State.cellarQuest==0)game.StartCellarQuest();else Close();
             game.State.guideSeenStage=game.State.cellarQuest;game.Save(false);
@@ -54,13 +57,15 @@ public sealed partial class RpgInterface
     }
     public void ShowGuideInstruction()
     {
+        if(game.State.NpcDefeated("guard")){ShowFallenGuideNotes();return;}
         int stage=game.State.cellarQuest;
         string message=stage==0?
             "Vítej v Havranově. Jmenuji se Petr Kříž a budu tvůj průvodce. Před cestou potřebujeme svíčky. Zeptej se dědy Matěje na náměstí — určitě poradí, kde je sehnat.":
             stage==1?"Nejdřív si promluv s dědou Matějem na náměstí. Přijdi k němu a stiskni E. Potom se ti ozvu s další radou.":
-            stage==2?"Matěj nás poslal k Elišce. Dojdi ke dveřím jejího obchodu a vejdi dovnitř. Než půjdeme do sklepa, slušně se jí zeptej na svíčky.":
-            "Ten vzkaz si dobře schovej. Značka havrana a východní most nám ukazují další cestu. Teď mi lístek ukaž a společně se připravíme na výpravu.";
+            stage==2?"Další stopa vede k Elišce. Dojdi ke dveřím jejího obchodu a zeptej se na svíčky.":
+            "Svíčky máš. Vrať se ke mně u mostu a řekni mi o nich; vysvětlím ti rituál v kostele.";
         Open("guideInstruction","PETR KŘÍŽ • PRŮVODCE",message);
+        NpcChallenge("guard");
         if(stage==0)Action("Rozumím • začít úkol",()=>{
             game.StartCellarQuest(); game.State.guideSeenStage=game.State.cellarQuest;game.Save(false);
         });

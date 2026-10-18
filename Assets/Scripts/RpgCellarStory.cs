@@ -6,20 +6,20 @@ public sealed partial class RpgGame
 {
     public void StartCellarQuest()
     {
-        if(State.cellarQuest != 0) return;
-        State.cellarQuest=1; if(State.travelCompanion==1)State.travelCompanion=0;
+        if(State.cycle!=1 || State.cellarQuest != 0) return;
+        State.cellarQuest=1; State.ResolveNpcClues(); if(State.travelCompanion==1)State.travelCompanion=0;
         if(companionObject!=null) {worldObjects.Remove(companionObject);Destroy(companionObject);}
         BuildCompanion(); Interface.Close(); Save(false);
-        Notify("Petr poradil: najdi dědu Matěje na náměstí [E].",7);
+        Notify(State.CellarObjective,7);
     }
     public void AdvanceCellarQuest(int stage)
     {
-        State.cellarQuest=Mathf.Max(State.cellarQuest,stage); Save(false);
+        State.cellarQuest=Mathf.Max(State.cellarQuest,stage); State.ResolveNpcClues(); Save(false);
     }
     public void CompleteCellarQuest()
     {
-        if(!State.FinishCellarQuest())return;
-        Save(false); Interface.Close(); Notify("Tajemství sklepa: +45 zlata, +60 XP a 2 lektvary. Vodítko zůstává v deníku.",8);
+        if(!State.ExplainRitual())return;
+        Save(false); Interface.Close(); Notify((State.NpcDefeated("guard")?"Pokyny z poznámek přečteny":"Svíčky doručeny")+" • +1 bod vylepšení. Ve zřícenině kostela proveď rituál [E].",8);
     }
 }
 
@@ -27,24 +27,25 @@ public sealed partial class RpgInterface
 {
     private bool cellarAnimating;
     public bool StoryAnimating => cellarAnimating;
-    private const string CellarClue="Až zazní třetí zvon, hledej pod uvolněným kamenem u východního mostu. Značka havrana ukazuje cestu ke starému úkrytu. Vezmi s sebou světlo.";
-
     public void ShowResident(string title)
     {
-        Open("resident",title.ToUpperInvariant(),"Dobrý den, pocestný. Dnes mám plné ruce práce. Jestli něco sháníš, zeptej se dědy Matěje na náměstí nebo Elišky v obchodě. A Petr Kříž ti ukáže cestu.");
-        Action("Poděkovat a odejít",Close);
+        Open("resident",title.ToUpperInvariant(),"Hledáš další cestu? "+game.State.CellarObjective);
+        NpcChallenge(game.DialogueNpcId);
+        Action("Odejít",Close);
     }
     public void ShowCellarGuide()
     {
+        if(game.State.NpcDefeated("guard")){ShowFallenGuideNotes();return;}
         var s=game.State;
-        Open("cellarGuide","PETR KŘÍŽ • PRŮVODCE",s.cellarQuest==0?
-            "Jsem Petr Kříž. Občas se ti ozvu s radou, až budeš potřebovat. Na cestu potřebujeme svíčky. Zeptej se někoho místního — děda Matěj na náměstí ví snad o všem.":
-            s.cellarQuest==6?"Tohle není obyčejný nákupní seznam… Havran a třetí zvon. Dobře, že jsi lístek otevřel. Schovej ho; u mostu nám ukáže další cestu. Tady máš zásoby za pomoc.":
-            "Tady je moje rada pro další krok: "+s.CellarObjective);
-        if(s.cellarQuest==0)Action("Rozumím • začít úkol",game.StartCellarQuest);
-        if(s.cellarQuest==6)Action("Ukázat vzkaz a dokončit úkol",game.CompleteCellarQuest);
+        Open("cellarGuide","PETR KŘÍŽ • PRŮVODCE",s.cycle==2?
+            "Znovu ses probudil. Rituál selhal, ale vzpomínka na něj zůstala. Začal druhý cyklus.":
+            s.cellarQuest==0?"Na cestu ze snu potřebuješ tři svíčky. Zeptej se dědy Matěje na náměstí, kde je sehnat.":
+            s.cellarQuest==6?"Už máš všechny tři svíčky? Ve zřícenině kostela najdeš trojúhelníkový obrazec. Rozmísti na něj svíčky a zapal je. Podle starého učení tě rituál probudí.":s.CellarObjective);
+        if(s.cycle==1 && s.cellarQuest==0)Action("Začít hledat svíčky",game.StartCellarQuest);
+        if(s.cycle==1 && s.cellarQuest==6)Action("Mám svíčky • přijmout radu",game.CompleteCellarQuest);
+        NpcChallenge("guard");
         if(s.deliveryQuest==1&&!s.parcelDelivered)Action("Předat zásilku od Elišky",game.DeliverParcel);
-        Action("Zatím odejít",Close);
+        Action("Odejít",Close);
     }
     public void ShowCellarElder()
     {
@@ -53,13 +54,16 @@ public sealed partial class RpgInterface
             "Svíčky? Eliška je skladuje dole ve sklepě pod obchodem. Jen se jí nejdřív zeptej! Poslední dobou tam prý něco šramotí. Já už po těch schodech nelezu.":
             "Zdravím tě, pocestný. Hledáš někoho? Petr Kříž u východního mostu tě rád provede vesnicí.");
         if(game.State.cellarQuest==1)Action("Poděkovat a zeptat se Elišky",()=>{game.AdvanceCellarQuest(2);Close();});
+        NpcChallenge("elder");
         Action("Odejít",Close);
     }
     public void ShowCellarMerchant()
     {
         if(game.State.cellarQuest<2 || game.State.cellarQuest>=6){ShowMerchant();return;}
         game.AdvanceCellarQuest(3);
-        Open("cellarMerchant","OBCHODNICE ELIŠKA","Svíčky ve sklepě? Nevím, kdo ti to řekl. Dolů tě nepustím… nic zajímavého tam není. Jen krysy! Velké krysy. Opravdu tam chceš lézt?");
+        bool absent=game.State.NpcDefeated("merchant");
+        Open(absent?"cellarClue":"cellarMerchant",absent?"OPUŠTĚNÝ OBCHOD":"OBCHODNICE ELIŠKA",absent?"V Eliščiných poznámkách je zmínka o svíčkách ve sklepě. Schody jsou přístupné, ale zdola se ozývá šramot.":"Svíčky ve sklepě? Nevím, kdo ti to řekl. Dolů tě nepustím… nic zajímavého tam není. Jen krysy! Velké krysy. Opravdu tam chceš lézt?");
+        NpcChallenge("merchant");
         Action("Sejít opatrně do sklepa",()=>StartCoroutine(CellarEntry()));
         Action("Odejít z obchodu",Close);
         Action("Utéct zpátky na ulici",()=>{Close();game.Notify("Raději zpátky na čerstvý vzduch. Do sklepa se můžeš vrátit.");});
@@ -67,10 +71,8 @@ public sealed partial class RpgInterface
     public void ShowCellarJournal()
     {
         var s=game.State;
-        Open("cellarJournal","TAJEMSTVÍ SKLEPA",s.CellarObjective+"\n\nPrůvodce: Petr Kříž.\n"+
-            (s.cellarNoteOpened?"Nalezený vzkaz:\n„"+CellarClue+"“":s.cellarNoteTaken?"V batohu máš složený lístek. Zatím jsi ho nečetl.":"Lístek zatím nemáš.")+
-            "\n\nOdměna za ukázání vzkazu Petrovi: 45 zlata, 60 XP a 2 lektvary.");
-        if(s.cellarNoteTaken&&!s.cellarNoteOpened)Action("Otevřít nalezený lístek",ReadCellarNote);
+        Open("cellarJournal","SVÍČKY A RITUÁL • CYKLUS "+s.cycle,s.CellarObjective+"\n\nSvíčky: "+s.candles+" / 3"+
+            (s.ritualFailed?"\nRituál skončil smrtí. Pamatuješ si první cyklus.":""));
         Action("Zavřít deník",Close);
     }
     private RectTransform CellarPiece(string name,Vector2 position,Vector2 size,Color color)
@@ -95,7 +97,7 @@ public sealed partial class RpgInterface
             CellarPiece("Bedna",new Vector2(370+i%2*90,150-i/2*120),new Vector2(78,78),new Color(.34f,.21f,.10f));
             CellarPiece("Prkno",new Vector2(370+i%2*90,150-i/2*120),new Vector2(6,78),new Color(.18f,.10f,.05f));
         }
-        for(int i=0;i<3;i++)CellarPiece("Svíčky",new Vector2(370+i*18,180),new Vector2(10,30),new Color(.86f,.76f,.48f));
+        for(int i=0;i<RpgState.FirstCycleCandles;i++)CellarPiece("Svíčky",new Vector2(370+i*18,180),new Vector2(10,30),new Color(.86f,.76f,.48f));
         var hero=CellarPiece("Hlavní postava",new Vector2(-480,280),new Vector2(76,94),Color.white);
         hero.GetComponent<Image>().sprite=game.HeroSprite;hero.GetComponent<Image>().preserveAspect=true;
 
@@ -128,27 +130,34 @@ public sealed partial class RpgInterface
             var eye=Rect(rat,"Oko",new Vector2(22,-3),new Vector2(4,4));eye.gameObject.AddComponent<Image>().color=Color.black;
         }
         game.AdvanceCellarQuest(4);cellarAnimating=false;
-        Open("cellarRats",game.State.HeroName,"Áá! Ona nelhala — tady opravdu jsou krysy!\n\nVzpomeneš si na radu: zpátky ke schodům, pomalu!");
-        Action("Utéct ke schodům",()=>StartCoroutine(CellarEscape(actor)));
-        Action("Opatrně ustoupit",()=>StartCoroutine(CellarEscape(actor)));
+        Open("cellarRats",game.State.HeroName,"Mezi tebou a svíčkami pobíhají krysy. Můžeš utéct, rychle pro svíčky skočit, nebo k nim opatrně dojít.");
+        Action("Utéct",()=>StartCoroutine(CellarFlee(actor)));
+        Action("Rychle skočit pro svíčky",()=>StartCoroutine(CellarCollect(actor,true)));
+        Action("Opatrně dojít pro svíčky",()=>StartCoroutine(CellarCollect(actor,false)));
     }
-    private IEnumerator CellarEscape(RectTransform actor)
+    private IEnumerator CellarFlee(RectTransform actor)
     {
+        if(cellarAnimating)yield break;
         cellarAnimating=true;
-        Open("cellarEscape","ZPÁTKY KE SCHODŮM","Krysy zašustí mezi bednami. U schodu se ve světle zaleskne složený papírek…");
-        yield return CellarWalk(actor,new Vector2(-400,215),1.6f);
-        CellarPiece("Složený lístek",new Vector2(-350,210),new Vector2(28,22),new Color(.92f,.83f,.62f));
-        game.AdvanceCellarQuest(5);cellarAnimating=false;
-        Open("cellarNote","LÍSTEK NA SCHODU","Ve spěchu si všimneš papírku se znakem havrana. Možná je důležitý. Co uděláš?");
-        if(!game.State.cellarNoteTaken)Action("Vzít a otevřít lístek",()=>{game.State.cellarNoteTaken=true;ReadCellarNote();});
-        else Action("Otevřít lístek z batohu",ReadCellarNote);
-        Action("Jít dál • nechat lístek být",()=>{Close();game.Notify("Vyšel jsi ze sklepa. Lístek můžeš později vyzvednout při návratu.",6);});
+        Open("cellarEscape","ÚTĚK","Vracíš se ke schodům. Svíčky zůstávají ve sklepě.");
+        yield return CellarWalk(actor,new Vector2(-480,280),1);
+        cellarAnimating=false;Close();game.Notify("Ze sklepa jsi utekl bez svíček. Můžeš se vrátit.",6);
     }
-    private void ReadCellarNote()
+    private IEnumerator CellarCollect(RectTransform actor,bool rush)
     {
-        game.State.OpenCellarNote();game.Save(false);
-        Open("cellarClue","VZKAZ SE ZNAKEM HAVRANA","„"+CellarClue+"“\n\nTenhle vzkaz se může hodit. Venku se na něj zeptej Petra.\nVzkaz byl uložen do deníku [Q].");
-        Action("Schovat lístek a odejít",Close);
+        if(cellarAnimating || game.State.candles!=0)yield break;
+        cellarAnimating=true;
+        Open("cellarWalk","CESTA KE SVÍČKÁM",rush?"Vrhnul ses mezi krysy. Jedna tě kousla, ale svíčky máš na dosah.":"Krok za krokem obcházíš krysy. Ke svíčkám se dostáváš bez zranění.");
+        yield return CellarWalk(actor,new Vector2(360,185),rush?.65f:3f);
+        if(game.State.CollectCandles(rush))
+        {
+            foreach(var image in roomView.GetComponentsInChildren<Image>())
+                if(image.name=="Svíčky")image.gameObject.SetActive(false);
+            game.Save(false);
+        }
+        cellarAnimating=false;
+        Open("cellarClue","SVÍČKY ZÍSKÁNY",rush?"Máš všechny tři svíčky. Kousnutí tě stálo až 20 HP. Vrať se k průvodci a řekni mu, že je máš.":"Máš všechny tři svíčky a vyvázl jsi bez zranění. Vrať se k průvodci a řekni mu, že je máš.");
+        Action("Vrátit se ven",Close);
     }
 }
 

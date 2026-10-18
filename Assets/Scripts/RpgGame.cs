@@ -15,8 +15,8 @@ public sealed partial class RpgGame : MonoBehaviour
     public bool HostileCombatAllowed => (InTown || IsTestLocation) && AllowsHostileCombat(State.currentArea, IsTestLocation, State.questStage);
     public RpgInterface Interface { get; private set; }
     public bool IsEnteringRoom { get; private set; }
-    public bool BlockMovement => RpgSettings.CapturesInput || IsEnteringRoom || !Application.isFocused || Interface != null && Interface.IsModal || State == null || State.health <= 0;
-    public float SpeedMultiplier => BlockMovement ? 0 : (Time.time < dodgeUntil ? 2.5f : Sprinting ? 1.5f : 1) * (1 + State.agilityRank*.04f);
+    public bool BlockMovement => InBattle || RpgSettings.CapturesInput || IsEnteringRoom || !Application.isFocused || Interface != null && Interface.IsModal || State == null || State.health <= 0;
+    public float SpeedMultiplier => BlockMovement ? 0 : (Sprinting ? 1.5f : 1);
     public Vector2 Facing { get; set; } = Vector2.down;
     public string NearbyPrompt { get; private set; }
     public float AttackCooldown => Mathf.Clamp01((nextAttack - Time.time) / 0.42f);
@@ -103,17 +103,18 @@ public sealed partial class RpgGame : MonoBehaviour
         Interface.Initialize(this);
         BuildWorld();
         if(startingNewStory){Save(false,true);startingNewStory=false;}
-        Notify(IsTestLocation?"TESTOVACÍ LOKACE • E vyzkoušet • T nástroje • hlavní příběh se nepřepisuje":InTown?"Vítej v Havranově. Promluv si s rychtářem [E].":LocationName+" • "+RpgLocations.Description(State.place), 7);
-        if(!IsTestLocation && InTown)Interface.ShowGuideWelcome();
+        Notify(IsTestLocation?"TESTOVACÍ LOKACE • E vyzkoušet • T nástroje • hlavní příběh se nepřepisuje":InTown?"Vítej v Havranově. Promluv si s průvodcem [E].":LocationName+" • "+RpgLocations.Description(State.place), 7);
+        if(!IsTestLocation && InTown && !State.NpcDefeated("guard"))Interface.ShowGuideWelcome();
     }
 
     private void Update()
     {
-        if (State == null || Interface == null || Interface.StoryAnimating || IsEnteringRoom || RpgSettings.CapturesInput) return;
+        if (State == null || Interface == null || InBattle || Interface.StoryAnimating || IsEnteringRoom || RpgSettings.CapturesInput) return;
         var keyboard = Keyboard.current;
         if (keyboard != null && Application.isFocused)
         {
             if(IsTestLocation && keyboard.tKey.wasPressedThisFrame) Interface.ShowTestTools();
+            if (keyboard.f2Key.wasPressedThisFrame) Interface.ToggleHudExtras();
             if (keyboard.escapeKey.wasPressedThisFrame) Interface.TogglePause();
             if (keyboard.cKey.wasPressedThisFrame) Interface.ShowCharacterUpgrades();
             if (keyboard.mKey.wasPressedThisFrame) Interface.ShowWorldMap();
@@ -123,9 +124,7 @@ public sealed partial class RpgGame : MonoBehaviour
             if (keyboard.f9Key.wasPressedThisFrame) LoadGame();
             if (!BlockMovement)
             {
-                bool mouseAttack = Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame;
-                if (keyboard.jKey.wasPressedThisFrame || mouseAttack) Attack();
-                if (keyboard.spaceKey.wasPressedThisFrame) Dodge();
+                if (keyboard.jKey.wasPressedThisFrame) Attack();
                 if (keyboard.hKey.wasPressedThisFrame) DrinkPotion();
                 if (keyboard.eKey.wasPressedThisFrame) Interact();
             }
@@ -154,48 +153,7 @@ public sealed partial class RpgGame : MonoBehaviour
         }
     }
 
-    private void Attack()
-    {
-        RpgSettings.PlayEffect();
-        if (Time.time < nextAttack) return;
-        if (State.stamina < 10) { Notify("Dochází výdrž. Na chvíli přestaň útočit."); return; }
-        State.stamina -= 10;
-        nextRegen = Time.time + 0.6f;
-        nextAttack = Time.time + 0.42f;
-        var origin = (Vector2)transform.position;
-        Vector2 direction = Facing;
-        // Aim toward a nearby enemy, so keyboard movement and combat work together.
-        float closest = 1.8f;
-        foreach (var enemy in Enemies)
-        {
-            if (enemy == null || enemy.Dead) continue;
-            float distance = Vector2.Distance(origin, enemy.transform.position);
-            if (distance < closest) { closest = distance; direction = ((Vector2)enemy.transform.position - origin).normalized; }
-        }
-        foreach (var enemy in Enemies.ToArray())
-        {
-            if (enemy == null || enemy.Dead) continue;
-            var delta = (Vector2)enemy.transform.position - origin;
-            if (delta.magnitude <= 1.7f && (delta.magnitude < 0.35f || Vector2.Dot(direction, delta.normalized) >= -0.25f))
-                enemy.Hit(State.Damage, direction);
-        }
-        var slash = new GameObject("Sword strike");
-        slash.transform.position = transform.position + (Vector3)(direction * 0.7f);
-        var renderer = slash.AddComponent<SpriteRenderer>();
-        renderer.sprite = MarkerSprite();
-        renderer.color = new Color(1, 0.85f, 0.45f, 0.7f);
-        renderer.sortingOrder = 12;
-        slash.transform.localScale = new Vector3(0.65f, 0.65f, 1);
-        Destroy(slash, 0.12f);
-    }
-
-    private void Dodge()
-    {
-        if (State.stamina < 25 || Time.time < dodgeUntil + 0.45f) return;
-        State.stamina -= 25;
-        dodgeUntil = Time.time + 0.23f;
-        nextRegen = Time.time + 0.6f;
-    }
+    private void Attack() => TryStartNearbyBattle();
 
     public void Damage(int amount)
     {
@@ -215,8 +173,7 @@ public sealed partial class RpgGame : MonoBehaviour
         if (enemy.IsBoss) State.bossDefeated = true;
         else State.banditsDefeated++;
         State.gold += enemy.IsBoss ? 75 : 12;
-        bool leveled = State.AddExperience(enemy.IsBoss ? 100 : 35);
-        Notify(leveled ? $"ÚROVEŇ {State.level}! Zdraví a výdrž obnoveny. Nový bod vylepšení • C." : enemy.IsBoss ? "Velitel padl! Vrať se k rychtáři pro odměnu." : $"Nájezdník poražen • +35 XP • +12 zlata ({Mathf.Min(5, State.banditsDefeated)}/5)");
+        Notify(enemy.IsBoss?"Velitel padl! Vrať se k rychtáři pro odměnu.":$"Nájezdník poražen • +12 zlata ({Mathf.Min(5, State.banditsDefeated)}/5)");
         if (State.banditsDefeated >= 5 && !State.bossDefeated) SpawnBoss();
         BuildCompanion();
         Save(false);
@@ -264,7 +221,7 @@ public sealed partial class RpgGame : MonoBehaviour
 
     public static RpgState CreateTestState(bool boy)
     {
-        var state=new RpgState {heroIsBoy=boy,level=10,gold=9999,potions=30,herbs=20,suppliesQuest=1,deliveryQuest=1,herbsQuest=1,x=-3,y=-.5f};
+        var state=new RpgState {heroIsBoy=boy,upgradePoints=4,gold=9999,potions=30,herbs=20,suppliesQuest=1,deliveryQuest=1,herbsQuest=1,x=-3,y=-.5f};
         state.health=state.MaxHealth;return state;
     }
     public void ResetTestLocation()
@@ -275,7 +232,7 @@ public sealed partial class RpgGame : MonoBehaviour
     public void ToggleTestCombat()
     {
         if(!IsTestLocation)return;
-        State.questStage=State.questStage==1?0:1;Interface.Close();Notify(State.questStage==1?"Testovací souboj zapnutý • hráč je nezranitelný":"Souboj vypnutý");
+        State.questStage=State.questStage==1?0:1;Interface.Close();Notify(State.questStage==1?"Tahové souboje zapnuté":"Souboj vypnutý");
     }
     private void BuildTestLocation()
     {
@@ -329,6 +286,7 @@ public sealed partial class RpgGame : MonoBehaviour
 
     private void AddPerson(string id, string title, string kind, Vector2 position, Color tint)
     {
+        if(State.NpcDefeated(id))return;
         var obj = new GameObject(title);
         obj.transform.position = SnapToRoad(position);
         obj.transform.localScale = Vector3.one * 0.9f;
@@ -338,7 +296,7 @@ public sealed partial class RpgGame : MonoBehaviour
         // and can change fine actor details as render batches and camera position change.
         renderer.color = Color.white; renderer.sortingOrder = 2;
         var npcLabel=AddLabel(obj.transform, title, new Vector3(0, 0.9f, 0), new Color(1, 0.9f, 0.58f));
-        if(IsTestLocation)npcLabel.characterSize=.04f;
+        if(IsTestLocation)npcLabel.characterSize=.05f;
         obj.AddComponent<RpgNpcNameplate>().Initialize(this,npcLabel,title);
         worldItems.Add(new WorldItem { id = id, title = title, kind = kind, obj = obj });
         worldObjects.Add(obj);
@@ -349,14 +307,14 @@ public sealed partial class RpgGame : MonoBehaviour
     {
         var position=RpgWorldGeometry.ExpandedPixelPosition(point,map.bounds);
         var marker=new GameObject(title);marker.transform.position=position;
-        var text=AddLabel(marker.transform,title,new Vector3(0,.7f,0),new Color(1,.9f,.65f));text.characterSize=.035f;
+        var text=AddLabel(marker.transform,title,new Vector3(0,.7f,0),new Color(1,.9f,.65f));text.characterSize=.04375f;
         worldObjects.Add(marker);
         AddPerson("district"+resident,resident,"district",position,Color.white);
     }
     private void AddVillageLandmark(string title,Vector2 point)
     {
         var landmark=new GameObject(title);landmark.transform.position=RpgWorldGeometry.PixelPosition(point,map.bounds);
-        var text=AddLabel(landmark.transform,title,new Vector3(0,.35f,0),new Color(1,.9f,.65f));text.characterSize=.035f;
+        var text=AddLabel(landmark.transform,title,new Vector3(0,.35f,0),new Color(1,.9f,.65f));text.characterSize=.04375f;
         worldObjects.Add(landmark);
     }
     private void AddShopEntrance()
@@ -456,8 +414,10 @@ public sealed partial class RpgGame : MonoBehaviour
         if(!IsTestLocation && AtRoomDoor("merchant")) { Interface.ShowRoomEntrance("merchant","Obchodnice Eliška");return; }
         var item=NearestItem();
         if(item==null) { Notify("Přijdi blíž k postavě nebo předmětu.");return; }
+        if(item.kind=="ritual") { TryRitual();return; }
         if(item.kind=="locationExit") { TryTravelLocation((RpgPlace)int.Parse(item.id));return; }
         if(item.kind=="shop") { Notify("Přijdi těsně ke vchodu domu.");return; }
+        DialogueNpcId=item.id;
         if(item.kind=="merchant" && IsTestLocation) {Interface.EnterRoom("merchant");return;}
         if(item.kind=="testgear") {Interface.ShowTestTools();return;}
         if(item.kind=="testpotion") {State.potions++;item.obj.SetActive(false);Notify("Testovací lektvar přidaný do batohu.");return;}
@@ -508,7 +468,7 @@ public sealed partial class RpgGame : MonoBehaviour
     public void CompleteSideQuest(int id)
     {
         if (!State.FinishSideQuest(id)) { Notify("Ještě nemáš vše potřebné k odevzdání úkolu."); return; }
-        Interface.Close(); Notify("Úkol splněn! Získáváš zlato, zkušenosti a odměnu.", 5); Save(false);
+        Interface.Close(); Notify("Úkol splněn! Získáváš 1 bod pro odemčení dovednosti a odměnu.", 5); Save(false);
     }
 
     public void DeliverParcel()
@@ -542,7 +502,7 @@ public sealed partial class RpgGame : MonoBehaviour
         if(companionObject!=null){worldObjects.Remove(companionObject);Destroy(companionObject);}
         companionObject = null;
         // Petr is a portrait adviser, never a following world actor (including older saves).
-        if (State.travelCompanion != 2) return;
+        if (State.travelCompanion != 2 || State.NpcDefeated("healer")) return;
         companionObject = new GameObject(State.travelCompanion != 2 ? "Petr Kříž • průvodce" : "Doprovod Mira");
         companionObject.transform.position = SnapToRoad(transform.position + Vector3.left);
         var renderer = companionObject.AddComponent<SpriteRenderer>();
@@ -574,6 +534,7 @@ public sealed partial class RpgGame : MonoBehaviour
         position=transform.position;description="";
         if(TryLocationGoal(out position,out description))return true;
         if(!InTown)return false;
+        if(State.cellarQuest==6 && State.NpcDefeated("guard"))return false;
         if (State.cellarQuest > 0 && State.cellarQuest < 7 && State.currentArea == 0)
         {
             string cellarTargetKind = State.cellarQuest == 1 ? "elder" : State.cellarQuest == 6 ? "guard" : "shop";
@@ -618,7 +579,7 @@ public sealed partial class RpgGame : MonoBehaviour
 
     public void UpgradeCharacter(int attribute)
     {
-        if(!State.UpgradeAttribute(attribute)) { Notify("Potřebuješ bod vylepšení nebo máš maximální stupeň.");return; }
+        if(!State.UpgradeAttribute(attribute)) { Notify("Potřebuješ bod vylepšení, nebo už je dovednost odemčená.");return; }
         Save(false);Interface.ShowCharacterUpgrades();
     }
 
@@ -658,7 +619,7 @@ public sealed partial class RpgGame : MonoBehaviour
         State.x = 0; State.y = 0; PlacePlayer();
         nextDamage = Time.time + 3;
         foreach (var enemy in Enemies) if (enemy != null) enemy.ResetHome();
-        Interface.Close(); Notify("Mira tě zachránila. Ztratil jsi 10 zlata."); Save(false);
+        Interface.Close(); Notify(State.NpcDefeated("healer")?"Probouzíš se po porážce. Ztratil jsi až 10 zlata.":"Mira tě zachránila. Ztratil jsi až 10 zlata."); Save(false);
     }
 
     private void PlacePlayer()
@@ -703,6 +664,7 @@ public sealed partial class RpgGame : MonoBehaviour
 
     public void Save(bool announce = true, bool resetBackup = false)
     {
+        if(InBattle){if(announce)Notify("Uložit lze po dokončení souboje.");return;}
         if(IsTestLocation){if(announce)Notify("Testovací verze se neukládá do hlavního příběhu.");return;}
         if (State == null || State.health <= 0) return;
         try
@@ -729,7 +691,7 @@ public sealed partial class RpgGame : MonoBehaviour
         if(IsTestLocation){ResetTestLocation();return;}
         RestoreState(RpgState.CreateNew(State.heroIsBoy,State.HeroName));Save(false,true);
         Interface.ShowGuideWelcome();
-        Notify("Nový příběh začíná. Vyhledej rychtáře Radovana.");
+        Notify("Nový příběh začíná. Promluv si s průvodcem.");
     }
 
     public void LoadGame()
@@ -743,6 +705,7 @@ public sealed partial class RpgGame : MonoBehaviour
 
     public void RestoreState(RpgState saved)
     {
+        battle=null;battleEnemy=null;battleNpcId=null;DialogueNpcId=null;
         State = saved; State.Normalize(); ApplyLocationMap();
         if (State.health <= 0) State.health = State.MaxHealth;
         nextAttack = dodgeUntil = nextDamage = nextRegen = 0;
@@ -781,7 +744,7 @@ public sealed partial class RpgGame : MonoBehaviour
     {
         var obj = new GameObject("Label"); obj.transform.SetParent(parent, false); obj.transform.localPosition = offset;
         var label = obj.AddComponent<TextMesh>(); label.text = text; label.fontSize = 48;
-        label.characterSize = 0.055f; label.anchor = TextAnchor.LowerCenter; label.alignment = TextAlignment.Center; label.color = color;
+        label.characterSize = 0.06875f; label.anchor = TextAnchor.LowerCenter; label.alignment = TextAlignment.Center; label.color = color;
         label.GetComponent<MeshRenderer>().sortingOrder = 25;
         return label;
     }
@@ -789,7 +752,7 @@ public sealed partial class RpgGame : MonoBehaviour
     public static void FloatingText(Vector3 position, string text, Color color)
     {
         var label = AddLabel(null, text, position, color);
-        label.characterSize = 0.08f;
+        label.characterSize = 0.10f;
         label.gameObject.AddComponent<RpgFloatingText>();
     }
 
