@@ -6,6 +6,7 @@ using UnityEngine;
 public sealed class RpgState
 {
     public int version = 1;
+    public RpgPlace place = RpgPlace.Town;
     // 0 guide, 1 elder, 2 shop, 3 cellar invitation, 4 rats, 5 note, 6 decoded, 7 returned.
     public int cellarQuest;
     public int guideSeenStage = -1;
@@ -63,6 +64,13 @@ public sealed class RpgState
         return true;
     }
     public bool heroIsBoy;
+    // Appearance is independent of gameplay attributes.
+    public static RpgState CreateNew(bool boy)
+    {
+        var state=new RpgState { heroIsBoy=boy };
+        state.Normalize();state.health=state.MaxHealth;state.stamina=state.MaxStamina;
+        return state;
+    }
     public int level = 1;
     public int experience;
     public int gold = 35;
@@ -99,6 +107,7 @@ public sealed class RpgState
     public List<string> defeated = new List<string>();
 
     public int MaxHealth => 100 + (level - 1) * 20 + vitalityRank*15;
+    public int MaxStamina => 100;
     public int Damage => 18 + (level - 1) * 4 + weaponLevel * 9 + strengthRank*3;
     public int Defense => armorLevel * 3;
     public int NextLevelExperience => 50 + (level - 1) * 40;
@@ -190,6 +199,7 @@ public sealed class RpgState
 
     public void Normalize()
     {
+        place = RpgLocations.Normalize(place);
         currentArea = Mathf.Clamp(currentArea, 0, RpgCampaign.Names.Length - 1);
         completedAreas = completedAreas ?? new List<int>();
         completedAreas.RemoveAll(a => a < 0 || a >= RpgCampaign.Names.Length);

@@ -20,7 +20,6 @@ public sealed class RpgEnemy : MonoBehaviour
         maxHealth = health = (boss ? 220 : 48) + game.State.currentArea * (boss ? 35 : 10);
         appearance = gameObject.AddComponent<SpriteRenderer>();
         appearance.sprite = MedievalNpcAppearance.Get(boss ? "boss" : "bandit", id.Length > 0 ? id[id.Length-1] % 4 : 0);
-        RpgVisualTheme.World(appearance);
         tint = Color.white;
         appearance.color = tint; appearance.sortingOrder = 3;
         transform.localScale = Vector3.one * (boss ? 1.25f : 0.85f);

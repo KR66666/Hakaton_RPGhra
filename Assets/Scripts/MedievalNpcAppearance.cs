@@ -43,9 +43,9 @@ public static class MedievalNpcAppearance
           if(role=="boss") box(22,40,5,5,C(164,51,50)); }
         else
         { oval(24,32,11,10,leather);oval(24,33,8,8,C(75,57,37));box(34,14,3,15,steel);box(32,17,7,2,leather); }
-        var texture=new Texture2D(n,n,TextureFormat.RGBA32,false) { filterMode=FilterMode.Point, name="NPC "+key };
+        var texture=new Texture2D(n,n,TextureFormat.RGBA32,false) { filterMode=FilterMode.Point, wrapMode=TextureWrapMode.Clamp, name="NPC "+key };
         texture.SetPixels32(pixels);texture.Apply(false,true);
-        var sprite=Sprite.Create(texture,new Rect(0,0,n,n),new Vector2(.5f,.5f),36);
+        var sprite=Sprite.Create(texture,new Rect(0,0,n,n),new Vector2(.5f,.5f),36,0,SpriteMeshType.FullRect);
         sprite.name="Medieval "+key;cache[key]=sprite;return sprite;
     }
     private static Color32 C(int r,int g,int b) => new Color32((byte)Mathf.Clamp(r,0,255),(byte)Mathf.Clamp(g,0,255),(byte)Mathf.Clamp(b,0,255),255);

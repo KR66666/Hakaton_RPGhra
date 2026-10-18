@@ -1,7 +1,7 @@
 # Havranov – Strážce vesnice
 
 Hratelný prototyp RPG v Unity 6.6. Spusť Play a v hlavní nabídce zvol **Hrát**.
-Předchozí příběh se automaticky načte. Nový příběh lze začít v nabídce Esc.
+Po stisku **Hrát** zvol **Nová hra** nebo **Načíst hru**. Nová hra otevře výběr vzhledu a začne s čistým postupem, původní výbavou a plným zdravím i výdrží. Muž a žena mají stejné herní vlastnosti (na začátku 100 zdraví a 100 výdrže). Nový začátek přepíše hlavní i záložní uložení; starý postup se načítá jen volbou **Načíst hru**.
 
 ## Ovládání
 

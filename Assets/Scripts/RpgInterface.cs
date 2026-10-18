@@ -10,6 +10,7 @@ public sealed partial class RpgInterface : MonoBehaviour
     private RpgGame game;
     private RectTransform canvas, modal, actions;
     private Text health, stamina, stats, quest, hint, toast, modalTitle, modalBody, combat;
+    private Text locationTitle;
     private Image healthFill, staminaFill, experienceFill;
     private float toastUntil;
     private string currentModal;
@@ -17,10 +18,10 @@ public sealed partial class RpgInterface : MonoBehaviour
     private RectTransform miniMap, miniPlayer, miniGoal, goalArrow;
     private Text goalHint;
     private Sprite directionSprite;
+    private RectTransform goalPanel, interactionPanel;
+    private Image miniImage;
+    private CanvasGroup gameplayHud;
     private readonly System.Collections.Generic.List<RectTransform> enemyDots = new System.Collections.Generic.List<RectTransform>();
-    private bool shopScene;
-    private Image arabellaPortrait, merchantPortrait;
-    private readonly System.Collections.Generic.List<Sprite> portraitCrops = new System.Collections.Generic.List<Sprite>();
     private RectTransform roomView;
     public bool InRoom => roomView != null;
     private RectTransform mapContent;
@@ -33,67 +34,75 @@ public sealed partial class RpgInterface : MonoBehaviour
     {
         game = owner; font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         var obj = new GameObject("RPG Interface", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
-        obj.transform.SetParent(transform, false);
+        // The HUD must not inherit the character's heading, scale or walking motion.
+        obj.transform.SetParent(null, false);
         canvas = obj.GetComponent<RectTransform>();
-        var view = obj.GetComponent<Canvas>(); view.renderMode = RenderMode.ScreenSpaceOverlay; view.sortingOrder = 30;view.pixelPerfect=true;
+        var view = obj.GetComponent<Canvas>(); view.renderMode = RenderMode.ScreenSpaceOverlay; view.sortingOrder = 30;view.pixelPerfect=false;
         var scaler = obj.GetComponent<CanvasScaler>(); scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1600, 900); scaler.matchWidthOrHeight = 0.5f;
+        scaler.referenceResolution = new Vector2(1600, 900); scaler.screenMatchMode=CanvasScaler.ScreenMatchMode.Expand;
         if (EventSystem.current == null)
         {
             var events = new GameObject("RPG Event System", typeof(EventSystem), typeof(InputSystemUIInputModule));
             events.transform.SetParent(obj.transform, false);
         }
 
-        var status = Panel(canvas, "Player status", new Vector2(20, -20), new Vector2(360, 156), new Vector2(0, 1));
-        Label(status, game.IsTestLocation?"TESTOVACÍ LOKACE  [T]":"HAVRANOV • STRÁŽCE VESNICE", new Vector2(18, -12), new Vector2(330, 25), 18, Gold);
-        healthFill = Bar(status, new Vector2(18, -48), new Color(.20f,.84f,.68f));
-        health = Label(status, "", new Vector2(24, -44), new Vector2(310, 24), 17, Color.white);
-        staminaFill = Bar(status, new Vector2(18, -80), new Color(.92f,.75f,.30f));
-        stamina = Label(status, "", new Vector2(24, -76), new Vector2(310, 24), 17, Color.white);
-        experienceFill = Bar(status, new Vector2(18, -111), new Color(0.4f, 0.57f, 0.85f));
-        stats = Label(status, "", new Vector2(24, -107), new Vector2(320, 38), 15, Color.white);
+        var status = Panel(canvas, "Player status", new Vector2(20, -20), new Vector2(360, 188), new Vector2(0, 1));
+        locationTitle=Label(status, game.IsTestLocation?"TESTOVACÍ LOKACE  [T]":game.LocationName.ToUpperInvariant(), new Vector2(18, -12), new Vector2(324, 27), 20, Gold);
+        locationTitle.fontStyle=FontStyle.Bold;
+        locationTitle.resizeTextForBestFit=true;locationTitle.resizeTextMinSize=16;locationTitle.resizeTextMaxSize=20;
+        health = Label(status, "", new Vector2(18, -44), new Vector2(324, 24), 18, RpgVisualTheme.Cream);
+        healthFill = Bar(status, new Vector2(18, -73), new Color(.57f,.17f,.14f));
+        stamina = Label(status, "", new Vector2(18, -95), new Vector2(324, 24), 18, RpgVisualTheme.Cream);
+        staminaFill = Bar(status, new Vector2(18, -124), new Color(.40f,.46f,.23f));
+        stats = Label(status, "", new Vector2(18, -145), new Vector2(324, 25), 16, RpgVisualTheme.Cream);
+        stats.resizeTextForBestFit=true;stats.resizeTextMinSize=13;stats.resizeTextMaxSize=16;
+        experienceFill = Bar(status, new Vector2(18, -173), new Color(.65f,.51f,.28f), 5);
 
-        var mapButton = Panel(canvas, "Open map", new Vector2(0,-20),new Vector2(180,42),new Vector2(.5f,1));
+        var mapButton = Panel(canvas, "Open map", new Vector2(-86,-20),new Vector2(164,42),new Vector2(.5f,1));
         var mapClick=mapButton.gameObject.AddComponent<Button>();mapClick.targetGraphic=mapButton.GetComponent<Image>();
         mapClick.onClick.AddListener(ShowWorldMap);
-        var mapCaption=Label(mapButton,"MAPA  [M]",new Vector2(0,0),new Vector2(180,42),20,Gold);
+        var mapCaption=Label(mapButton,"MAPA  [M]",new Vector2(0,0),new Vector2(164,42),19,Gold);
         mapCaption.alignment=TextAnchor.MiddleCenter;
 
-        var characterButton=Panel(canvas,"Character upgrades",new Vector2(0,-68),new Vector2(180,38),new Vector2(.5f,1));
+        var characterButton=Panel(canvas,"Character upgrades",new Vector2(86,-20),new Vector2(164,42),new Vector2(.5f,1));
         var characterClick=characterButton.gameObject.AddComponent<Button>();characterClick.targetGraphic=characterButton.GetComponent<Image>();
         characterClick.onClick.AddListener(ShowCharacterUpgrades);
-        var characterCaption=Label(characterButton,"POSTAVA  [C]",Vector2.zero,new Vector2(180,38),18,Gold);characterCaption.alignment=TextAnchor.MiddleCenter;
+        var characterCaption=Label(characterButton,"POSTAVA  [C]",Vector2.zero,new Vector2(164,42),19,Gold);characterCaption.alignment=TextAnchor.MiddleCenter;
         if(game.IsTestLocation)
         {
             var tools=Panel(canvas,"Test tools",new Vector2(20,102),new Vector2(240,42),new Vector2(0,0));
             var toolsClick=tools.gameObject.AddComponent<Button>();toolsClick.targetGraphic=tools.GetComponent<Image>();toolsClick.onClick.AddListener(ShowTestTools);
             var toolsLabel=Label(tools,"TESTOVACÍ NÁSTROJE  [T]",Vector2.zero,new Vector2(240,42),16,Gold);toolsLabel.alignment=TextAnchor.MiddleCenter;
         }
-        var tracker = Panel(canvas, "Quest tracker", new Vector2(-20, -300), new Vector2(370, 166), new Vector2(1, 1));
-        Label(tracker, "DENÍK DOBRODRUHA  [Q]", new Vector2(18, -12), new Vector2(335, 26), 18, Gold);
-        quest = Label(tracker, "", new Vector2(18, -44), new Vector2(335, 112), 18, new Color(0.88f, 0.9f, 0.92f));
+        var tracker = Panel(canvas, "Quest tracker", new Vector2(-20, -240), new Vector2(320, 210), new Vector2(1, 1));
+        tracker.GetComponent<Image>().sprite=RpgVisualTheme.Parchment;
+        var journalTitle=Label(tracker, "CESTOVNÍ DENÍK  [Q]", new Vector2(18, -16), new Vector2(284, 28), 19, new Color(.25f,.16f,.09f));journalTitle.fontStyle=FontStyle.Bold;
+        quest = Label(tracker, "", new Vector2(18, -53), new Vector2(284, 140), 18, new Color(.22f,.15f,.10f));
+        quest.lineSpacing=1.1f;
 
-        var miniBox=Panel(canvas,"Mini map",new Vector2(-20,-86),new Vector2(250,198),new Vector2(1,1));
-        Label(miniBox,"MAPKA • modrá = ty",new Vector2(10,-168),new Vector2(230,25),14,Gold);
+        var miniBox=Panel(canvas,"Mini map",new Vector2(-20,-20),new Vector2(250,202),new Vector2(1,1));
+        Label(miniBox,"OKOLÍ • MAPA [M]",new Vector2(10,-172),new Vector2(230,25),16,Gold);
         miniMap=Rect(miniBox,"Village overview",new Vector2(10,-10),new Vector2(230,153));
-        var miniImage=miniMap.gameObject.AddComponent<Image>();miniImage.sprite=game.MapSprite;miniImage.color=new Color(.8f,.8f,.8f);miniImage.raycastTarget=false;miniImage.color=Color.white;miniImage.material=RpgVisualTheme.FantasyAtmosphere();
+        miniImage=miniMap.gameObject.AddComponent<Image>();miniImage.sprite=game.MapSprite;miniImage.raycastTarget=false;miniImage.color=Color.white;
         var miniClick=miniBox.gameObject.AddComponent<Button>();miniClick.targetGraphic=miniBox.GetComponent<Image>();miniClick.onClick.AddListener(ShowWorldMap);
         for(int i=0;i<8;i++)enemyDots.Add(MapDot("Enemy",new Color(.95f,.25f,.2f),5));
         miniGoal=MapDot("Quest goal",Gold,9);miniPlayer=MapDot("Player",Color.cyan,7);
-        goalHint=Label(canvas,"",Vector2.zero,new Vector2(480,30),17,Gold);Anchor(goalHint.rectTransform,new Vector2(.5f,1),new Vector2(0,-118));goalHint.alignment=TextAnchor.MiddleCenter;
-        goalArrow=Rect(goalHint.transform,"Goal direction",new Vector2(-14,-8),new Vector2(12,12));
+        goalPanel=Panel(canvas,"Tracked destination",new Vector2(0,-76),new Vector2(400,64),new Vector2(.5f,1));
+        goalHint=Label(goalPanel,"",new Vector2(42,-10),new Vector2(338,44),17,RpgVisualTheme.Cream);goalHint.alignment=TextAnchor.MiddleLeft;
+        goalArrow=Rect(goalPanel,"Goal direction",new Vector2(17,-24),new Vector2(15,15));goalArrow.pivot=Vector2.one*.5f;
         var arrowImage=goalArrow.gameObject.AddComponent<Image>();arrowImage.sprite=DirectionSprite();arrowImage.color=Gold;arrowImage.raycastTarget=false;
 
-        var controls = Panel(canvas, "Controls", new Vector2(0, 16), new Vector2(1100, 72), new Vector2(0.5f, 0));
-        combat = Label(controls, "", new Vector2(18, -9), new Vector2(1064, 25), 18, Gold);
-        var keys = Label(controls, "WASD / šipky  pohyb     Shift  běh     Mezerník  úhyb     E  mluvit / sebrat     I  batoh     Q  deník     Esc  pauza     M  mapa     C  postava", new Vector2(18, -39), new Vector2(1064, 24), 16, Color.white);
+        var controls = Panel(canvas, "Controls", new Vector2(0, 16), new Vector2(1000, 62), new Vector2(0.5f, 0));
+        combat = Label(controls, "", new Vector2(18, -8), new Vector2(964, 23), 17, Gold);
+        var keys = Label(controls, "WASD  pohyb   •   Shift  běh   •   Mezerník  úhyb   •   I  batoh   •   Q  deník   •   M  mapa   •   C  postava   •   Esc  pauza", new Vector2(18, -33), new Vector2(964, 23), 16, RpgVisualTheme.Cream);
         keys.alignment = TextAnchor.MiddleCenter;
+        keys.resizeTextForBestFit=true;keys.resizeTextMinSize=14;keys.resizeTextMaxSize=16;
         combat.alignment = TextAnchor.MiddleCenter;
 
-        hint = Label(canvas, "", Vector2.zero, new Vector2(680, 45), 23, Gold);
-        Anchor(hint.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 110)); hint.alignment = TextAnchor.MiddleCenter;
-        toast = Label(canvas, "", Vector2.zero, new Vector2(950, 60), 21, Color.white);
-        Anchor(toast.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -205)); toast.alignment = TextAnchor.MiddleCenter;
+        interactionPanel=Panel(canvas,"Interaction prompt",new Vector2(0,94),new Vector2(600,42),new Vector2(.5f,0));
+        hint = Label(interactionPanel, "", new Vector2(12,-5), new Vector2(576,32), 21, RpgVisualTheme.Cream);hint.alignment = TextAnchor.MiddleCenter;
+        toast = Label(canvas, "", Vector2.zero, new Vector2(680, 64), 20, RpgVisualTheme.Cream);
+        Anchor(toast.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -154)); toast.alignment = TextAnchor.MiddleCenter;
         var shadow = toast.gameObject.AddComponent<Shadow>(); shadow.effectColor = Color.black; shadow.effectDistance = new Vector2(1, -2);
 
         var shade = Panel(canvas, "Modal shade", Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
@@ -108,12 +117,23 @@ public sealed partial class RpgInterface : MonoBehaviour
         actions = Rect(box, "Actions", new Vector2(32, -378), new Vector2(696, 245));
         modal.gameObject.SetActive(false);
         BuildThemedHud();
+        // Put game widgets in their own layer so a conversation can hide the HUD
+        // without disabling input, the modal, or the transition fade.
+        var hudRoot=Rect(canvas,"Gameplay HUD",Vector2.zero,Vector2.zero);
+        hudRoot.anchorMin=Vector2.zero;hudRoot.anchorMax=Vector2.one;hudRoot.offsetMin=hudRoot.offsetMax=Vector2.zero;
+        gameplayHud=hudRoot.gameObject.AddComponent<CanvasGroup>();
+        var widgets=new System.Collections.Generic.List<Transform>();
+        foreach(Transform child in canvas)
+            if(child!=hudRoot&&child!=modal&&child.GetComponent<EventSystem>()==null)widgets.Add(child);
+        foreach(var widget in widgets)widget.SetParent(hudRoot,false);
+        hudRoot.SetAsFirstSibling();
     }
 
     private void Update()
     {
         if (game == null || game.State == null) return;
         var state = game.State;
+        locationTitle.text=game.IsTestLocation?"TESTOVACÍ LOKACE [T]":game.LocationName.ToUpperInvariant();
         UpdateThemedHud();
         health.text = $"ZDRAVÍ    {Mathf.CeilToInt(state.health)} / {state.MaxHealth}";
         stamina.text = $"VÝDRŽ    {Mathf.CeilToInt(state.stamina)} / 100";
@@ -124,10 +144,12 @@ public sealed partial class RpgInterface : MonoBehaviour
         int active = (state.herbsQuest == 1 ? 1 : 0) + (state.suppliesQuest == 1 ? 1 : 0) + (state.deliveryQuest == 1 ? 1 : 0);
         quest.text = QuestSummary() + (active > 0 ? $"\nVedlejší úkoly: {active}  [Q]" : "");
         hint.text = game.NearbyPrompt;
-        combat.text = $"[J / levé tlačítko]  {(game.AttackCooldown > 0 ? "ŠVIH…" : "ÚTOK MEČEM")}      [H]  LEKTVAR ×{state.potions}      ÚTOK {state.Damage}      OBRANA {state.Defense}";
+        interactionPanel.gameObject.SetActive(!string.IsNullOrEmpty(hint.text)&&!IsModal);
+        combat.text = $"J  útok     •     H  lektvar ×{state.potions}     •     E  rozhovor / předmět";
         UpdateMiniMap();
         if(state.trackedQuest>=0 && state.SideQuestStage(state.trackedQuest)==1) quest.text=SideSummary(state.trackedQuest)+"\nSledovaný úkol • Q pro změnu";
         if(game.IsTestLocation) quest.text="TESTOVACÍ VERZE\nNPC a výbava jsou obnovitelné.\nT • nástroje / F9 • obnovit\nHlavní příběh se nepřepisuje.";
+        else if(!game.InTown)quest.text=game.LocationName.ToUpperInvariant()+"\n"+RpgLocations.Description(state.place);
         if (Time.unscaledTime >= toastUntil) toast.text = "";
     }
 
@@ -143,6 +165,7 @@ public sealed partial class RpgInterface : MonoBehaviour
     private void OnDestroy()
     {
         if(directionSprite!=null){Destroy(directionSprite.texture);Destroy(directionSprite);}
+        if(canvas!=null)Destroy(canvas.gameObject);
     }
 
     private RectTransform MapDot(string name,Color color,float size)
@@ -157,6 +180,7 @@ public sealed partial class RpgInterface : MonoBehaviour
     }
     private void UpdateMiniMap()
     {
+        if(miniImage.sprite!=game.MapSprite)miniImage.sprite=game.MapSprite;
         LocateDot(miniPlayer,game.Player.position);
         int index=0;
         foreach(var enemy in game.Enemies)
@@ -166,6 +190,7 @@ public sealed partial class RpgInterface : MonoBehaviour
         }
         for(;index<enemyDots.Count;index++)enemyDots[index].gameObject.SetActive(false);
         bool hasGoal=game.TryTrackedGoal(out var target,out var title);
+        goalPanel.gameObject.SetActive(hasGoal&&!IsModal);
         miniGoal.gameObject.SetActive(hasGoal);goalArrow.gameObject.SetActive(hasGoal);
         goalHint.text=hasGoal?title+" • "+Mathf.CeilToInt(Vector2.Distance(game.Player.position,target))+" m":"Žádný sledovaný cíl • otevři deník Q";
         if(hasGoal)
@@ -199,6 +224,7 @@ public sealed partial class RpgInterface : MonoBehaviour
         LeaveRoomVisuals();
         game.RestoreOutdoorPlayer();
         modal.gameObject.SetActive(false); currentModal = null;
+        SetGameplayHudVisible(true);
     }
 
     public void TogglePause()
@@ -336,88 +362,32 @@ public sealed partial class RpgInterface : MonoBehaviour
                 item.GetComponent<Image>().color=bottle%2==0?new Color(.25f,.48f,.3f):new Color(.6f,.38f,.18f);
             }
         }
-        var portrait=Rect(roomView,"Speaker portrait",new Vector2(80,-150),new Vector2(390,430));
-        var portraitImage=portrait.gameObject.AddComponent<Image>();portraitImage.preserveAspect=true;portraitImage.raycastTarget=false;
-        portraitImage.sprite=kind=="merchant"?Resources.Load<Sprite>("ShopWomanPortrait"):MedievalNpcAppearance.Get(kind);
-        var counter=Panel(roomView,"Counter",new Vector2(35,-580),new Vector2(550,110),new Vector2(0,1));
-        counter.GetComponent<Image>().color=new Color(.25f,.14f,.07f);
-        var hero=Rect(roomView,"Your character",new Vector2(220,-650),new Vector2(150,190));
-        var heroImage=hero.gameObject.AddComponent<Image>();heroImage.preserveAspect=true;heroImage.raycastTarget=false;
-        heroImage.sprite=Resources.Load<Sprite>(game.State.heroIsBoy?"HeroBoyStepA":"HeroUserStepA");
-        Label(roomView,"TVOJE POSTAVA",new Vector2(190,-835),new Vector2(230,35),20,Gold);
-        modalTitle.transform.parent.GetComponent<RectTransform>().anchoredPosition=new Vector2(300,0);
-        modal.GetComponent<Image>().color=new Color(0,0,0,.12f);
     }
     private void LeaveRoomVisuals()
     {
-        if(roomView!=null) { roomView.gameObject.SetActive(false);Destroy(roomView.gameObject);roomView=null; }
-        foreach(var crop in portraitCrops) if(crop!=null) Destroy(crop);
-        portraitCrops.Clear();
-        shopScene=false; arabellaPortrait=null; merchantPortrait=null;
-        if(modalTitle!=null)
-        {
-            var box=modalTitle.transform.parent.GetComponent<RectTransform>();
-            Anchor(box,new Vector2(.5f,.5f),Vector2.zero);box.sizeDelta=new Vector2(760,650);
-            modalTitle.rectTransform.anchoredPosition=new Vector2(32,-22);modalTitle.rectTransform.sizeDelta=new Vector2(650,45);modalTitle.fontSize=30;
-            modalBody.rectTransform.anchoredPosition=new Vector2(32,-85);modalBody.rectTransform.sizeDelta=new Vector2(696,290);
-            actions.anchoredPosition=new Vector2(32,-378);actions.sizeDelta=new Vector2(696,245);
-        }
-        if(modal!=null) modal.GetComponent<Image>().color=new Color(0,0,0,.4f);
+        ResetConversationLayout();
+        if(roomView!=null) {roomView.SetParent(null);roomView.gameObject.SetActive(false);Destroy(roomView.gameObject);roomView=null;}
     }
-
     private void BuildShopScene()
     {
-        shopScene=true;
         roomView.gameObject.AddComponent<Image>().color=new Color(.1f,.06f,.03f);
         var backdrop=Rect(roomView,"Shop background",Vector2.zero,Vector2.zero);
         backdrop.anchorMin=Vector2.zero;backdrop.anchorMax=Vector2.one;backdrop.pivot=Vector2.one*.5f;backdrop.offsetMin=backdrop.offsetMax=Vector2.zero;
         var background=backdrop.gameObject.AddComponent<Image>();background.sprite=Resources.Load<Sprite>("ShopInterior");background.color=Color.white;RpgVisualTheme.Picture(background,false,3);
         var aspect=backdrop.gameObject.AddComponent<AspectRatioFitter>();aspect.aspectMode=AspectRatioFitter.AspectMode.EnvelopeParent;
         aspect.aspectRatio=background.sprite!=null?background.sprite.rect.width/background.sprite.rect.height:16f/9f;
-        arabellaPortrait=RoomPortrait("Arabella", "ArabellaPortrait",new Vector2(40,246));
-        merchantPortrait=RoomPortrait("Obchodnice", "MerchantPortrait",new Vector2(1060,246));
-        modal.GetComponent<Image>().color=Color.clear;
-    }
-    private Image RoomPortrait(string title,string resource,Vector2 position)
-    {
-        var rect=Rect(roomView,title,Vector2.zero,new Vector2(500,600));
-        bool right=resource=="MerchantPortrait";
-        rect.anchorMin=new Vector2(right?1:0,0);rect.anchorMax=new Vector2(right?1:0,1);
-        rect.offsetMin=new Vector2(right?-540:40,264);rect.offsetMax=new Vector2(right?-40:540,-30);
-        var image=rect.gameObject.AddComponent<Image>();
-        var original=Resources.Load<Sprite>(resource);
-        if(original!=null)
-        {
-            var crop=original.rect;float trim=resource=="ArabellaPortrait"?.22f:.1f;
-            crop.y+=crop.height*trim;crop.height*=1-trim;
-            image.sprite=Sprite.Create(original.texture,crop,new Vector2(.5f,0),original.pixelsPerUnit);
-            portraitCrops.Add(image.sprite);
-        }
-        image.preserveAspect=true;image.raycastTarget=false;RpgVisualTheme.Picture(image,false,5);
-        return image;
-    }
-    private void ShopDialogLayout(string speaker)
-    {
-        if(!shopScene)return;
-        var box=modalTitle.transform.parent.GetComponent<RectTransform>();
-        Anchor(box,new Vector2(.5f,0),new Vector2(0,20));box.sizeDelta=new Vector2(1480,244);
-        box.GetComponent<Image>().color=new Color(.045f,.075f,.085f,.98f);
-        modalTitle.rectTransform.anchoredPosition=new Vector2(28,-14);modalTitle.rectTransform.sizeDelta=new Vector2(990,36);modalTitle.fontSize=26;
-        modalBody.rectTransform.anchoredPosition=new Vector2(28,-60);modalBody.rectTransform.sizeDelta=new Vector2(1010,162);modalBody.fontSize=21;
-        actions.anchoredPosition=new Vector2(1070,-24);actions.sizeDelta=new Vector2(380,210);
-        if(arabellaPortrait!=null) arabellaPortrait.color=speaker=="ARABELLA"?Color.white:new Color(.78f,.78f,.78f);
-        if(merchantPortrait!=null) merchantPortrait.color=speaker=="ARABELLA"?new Color(.78f,.78f,.78f):Color.white;
     }
     private void ShowShopDialogue(int line)
     {
-        string[] speakers={"OBCHODNICE","ARABELLA","OBCHODNICE","ARABELLA"};
+        string hero=game.State.heroIsBoy?"HRDINA":"ARABELLA";
+        string[] speakers={"OBCHODNICE",hero,"OBCHODNICE",hero};
         string[] lines={
-            "Vítej v mém obchodě, Arabello. Cesta do Havranova byla jistě dlouhá. Co pro tebe mohu udělat?",
+            "Vítej v mém obchodě. Cesta do Havranova byla jistě dlouhá. Co pro tebe mohu udělat?",
             "Dobrý den. Ve vesnici se mluví o nájezdnících. Potřebuji zásoby a pořádnou výbavu, než vyrazím dál.",
             "Mám léčivé lektvary a mohu ti vylepšit meč i zbroj. A pokud chceš pomoci, čeká tu zásilka pro strážného Petra.",
-            "Děkuji. Ukažte mi prosím zboží — a ráda si poslechnu, s čím vám mohu pomoci."};
+            "Děkuji. Ukažte mi prosím zboží. Chci si poslechnout, s čím vám mohu pomoci."};
         line=Mathf.Clamp(line,0,lines.Length-1);
-        Open("shopDialogue",speakers[line],lines[line]);ShopDialogLayout(speakers[line]);
+        Open("shopDialogue",speakers[line],lines[line]);
         if(line<lines.Length-1) Action("Pokračovat →",()=>ShowShopDialogue(line+1));
         else
         {
@@ -519,6 +489,7 @@ public sealed partial class RpgInterface : MonoBehaviour
     {
         if (game.State.health <= 0) return;
         if (currentModal == "map") { Close(); return; }
+        if(!game.IsTestLocation){ShowLocationMap();return;}
         Open("map", "MAPA HAVRANOVA  [M]", "");
         mapContent = Rect(modalBody.transform.parent, "Pixel map", new Vector2(32,-85), new Vector2(696,280));
         var bg = mapContent.gameObject.AddComponent<Image>(); bg.color = new Color(.18f,.28f,.19f);
@@ -594,6 +565,8 @@ public sealed partial class RpgInterface : MonoBehaviour
     private void Open(string kind, string title, string body)
     {
         ResetGuideDialogue();
+        ResetConversationLayout();
+        SetGameplayHudVisible(false);
         if (InRoom && (kind == "map" || kind == "pause" || kind == "death" || kind == "travel" || kind == "character")) LeaveRoomVisuals();
         if (mapContent != null) { mapContent.gameObject.SetActive(false); Destroy(mapContent.gameObject); mapContent = null; }
         currentModal = kind;
@@ -604,37 +577,39 @@ public sealed partial class RpgInterface : MonoBehaviour
             var child = actions.GetChild(i); child.gameObject.SetActive(false); child.SetParent(null); Destroy(child.gameObject);
         }
         modal.gameObject.SetActive(true);
-        if(kind=="cellarGuide" || kind=="guideInstruction" || kind=="guard") BuildGuideDialogue();
-        else if(shopScene) ShopDialogLayout(kind=="shopDialogue"?title:"OBCHODNICE");
-        else if(roomView!=null && kind.StartsWith("cellar"))
+        if(RpgDialogueLayout.IsConversation(kind))
         {
-            var box=modalTitle.transform.parent.GetComponent<RectTransform>();
-            Anchor(box,new Vector2(.5f,0),new Vector2(0,20));box.sizeDelta=new Vector2(1480,244);
-            modal.GetComponent<Image>().color=Color.clear;
-            modalTitle.rectTransform.anchoredPosition=new Vector2(28,-14);modalTitle.rectTransform.sizeDelta=new Vector2(990,36);
-            modalBody.rectTransform.anchoredPosition=new Vector2(28,-60);modalBody.rectTransform.sizeDelta=new Vector2(980,162);modalBody.fontSize=21;
-            actions.anchoredPosition=new Vector2(1050,-24);actions.sizeDelta=new Vector2(400,210);
+            ApplyConversationLayout(kind,title);
+            if(kind=="cellarGuide"||kind=="guideInstruction"||kind=="guard")BuildGuideDialogue();
         }
     }
 
     private void Action(string title, Action callback)
     {
-        int index = actions.childCount;
-        float width=guideDialogueActive?400:shopScene?380:roomView!=null&&currentModal.StartsWith("cellar")?400:696, height=guideDialogueActive?50:shopScene?34:currentModal=="journal"||currentModal=="merchant"?32:42, spacing=guideDialogueActive?62:shopScene?42:currentModal=="journal"||currentModal=="merchant"?38:50;
-        var rect = Rect(actions, title, new Vector2(0, -index * spacing), new Vector2(width, height));
-        var image = rect.gameObject.AddComponent<Image>(); image.sprite=MainMenu.PixelButtonSprite();image.type=Image.Type.Sliced;image.color=Color.white;
-        if(guideDialogueActive){image.sprite=MainMenu.PixelButtonSprite();image.type=Image.Type.Sliced;image.color=Color.white;}
-        var button = rect.gameObject.AddComponent<Button>(); button.targetGraphic = image;
-        var colors = button.colors; colors.highlightedColor = new Color(1, 0.88f, 0.6f); colors.pressedColor = new Color(0.6f, 0.8f, 0.7f); button.colors = colors;
-        button.onClick.AddListener(() => callback());
-        var text = Label(rect, title, new Vector2(12, 0), new Vector2(width-24, height), shopScene?18:21, Gold); text.alignment = TextAnchor.MiddleCenter;
+        int index=actions.childCount;
+        float width=conversationActive?RpgDialogueLayout.ButtonWidth:696;
+        float height=conversationActive?RpgDialogueLayout.ButtonHeight:currentModal=="journal"?32:42;
+        float spacing=currentModal=="journal"?38:50;
+        var position=conversationActive?RpgDialogueLayout.ButtonPosition(index):new Vector2(0,-index*spacing);
+        var rect=Rect(actions,title,position,new Vector2(width,height));
+        var image=rect.gameObject.AddComponent<Image>();RpgVisualTheme.Panel(image);
+        var button=rect.gameObject.AddComponent<Button>();button.targetGraphic=image;
+        var colors=button.colors;colors.highlightedColor=new Color(1,.88f,.6f);colors.pressedColor=new Color(.6f,.7f,.6f);button.colors=colors;
+        button.onClick.AddListener(()=>callback());
+        var text=Label(rect,title,new Vector2(12,0),new Vector2(width-24,height),conversationActive?19:21,Gold);
+        text.alignment=TextAnchor.MiddleCenter;text.resizeTextForBestFit=true;text.resizeTextMinSize=16;text.resizeTextMaxSize=conversationActive?19:21;
+    }
+    private void SetGameplayHudVisible(bool visible)
+    {
+        if(gameplayHud==null)return;
+        gameplayHud.alpha=visible?1:0;gameplayHud.interactable=visible;gameplayHud.blocksRaycasts=visible;
     }
 
-    private Image Bar(Transform parent, Vector2 position, Color color)
+    private Image Bar(Transform parent, Vector2 position, Color color, float height=12)
     {
-        var track = Panel(parent, "Bar", position, new Vector2(324, 23), new Vector2(0, 1));
-        track.GetComponent<Image>().color = new Color(0.11f, 0.13f, 0.16f);
-        var fillRect = Rect(track, "Fill", Vector2.zero, new Vector2(324, 23));
+        var track = Panel(parent, "Bar", position, new Vector2(324, height), new Vector2(0, 1));
+        track.GetComponent<Image>().sprite=null;track.GetComponent<Image>().color = new Color(.12f,.085f,.06f);
+        var fillRect = Rect(track, "Fill", new Vector2(1,-1), new Vector2(322, height-2));
         var image = fillRect.gameObject.AddComponent<Image>(); image.color = color; image.sprite = RpgGame.MarkerSprite();
         // A white one-pixel texture makes a rectangular filled bar.
         image.sprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, Texture2D.whiteTexture.width, Texture2D.whiteTexture.height), Vector2.one * 0.5f);

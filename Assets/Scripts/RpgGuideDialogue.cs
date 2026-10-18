@@ -7,61 +7,28 @@ public sealed partial class RpgInterface
 {
     private bool guideDialogueActive;
     private Coroutine guideReveal;
-    private RectTransform guideDecoration;
-    private Color previousGuidePanelColor;
-    private Sprite previousGuidePanelSprite;
-    private Image.Type previousGuidePanelType;
     private static Sprite guidePortraitSprite;
-
     private void ResetGuideDialogue()
     {
-        if(!guideDialogueActive)return;
         if(guideReveal!=null){StopCoroutine(guideReveal);guideReveal=null;}
         guideDialogueActive=false;
-        if(guideDecoration!=null){guideDecoration.gameObject.SetActive(false);Destroy(guideDecoration.gameObject);guideDecoration=null;}
-        var box=modalTitle.transform.parent.GetComponent<RectTransform>();
-        Anchor(box,new Vector2(.5f,.5f),Vector2.zero);box.sizeDelta=new Vector2(760,650);
-        var panel=box.GetComponent<Image>();panel.color=previousGuidePanelColor;panel.sprite=previousGuidePanelSprite;panel.type=previousGuidePanelType;
-        var outline=box.GetComponent<Outline>();if(outline!=null)outline.enabled=true;
-        modalTitle.rectTransform.anchoredPosition=new Vector2(32,-22);modalTitle.rectTransform.sizeDelta=new Vector2(650,45);modalTitle.fontSize=30;
-        modalBody.lineSpacing=1f;
-        modalBody.rectTransform.anchoredPosition=new Vector2(32,-85);modalBody.rectTransform.sizeDelta=new Vector2(696,290);
-        actions.anchoredPosition=new Vector2(32,-378);actions.sizeDelta=new Vector2(696,245);
-        modal.GetComponent<Image>().color=new Color(0,0,0,.68f);
     }
     private void BuildGuideDialogue()
     {
         guideDialogueActive=true;
-        var box=modalTitle.transform.parent.GetComponent<RectTransform>();
-        var panel=box.GetComponent<Image>();previousGuidePanelColor=panel.color;previousGuidePanelSprite=panel.sprite;previousGuidePanelType=panel.type;
-        Anchor(box,new Vector2(.5f,0),new Vector2(0,22));box.sizeDelta=new Vector2(1480,244);
-        panel.sprite=DialogueFrame();panel.type=Image.Type.Sliced;panel.color=Color.white;
-        var outline=box.GetComponent<Outline>();if(outline!=null)outline.enabled=false;
-        modal.GetComponent<Image>().color=new Color(0,0,0,.18f);
-        guideDecoration=Rect(modal,"Petr • velký portrét před zadáním",Vector2.zero,Vector2.zero);
-        guideDecoration.anchorMin=Vector2.zero;guideDecoration.anchorMax=Vector2.one;
-        guideDecoration.offsetMin=guideDecoration.offsetMax=Vector2.zero;
-        guideDecoration.SetAsFirstSibling();
-        var portrait=Rect(guideDecoration,"Petr Kříž • dodaný portrét",Vector2.zero,Vector2.zero);
-        portrait.anchorMin=new Vector2(0,0);portrait.anchorMax=new Vector2(0,1);
-        portrait.offsetMin=new Vector2(40,260);portrait.offsetMax=new Vector2(620,-30);
-        var portraitImage=portrait.gameObject.AddComponent<Image>();portraitImage.sprite=GuidePortrait();portraitImage.preserveAspect=true;portraitImage.raycastTarget=false;RpgVisualTheme.Picture(portraitImage,false,5);
-        modalTitle.rectTransform.anchoredPosition=new Vector2(32,-20);modalTitle.rectTransform.sizeDelta=new Vector2(980,40);modalTitle.fontSize=28;
-        modalTitle.text="PETR KŘÍŽ  •  PRŮVODCE";
-        modalBody.rectTransform.anchoredPosition=new Vector2(32,-76);modalBody.rectTransform.sizeDelta=new Vector2(980,145);modalBody.fontSize=24;modalBody.lineSpacing=1.15f;
-        actions.anchoredPosition=new Vector2(1045,-24);actions.sizeDelta=new Vector2(400,210);
-        guideReveal=StartCoroutine(RevealGuide(box,modalBody.text));
+        if(Application.isPlaying)
+            guideReveal=StartCoroutine(RevealGuide(modalTitle.transform.parent.GetComponent<RectTransform>(),modalBody.text));
     }
     private IEnumerator RevealGuide(RectTransform box,string message)
     {
         Vector2 end=new Vector2(0,22);float elapsed=0;
-        modalBody.text="";
+        // Invisible remaining characters reserve their final line breaks while typing.
+        modalBody.text="<color=#00000000>"+message+"</color>";
         while(elapsed<.45f && guideDialogueActive)
         {
             elapsed+=Time.unscaledDeltaTime;
             float t=1-Mathf.Pow(1-Mathf.Clamp01(elapsed/.45f),3);
-            box.anchoredPosition=Vector2.Lerp(new Vector2(0,-270),end,t);
-            if(guideDecoration!=null)guideDecoration.anchoredPosition=new Vector2(Mathf.Lerp(-650,0,t),0);
+            box.anchoredPosition=Vector2.Lerp(new Vector2(0,-box.sizeDelta.y-30),end,t);
             foreach(var button in actions.GetComponentsInChildren<Button>())button.interactable=false;
             yield return null;
         }
@@ -70,7 +37,7 @@ public sealed partial class RpgInterface
         while(count<message.Length && guideDialogueActive)
         {
             characters+=Time.unscaledDeltaTime*55;count=Mathf.Min(message.Length,Mathf.FloorToInt(characters));
-            modalBody.text=message.Substring(0,count);
+            modalBody.text=message.Substring(0,count)+"<color=#00000000>"+message.Substring(count)+"</color>";
             foreach(var button in actions.GetComponentsInChildren<Button>())button.interactable=false;
             yield return null;
         }
@@ -99,10 +66,6 @@ public sealed partial class RpgInterface
             game.StartCellarQuest(); game.State.guideSeenStage=game.State.cellarQuest;game.Save(false);
         });
         else Action("Rozumím • pokračovat",Close);
-    }
-    private static Sprite DialogueFrame()
-    {
-        return RpgVisualTheme.Frame;
     }
     private static Sprite GuidePortrait()
     {

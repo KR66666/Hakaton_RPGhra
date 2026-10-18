@@ -5,12 +5,28 @@ using UnityEngine.UI;
 // One palette and native pixel UI shared by the village, portraits, menus and pickups.
 public static class RpgVisualTheme
 {
-    public static readonly Color Cream=new Color32(255,240,191,255);
-    public static readonly Color Gold=new Color32(242,195,100,255);
-    public static readonly Color Dark=new Color32(24,48,49,255);
+    public static readonly Color Cream=new Color32(238,222,190,255);
+    public static readonly Color Gold=new Color32(190,158,98,255);
+    public static readonly Color Dark=new Color32(42,31,24,255);
     private static readonly Dictionary<string,Sprite> icons=new Dictionary<string,Sprite>();
     private static readonly Dictionary<string,Material> materials=new Dictionary<string,Material>();
     private static Sprite panel;
+    private static Sprite parchment;
+    public static Sprite Parchment
+    {
+        get
+        {
+            if(parchment!=null)return parchment;
+            var pixels=new Color32[32*32];
+            for(int y=0;y<32;y++)for(int x=0;x<32;x++)
+            {
+                int d=Mathf.Min(x,y,31-x,31-y),grain=(x*13+y*7)%5;
+                pixels[y*32+x]=d==0?new Color32(67,43,28,255):d<3?new Color32(149,113,65,255):
+                    new Color32((byte)(211+grain),(byte)(189+grain),(byte)(147+grain),255);
+            }
+            parchment=Make(pixels,32,"Pergamen",new Vector4(5,5,5,5));return parchment;
+        }
+    }
     public static Material Art(bool terrain=false,int block=2)
     {
         string key=terrain+":"+block;
@@ -48,9 +64,11 @@ public static class RpgVisualTheme
             for(int y=0;y<32;y++)for(int x=0;x<32;x++)
             {
                 int d=Mathf.Min(x,y,31-x,31-y);
-                colors[y*32+x]=d==0?new Color32(48,32,27,255):d==1?new Color32(255,235,169,255):
-                    d==2?new Color32(184,115,53,255):d==3?new Color32(243,195,107,255):
-                    d==4?new Color32(48,59,49,255):(x+y)%8==0?new Color32(29,55,53,255):new Color32(24,48,49,255);
+                bool rivet=(x<5||x>26)&&(y<5||y>26);
+                colors[y*32+x]=d==0?new Color32(24,18,14,255):d==1?new Color32(113,88,52,255):
+                    d==2?new Color32(70,47,29,255):d==3?new Color32(92,63,38,255):
+                    rivet?new Color32(153,127,78,255):d==4?new Color32(24,18,14,255):
+                    (x*3+y)%11==0?new Color32(48,35,26,255):new Color32(39,29,23,255);
             }
             panel=Make(colors,32,"Pixelový rám",new Vector4(6,6,6,6));return panel;
         }

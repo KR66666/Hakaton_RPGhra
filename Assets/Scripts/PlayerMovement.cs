@@ -62,7 +62,7 @@ public sealed class PlayerMovement : MonoBehaviour
             var margin = new Vector3(0.2f, 0.2f, 0);
             position.x = ClampToMap(position.x, bounds.min.x, bounds.max.x, margin.x);
             position.y = ClampToMap(position.y, bounds.min.y, bounds.max.y, margin.y);
-            position = RpgWorldGeometry.Move(transform.position, position, bounds);
+            position = game != null ? game.MovePlayer(transform.position, position) : RpgWorldGeometry.Move(transform.position, position, bounds);
         }
         float distance = Vector2.Distance(transform.position, position);
         transform.position = position;
@@ -122,6 +122,10 @@ public sealed class PlayerMovement : MonoBehaviour
     {
         walkedDistance = 0;
         ShowWalkingFrame(0);
+    }
+    public void ResetPose()
+    {
+        facing=Vector2.down;walkedDistance=0;ShowWalkingFrame(0);
     }
 
     public static int FacingIndex(Vector2 direction)

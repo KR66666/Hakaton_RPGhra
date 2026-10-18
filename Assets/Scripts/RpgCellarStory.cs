@@ -129,8 +129,6 @@ public sealed partial class RpgInterface
         }
         game.AdvanceCellarQuest(4);cellarAnimating=false;
         Open("cellarRats",game.State.heroIsBoy?"HLAVNÍ HRDINA":"ARABELLA","Áá! Ona nelhala — tady opravdu jsou krysy!\n\nVzpomeneš si na radu: zpátky ke schodům, pomalu!");
-        var portrait=Rect(roomView,"Reakce hrdiny",new Vector2(30,-30),new Vector2(180,220));
-        var image=portrait.gameObject.AddComponent<Image>();image.sprite=game.State.heroIsBoy?game.HeroSprite:Resources.Load<Sprite>("ArabellaPortrait");image.preserveAspect=true;image.raycastTarget=false;
         Action("Utéct ke schodům",()=>StartCoroutine(CellarEscape(actor)));
         Action("Opatrně ustoupit",()=>StartCoroutine(CellarEscape(actor)));
     }

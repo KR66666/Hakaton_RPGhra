@@ -47,7 +47,7 @@ public sealed class VillageNpcRoutine : MonoBehaviour
         if(Time.time<waitUntil) { if(label!=null)label.text=title+"\n"+activity;return; }
         if(label!=null)label.text=title;
         Vector3 before=transform.position;
-        transform.position=game.MoveEnemy(before,Vector3.MoveTowards(before,route[next],Time.deltaTime*.7f));
+        transform.position=game.MoveResident(transform,Vector3.MoveTowards(before,route[next],Time.deltaTime*.7f));
         stalledFor=Vector2.Distance(before,transform.position)<.001f?stalledFor+Time.deltaTime:0;
         if(Vector2.Distance(transform.position,route[next])<.15f || stalledFor>2)
         { next=(next+1)%route.Length;waitUntil=Time.time+Random.Range(3f,7f);stalledFor=0; }

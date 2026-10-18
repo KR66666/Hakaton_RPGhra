@@ -14,11 +14,17 @@ public sealed class MainMenu : MonoBehaviour
     private RectTransform menuRoot;
     private GameObject locationsPanel;
     private Text heroSelection;
-
-    private void SelectHero(bool boy)
+    private GameObject startPanel;
+    private static RpgState pendingGame;
+    private static bool pendingNewGame;
+    public static void PrepareNewGame(bool boy)
     {
-        SelectedHeroIsBoy = boy;
-        heroSelection.text = boy ? "Vybraný hrdina: KLUK" : "Vybraná hrdinka: HOLKA";
+        SelectedHeroIsBoy=boy;LaunchTest=false;pendingGame=RpgState.CreateNew(boy);pendingNewGame=true;
+    }
+    public static RpgState ConsumePendingGame(out bool newGame)
+    {
+        var state=pendingGame;newGame=pendingNewGame;
+        pendingGame=null;pendingNewGame=false;return state;
     }
 
     private void Awake()
@@ -49,13 +55,9 @@ public sealed class MainMenu : MonoBehaviour
         Label("Subtitle", canvas.transform, "Strážce vesnice • středověké RPG", 26, new Vector2(0, 278), new Vector2(920, 40));
         Label("Tagline", canvas.transform, "Meč, odvaha a vesnice, která potřebuje hrdinu.", 24, new Vector2(0, -354), new Vector2(920, 40));
         Label("Controls", canvas.transform, "WASD • pohyb     J • útok     E • rozhovor     I • batoh", 22, new Vector2(0, -406), new Vector2(920, 36));
-        Label("Save hint", canvas.transform, "Uložený příběh se při vstupu automaticky načte.", 20, new Vector2(0, -448), new Vector2(920, 32));
+        Label("Save hint", canvas.transform, "Nová hra začíná od začátku. Uložený příběh otevři přes Načíst hru.", 20, new Vector2(0, -448), new Vector2(1100, 32));
 
-        heroSelection = Label("Hero selection", canvas.transform, "Vyber hlavního hrdinu", 26, new Vector2(0, 210), new Vector2(920, 44));
-        var girl = Button(canvas.transform, "Holka", 0, () => SelectHero(false));
-        girl.GetComponent<RectTransform>().anchoredPosition = new Vector2(-240, 134);
-        var boy = Button(canvas.transform, "Kluk", 0, () => SelectHero(true));
-        boy.GetComponent<RectTransform>().anchoredPosition = new Vector2(240, 134);
+        heroSelection = Label("Hero selection", canvas.transform, "Vzhled postavy nemění její vlastnosti.", 24, new Vector2(0, 180), new Vector2(920, 44));
         var play = Button(canvas.transform, "Hrát", 22, StartGame);
         Button(canvas.transform, "Lokace", -74, ShowLocations);
         Button(canvas.transform, "Archiv", -170, OpenArchive);
@@ -75,9 +77,31 @@ public sealed class MainMenu : MonoBehaviour
 
     public void StartGame()
     {
-        if (!SelectedHeroIsBoy.HasValue) { heroSelection.text = "Nejprve vyber: Holka nebo Kluk"; return; }
-        LaunchTest=false;
-        LoadScene(gameplayScene);
+        var panel=BuildStartPanel("HRÁT");
+        Label("Start choice",panel,"Začít nový příběh, nebo pokračovat v uloženém?",27,new Vector2(0,180),new Vector2(1100,70));
+        Button(panel,"Nová hra",50,ShowNewCharacterChoice);
+        Button(panel,"Načíst hru",-50,()=>{
+            if(!RpgGame.TryReadStorySave(out var saved))
+            {heroSelection.text="Uloženou hru se nepodařilo načíst.";startPanel.SetActive(false);return;}
+            pendingGame=saved;pendingNewGame=false;SelectedHeroIsBoy=null;LaunchTest=false;LoadScene(gameplayScene);
+        });
+        Button(panel,"Zpět",-150,()=>startPanel.SetActive(false));
+    }
+    private RectTransform BuildStartPanel(string title)
+    {
+        if(startPanel!=null){startPanel.SetActive(false);Destroy(startPanel);}
+        var panel=Box("Start choice",menuRoot,Vector2.zero,Vector2.zero);
+        panel.anchorMin=Vector2.zero;panel.anchorMax=Vector2.one;panel.offsetMin=panel.offsetMax=Vector2.zero;
+        startPanel=panel.gameObject;RpgVisualTheme.Panel(startPanel.AddComponent<Image>());
+        Label("Start title",panel,title,48,new Vector2(0,280),new Vector2(1000,80));return panel;
+    }
+    private void ShowNewCharacterChoice()
+    {
+        var panel=BuildStartPanel("NOVÁ HRA");
+        Label("Choose appearance",panel,"Vyber vzhled hlavní postavy. Vlastnosti jsou stejné.",26,new Vector2(0,170),new Vector2(1100,90));
+        Button(panel,"Muž",45,()=>{PrepareNewGame(true);LoadScene(gameplayScene);});
+        Button(panel,"Žena",-55,()=>{PrepareNewGame(false);LoadScene(gameplayScene);});
+        Button(panel,"Zpět",-155,StartGame);
     }
     public void ShowLocations()
     {
@@ -86,7 +110,7 @@ public sealed class MainMenu : MonoBehaviour
         var shade=locationsPanel.AddComponent<Image>();RpgVisualTheme.Panel(shade);
         Label("Locations title",rect,"LOKACE",54,new Vector2(0,290),new Vector2(1000,80));
         Label("Test description",rect,"TESTOVACÍ VERZE\nVšechna NPC, předměty, výbava a nepřátelé na jednom místě.\nTest začíná s vlastní výbavou a zlato ani postup z příběhu nemění.",25,new Vector2(0,140),new Vector2(1100,160));
-        Button(rect,"Testovací verze",-10,()=>{LaunchTest=true;LoadScene(gameplayScene);});
+        Button(rect,"Testovací verze",-10,()=>{pendingGame=null;pendingNewGame=false;LaunchTest=true;LoadScene(gameplayScene);});
         Button(rect,"Zpět",-120,()=>locationsPanel.SetActive(false));
     }
 
