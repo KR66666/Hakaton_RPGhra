@@ -114,7 +114,8 @@ public sealed partial class RpgInterface
     {
         if(kind=="guideInstruction"||kind=="cellarGuide"||kind=="guard")return GuidePortrait();
         if(kind=="heroShopDialogue")return game.State.heroIsBoy?game.HeroSprite:RpgPortraitFit.ArabellaShop();
-        if(kind=="merchant"||kind=="shopDialogue"||kind=="cellarMerchant"||kind=="entrance")return Resources.Load<Sprite>("MerchantPortrait");
+        if(kind=="entrance")return RpgVisualTheme.Icon("entrance");
+        if(kind=="merchant"||kind=="shopDialogue"||kind=="cellarMerchant")return Resources.Load<Sprite>("MerchantPortrait");
         if(kind=="mayor")return MedievalNpcAppearance.Get("mayor");
         if(kind=="healer")return MedievalNpcAppearance.Get("healer");
         if(kind=="cellarElder")return MedievalNpcAppearance.Get("healer",3);

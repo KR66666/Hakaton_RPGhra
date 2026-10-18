@@ -22,8 +22,8 @@ Po stisku **Hrát** zvol **Nová hra** nebo **Načíst hru**. Nová hra otevře 
 ## Herní průchod
 
 1. Na náměstí promluv s rychtářem Radovanem a přijmi úkol.
-2. U Elišky nakup lektvary nebo vylepši meč a zbroj. Mira léčí a mění dvě byliny na lektvar.
-3. Sbírej truhly (zlaté značky) a byliny (zelené značky).
+2. U Elišky nakup lektvary nebo vylepši zbroj. Mira léčí. Železný meč koupíš u kováře Mikuláše až od druhého cyklu za 40 zlata; do té doby bojuješ beze zbraně.
+3. Truhly se objevují během úkolu na hledání zásob.
 4. Poraz pět nájezdníků. Úder nepřítele je předem signalizován červenou barvou.
 5. Na severu se objeví velitel Vranek. Poraz ho a vrať se k Radovanovi pro odměnu.
 6. Po splnění lze pokračovat v průzkumu. Po smrti tě Mira zachrání za ztrátu až 10 zlata.
@@ -37,17 +37,16 @@ V rozhovoru s NPC zvol tlačítko **Úkol**. Deník na Q ukazuje postup a podrob
 
 | Úkol | Zadavatel a cíl | Odměna |
 | --- | --- | --- |
-| Byliny pro Miru | Mira: přines 4 byliny. Při odevzdání se spotřebují. | 25 zlata, 45 XP, 2 lektvary |
 | Ztracené zásoby | Radovan: najdi dvě oranžové bedny severně od náměstí a na východní cestě k mostu. | 60 zlata, 60 XP |
 | Zásilka pro strážného | Eliška: předej balíček Petrovi u východního kamenného mostu a vrať se. | 40 zlata, 35 XP, lektvar |
 
-Odměnu vždy odevzdává původní zadavatel. Miřin záhonek západně od středu náměstí poskytuje 2 byliny každých 45 sekund.
+Odměnu vždy odevzdává původní zadavatel. Léčivé byliny, záhonek, bylinný úkol i výroba lektvarů byly odstraněny.
 Vedlejší úkoly jsou dostupné i v již rozehrané hře a po dokončení hlavního příběhu.
 
 ## Ukládání
 
 Soubor `village-rpg-save.json` se ukládá do Unity `Application.persistentDataPath`.
-Ukládá se stav postavy, vybavení, postup úkolu, otevřené truhly, sebrané byliny a poražení nepřátelé.
+Ukládá se stav postavy, vybavení, postup úkolu, otevřené truhly, a poražení nepřátelé.
 Přeživší nepřátelé se po načtení vracejí na svá místa s plným zdravím.
 Uložení probíhá po důležitých událostech, každých 30 sekund a při odchodu.
 Při přepisu vzniká záložní soubor `.bak`.
@@ -77,7 +76,7 @@ Nepřátelé mají lokální pronásledování, nikoli navigační síť pro ces
 
 Hrdinové používají přesně dodané postavy: Image (2)/(3) pro holku, Image (4)/imagine5 pro kluka. Odstraněné je pouze pozadí, proporce zůstávají. Kód střídá oba kroky podle skutečně ušlé vzdálenosti a otáčí celý obrázek podle směru včetně diagonál. Výběr pohlaví zůstává v menu a v uložené hře. Kamera snímá mapu shora; perspektiva dodaných obrázků se nepřekresluje.
 
-Mapa úrovní: tlačítko MAPA nebo M, také v pauze a po vítězství. Čtyři bojové varianty v sektorech současné vesnice; dokončení znamená převzít odměnu u Radovana. Další úroveň se odemkne postupně. Zelené uzly lze znovu projít (resetuje se pouze boj dané úrovně), stav ostatních úrovní i vedlejší úkoly se zachovají. Modrá tečka ukazuje polohu hráče, zlatá značka aktivní úroveň. Před cestou lze vybrat chůzi zdarma nebo přesun vozem za 10 zlata; Petr po doručení zásilky pomáhá útokem, Mira po bylinkovém úkolu léčí. Volby a postup jsou součástí uložené hry.
+Mapa úrovní: tlačítko MAPA nebo M, také v pauze a po vítězství. Čtyři bojové varianty v sektorech současné vesnice; dokončení znamená převzít odměnu u Radovana. Další úroveň se odemkne postupně. Zelené uzly lze znovu projít (resetuje se pouze boj dané úrovně), stav ostatních úrovní i vedlejší úkoly se zachovají. Modrá tečka ukazuje polohu hráče, zlatá značka aktivní úroveň. Před cestou lze vybrat chůzi zdarma nebo přesun vozem za 10 zlata; Petr po doručení zásilky pomáhá útokem, Mira po seznámení léčí. Volby a postup jsou součástí uložené hry.
 
 NPC mají vlastní pixelové sprity nezávislé na hráči: Radovan vínový kabátec a čapku, Eliška zástěru a brašnu, Mira světlý šátek a košík bylin, Petr helmu, kopí a štít. Doprovod používá stejný vzhled jako příslušné NPC. Nájezdníci mají čtyři varianty kožené výstroje, velitel vlastní zbroj.
 Hlavní menu používá dodaný obrázek nočního hradu MainMenuCastle.jpg přes celou plochu se zachováním poměru stran. Tlačítka mají vlastní 16×16 pixelový rámeček, Point filtrování, devítidílné roztažení a okamžité stavy najetí/stisku. Výběr postav zůstává funkční.
@@ -101,7 +100,7 @@ Hlavní menu > Lokace > Testovací verze: samostatný čerstvý test nad mapou v
 ## Svíčky a první rituál
 Průvodce Petr → děda Matěj → obchodnice Eliška → sklep. Ve sklepě jsou tři volby: **utéct** (bez svíček, lze se vrátit), **rychle skočit pro svíčky** (3 svíčky, ztráta až 20 HP; zůstane nejméně 1 HP), nebo **opatrně dojít** (3 svíčky bez zranění). Svíčky nelze získat opakovaně. V batohu i příběhovém deníku je jejich počet.
 
-Vrať se k Petrovi a zvol **Mám svíčky • přijmout radu**. Průvodce tě pošle do **zříceniny kostela**; ukazatel cíle označí cestu. U trojúhelníkového obrazce stiskni **E** a potvrď rituál. Tři svíčky se postupně rozsvítí, obrazec zrudne, hrdina zemře a probudí se do **druhého cyklu**. Herní stav a předměty se obnoví na výchozí hodnoty; zůstane vzhled, počet úmrtí a vzpomínka na selhání. Druhý cyklus se automaticky uloží i do zálohy. Jeho další příběh zatím není připraven. První rituál v něm nelze opakovat.
+Vrať se k Petrovi a zvol **Mám svíčky • přijmout radu**. Průvodce tě pošle do **zříceniny kostela**; ukazatel cíle označí cestu. U trojúhelníkového obrazce stiskni **E** a potvrď rituál. Tři svíčky se postupně rozsvítí, obrazec zrudne, hrdina zemře a probudí se do **druhého cyklu**. Herní stav a předměty se obnoví na výchozí hodnoty; zůstane vzhled, počet úmrtí a vzpomínka na selhání. Druhý cyklus se automaticky uloží i do zálohy. V dalších cyklech se znovu hledají svíčky pro nový tvar rituálu.
 
 Svíčky, rada průvodce i cyklus se ukládají. Starší uložení s nalezeným vzkazem navážou rozhovorem o svíčkách. Původní lístek a odměna 45 zlata / 60 XP jsou z této větve odstraněny. Kontroly: **Tools → RPG → Check Candle Ritual Story**.
 
@@ -139,7 +138,7 @@ Aktivní záložka mobilu je tmavší. Vedlejší příběhy, jejich popisy a tl
 
 Souboj začne při přiblížení k aktivnímu nepříteli nebo klávesou J v jeho dosahu. Hráč volí útok, krytí (poloviční příští zásah), lektvar nebo útěk (50 %). Po platné akci následuje právě jeden tah nepřítele. Zabitý nepřítel už neútočí; neplatné použití lektvaru nespotřebuje tah. Čas, WASD, myš ani mezerník souboj neposouvají. Nelze jej obejít zavřením okna nebo načtením během boje. Ukládá se před začátkem a po dokončení; při ukončení aplikace během boje zůstává poslední stav před soubojem. Po útěku se zranění a použité lektvary uchovají; nepřítel se doplní a počká, než hráč odejde z jeho dosahu.
 
-Body i odemčené dovednosti se ukládají a přežijí příběhový přechod do druhého cyklu. Nová hra začíná bez nich. Starší uložené zvýšení atributů se převede na odpovídající dovednosti a dokončené úkoly dostanou body pouze jednou. Testovací lokace má čtyři samostatné body pro vyzkoušení všech dovedností. Kontroly: Tools → RPG → Check Turn Combat and Skills.
+Odemčené dovednosti zůstávají po celou hru přes všechny cykly. Nevyužité body zůstávají do dalších cyklů. Pouze nová hra odstraní také odemčené dovednosti. Starší uložené zvýšení atributů se převede na odpovídající dovednosti a dokončené úkoly dostanou body pouze jednou. Testovací lokace má čtyři samostatné body pro vyzkoušení všech dovedností. Kontroly: Tools → RPG → Check Turn Combat and Skills.
 
 F2 a přepínač spodní nápovědy nyní skrývají také oba panely Souboj / Lektvar.
 
@@ -148,4 +147,42 @@ U obyvatel, průvodce, dědy Matěje, Miry, Radovana i obchodnice je volba **Vyz
 
 Vítězství odstraní NPC z lokace a uloží jeho porážku samostatně od nepřátel kampaně. Nevydává body za úkoly, zlato ani postup v počítadle nájezdníků. Po útěku či prohře zůstává NPC k dispozici. Načtení a cestování poražená NPC neobnoví; nový příběh nebo nový cyklus ano. Služby a odevzdávání vedlejších úkolů poraženého zadavatele nejsou dostupné.
 
-Hlavní větev se svíčkami má náhradní stopy: poražený Matěj a Eliška zanechají cestu do obchodu/sklepa, obchod zůstává přístupný. Poražený průvodce zanechá **Průvodcovy poznámky** v mobilu Q; po získání tří svíček lze podle nich odemknout rituál. Tato náhradní cesta přidá stejnou jednorázovou odměnu za svíčky a neblokuje druhý cyklus.
+Hlavní větev se svíčkami má náhradní stopy: poražený Matěj a Eliška zanechají cestu do obchodu/sklepa, obchod zůstává přístupný. Petra lze vyzvat až po předání tří svíček a získání pokynů k rituálu (dokončený Petrův úkol). Za jeho porážku získáš přesně jednu svíčku navíc, nikdy opakovaně. Poznámky po něm zůstanou v mobilu Q. První rituál stále používá jen tři svíčky. Čtvrtá platí pouze v aktuálním cyklu; při probuzení do dalšího cyklu zmizí také.
+
+Petr je před dokončením svého úkolu chráněn také na úrovni herního stavu, nejen skrytím tlačítka. Starší uložení s předčasně poraženým Petrem ho obnoví; uložená porážka po dokončeném úkolu dostane jednu bonusovou svíčku. Bonus i jeho jednorázové vyzvednutí se ukládají pouze v aktuálním cyklu a nový cyklus je resetuje.
+
+Každý nový cyklus vytvoří výchozí herní stav: plné HP podle odemčených dovedností a plnou výdrž, původní zlato a výbavu, žádné svíčky, žádné dokončené/objevené úkoly a všechna NPC znovu přítomná. Zůstávají nevyužité body, naučený boj a odemčené dovednosti se všemi jejich účinky, totožnost postavy (vzhled a jméno), číslo cyklu a příběhová paměť. Běžné načtení uložené hry pokračuje uvnitř rozehraného cyklu.
+
+## Zpětná vazba při získání odměny
+Získané předměty, zlato a body vylepšení zobrazí malý panel s ikonou a přírůstkem. Panel se krátce zvětší, vysune a během přibližně dvou sekund zmizí. Odměny získané najednou se sloučí do jednoho oznámení, rychle po sobě získané se zobrazí postupně. Oznámení neblokuje ovládání a je viditelné i nad dialogem či mobilem. Body mají vlastní ikonu a mírně delší cinknutí. Zvuk respektuje hlavní hlasitost, hlasitost efektů a ztlumení. Načtení uloženého inventáře, nový příběh a nový cyklus odměnovou animaci ani zvuk nespouštějí.
+
+Léčivý lektvar obnovuje **15 HP**, nejvýše do maxima. Truhly a bedny se zásobami se v hlavní hře objeví jen při aktivním Radovanově úkolu **Ztracené zásoby** a po odevzdání zbývající zmizí. Již vyzvednuté se neobnoví při načtení. Testovací lokace si ponechává všechny ukázkové předměty. Hlavní kamera zůstává na původní velikosti 4,8. Přiblížená je minimapa v pravém horním rohu: ukazuje 2,5× detailnější výřez okolí hráče, sleduje ho a u okrajů mapy se zastaví. Vzdálení nepřátelé mimo výřez se nezobrazují; vzdálený cíl zůstává označen na hraně minimapy.
+
+Kliknutí levým tlačítkem během postupného vypisování průvodcova dialogu ihned zobrazí celý text a dokončí vysunutí panelu. Kliknutí při otevírání dialogu se nepočítá jako přeskočení; kliknutí použité pro přeskočení nepotvrdí současně žádnou volbu.
+
+NPC při chůzi sledují skutečný posun. Pokud déle než dvě sekundy stojí nebo jen přešlapují na místě, obrátí směr trasy a hned se pokusí ustoupit či obejít překážku. Nečekají přitom další pracovní pauzu. Obejítí respektuje mapu, ostatní NPC i hráče. Úmyslné pracovní zastávky a otevřený dialog se do zaseknutí nepočítají; samotná blízkost hráče už NPC nezastaví natrvalo.
+
+## Delší pochůzky a první seznámení
+Pohybliví obyvatelé chodí po delších okruzích mezi křižovatkami: běžní vesničané a rychtář obejdou náměstí a jižní ulici, průvodce obchází východní cestu, obyvatelé čtvrtí mají vlastní okruhy kolem brány, dílen, trhu, mlýna, přístaviště a polí. Body i jednotlivé úseky jsou ověřené na průchodnost. Chůze má rychlost 0,9 a pracovní pauzy trvají 1,5–3,5 sekundy. Kontrola zaseknutí po dvou sekundách zůstává aktivní.
+
+Při prvním rozhovoru NPC osloví neznámého příchozího. Hrdina řekne zvolené jméno, vysvětlí, že svět nezná a neví, jak se sem dostal. NPC se představí a poté nabídne běžný rozhovor. Neznají hrdinovu minulost ani povahu časové smyčky. Teprve po dokončení seznámení se jejich skutečné jméno ukazuje nad postavou a v nápovědě. Seznámení se ukládají v rámci cyklu, opakované rozhovory úvod neopakují a nový cyklus je resetuje; hrdina si může pamatovat minulé setkání, NPC ho však znovu vnímají jako cizince. Odemčené dovednosti se tím nemění.
+
+## Archiv pouze podle objevů
+Bez platné rozehrané/uložené hry je kronika prázdná. Archiv načítá skutečný postup příběhové hry: postavy po prvním rozhovoru nebo souboji (jméno se ukáže až po představení či souboji), nepřátele při setkání zblízka, lokace po skutečném vstupu a předměty po jejich získání. Obchod a sklep jsou samostatná navštívená místa. Výchozí výbava a lektvary se počítají jako získané až při spuštění hry. Prohlížení kategorií nic neodemyká a neukazuje popisy neobjevených záznamů.
+
+Objevy jsou součástí uložené hry, testovací lokace je nepřidává do hlavního příběhu. Nová hra a nový cyklus začínají s čistými záznamy, které se znovu doplňují hraním. U staršího uložení lze bezpečně doplnit pouze jeho aktuální místo, vlastněné předměty, dokončená seznámení a skutečně poražené nepřátele. Nadpis, kategorie a posuvný obsah mají oddělené místo a nepřekrývají se. Kontroly: Tools → RPG → Check Archive Discovery.
+
+
+Tři příběhové cykly:
+- Rituály vyžadují postupně 3 / 4 / 5 svíček: trojúhelník, čtverec, hvězda. První dva rituály končí smrtí a novým cyklem; třetí spustí obranu před osmi nepřáteli.
+- Za úkoly lze získat nejvýše 1 / 3 / 4 body v příslušném cyklu. Neutracené body, odemčené buffy a výcvik se přenášejí. Vybavení, svíčky, setkání s NPC a úkoly začínají znovu. Nová hra resetuje vše.
+- V prvním cyklu lze v běžném souboji pouze utíkat. Petra lze po dokončení jeho úkolu porazit zvláštní volbou v rozhovoru a získat jednu svíčku. Každý cyklus Petra obnoví a nic si nepamatuje.
+- Od druhého cyklu učí Petr zdarma boj s mečem; alternativou je kovář Mikuláš za 30 zlata. Meč stojí dalších 40 zlata. Od třetího učí Petr nebo stávající rybář Oldřich zdarma boj s lukem; Oldřich prodává luk za 40 zlata. Výcvik nepřidává vybavení.
+- Od druhého cyklu jsou vedle tří sklepních svíček dostupné další: Petr, les, tajný pokoj za regálem knihovny. Celkem šest, poslední rituál potřebuje pět. Každý zdroj lze získat jen jednou za cyklus.
+- Netopýři jsou v Temném lese od druhého cyklu; zasáhne je pouze naučený boj s vlastněným lukem. Blok má 35% šanci plně vykrýt ránu, jinak zranění půlí.
+- Závěrečná vlna umožňuje ruční tahy nebo volitelný zrychlený autoboj. Ten používá skutečné zbraně a lektvary, léčí při nejvýše 35 HP a může prohrát. Počet zbývajících nepřátel se ukládá po vítězství; útěk či porážka vlnu nedokončí. Při návratu do kostela lze pokračovat.
+
+Nepřátelé jsou pouze dva druhy: **vlk** (pozemní, meč nebo luk) a **netopýr** (létající, pouze luk). Platí pro průzkum, testovací lokaci i závěrečnou vlnu. Nájezdníci ani velitel se již negenerují; jejich staré záznamy se z archivu vyřazují. Starší bojový úkol se splní po pěti poražených tvorech bez dalšího bosse.
+
+
+Vstupy do minilokalit mají jeden standard: zlatá ikona dveří a nápis `[E] Vstoupit: název`, dosah 1,35 herní jednotky, po stisku E společné potvrzení `Vstoupit / Zůstat zde` a krátké zatmavení. Platí pro obchod, knihovnu, kostel, les, Temný les, návraty do města i tajný pokoj knihovny. Obchod se sám neotevírá při přiblížení. Schody do sklepa používají totéž potvrzení a zatmavení; návrat ze sklepa vede zpět do obchodu. Odmítnutí vstupu ani zavření potvrzení nepřesune hráče a neobjeví cílovou lokaci v archivu.

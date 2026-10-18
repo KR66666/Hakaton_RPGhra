@@ -41,20 +41,13 @@ public sealed partial class RpgGame
         foreach(var exit in RpgLocations.Exits)
         {
             if(exit.from!=State.place)continue;
-            var obj=new GameObject("Přechod • "+RpgLocations.Name(exit.to));obj.transform.position=SnapToRoad(ExitPosition(exit));
-            var renderer=obj.AddComponent<SpriteRenderer>();renderer.sprite=MarkerSprite();renderer.color=new Color(1,.79f,.27f);renderer.sortingOrder=5;
-            obj.transform.localScale=Vector3.one*.55f;
-            var trigger=obj.AddComponent<CircleCollider2D>();trigger.radius=.8f;trigger.isTrigger=true;
-            var label=AddLabel(obj.transform,"[E] "+RpgLocations.Name(exit.to),new Vector3(0,1,0),new Color(1,.9f,.65f));
-            label.transform.localScale=Vector3.one/.55f;label.characterSize=.05f;
-            worldItems.Add(new WorldItem{id=((int)exit.to).ToString(),kind="locationExit",title="Přejít: "+RpgLocations.Name(exit.to),obj=obj});
-            worldObjects.Add(obj);
+            AddEntranceMarker(((int)exit.to).ToString(),RpgLocations.Name(exit.to),"locationExit",ExitPosition(exit));
         }
     }
     private bool BuildExplorationLocation()
     {
         if(InTown)return false;
-        companionObject=null;AddLocationExits();BuildRitualSite();return true;
+        companionObject=null;AddLocationExits();BuildRitualSite();BuildCycleExploration();return true;
     }
     public void TrackLocation(RpgPlace destination)
     {
@@ -73,10 +66,16 @@ public sealed partial class RpgGame
         if(IsTestLocation)return false;
         if(trackedShop&&InTown){position=ShopApproach;title="Obchod • Eliška";return true;}
         RpgLocationExit link=trackedLocation.HasValue?RpgLocations.Find(State.place,trackedLocation.Value):null;
-        if(link==null && State.cycle==1 && State.ritualKnown)
+        if(link==null && State.ritualKnown)
         {
             if(State.place==RpgPlace.ChurchRuins){position=RitualPosition;title=State.CellarObjective;return true;}
-            if(InTown)link=RpgLocations.Find(State.place,RpgPlace.ChurchRuins);
+            if(State.candles<State.RequiredCandles && State.cycle>=2)
+            {
+                if(State.place==RpgPlace.Forest && !State.forestCandleTaken){position=new Vector3(1,5);title="Svíčka v lese";return true;}
+                if(State.place==RpgPlace.Library && !State.libraryCandleTaken){position=new Vector3(13,8);title="Tajný pokoj knihovny";return true;}
+                if(InTown)link=RpgLocations.Find(State.place,!State.forestCandleTaken?RpgPlace.Forest:RpgPlace.Library);
+            }
+            else if(InTown)link=RpgLocations.Find(State.place,RpgPlace.ChurchRuins);
         }
         if(link==null&&!InTown)
             foreach(var candidate in RpgLocations.Exits)if(candidate.from==State.place){link=candidate;break;}
@@ -87,7 +86,7 @@ public sealed partial class RpgGame
     {
         var exit=RpgLocations.Find(State.place,destination);
         if(IsTestLocation||exit==null||State.health<=0||IsEnteringRoom||Interface.InRoom)return false;
-        if(Vector2.Distance(transform.position,SnapToRoad(ExitPosition(exit)))>1.35f)
+        if(!RpgEntranceRules.InReach(transform.position,SnapToRoad(ExitPosition(exit))))
         {Notify("Přijdi blíž ke zlaté značce přechodu.");return false;}
         StartCoroutine(TravelLocation(exit));return true;
     }
@@ -95,10 +94,10 @@ public sealed partial class RpgGame
     {
         Interface.Close();IsEnteringRoom=true;
         yield return Interface.FadeLocation(0,1);
-        State.place=exit.to;ApplyLocationMap();
+        State.place=exit.to;State.RecordArchivePlace(RpgArchive.PlaceKey(exit.to));ApplyLocationMap();
         Vector3 arrival=exit.to==RpgPlace.Town?RpgWorldGeometry.ExpandedPixelPosition(exit.arrival,map.bounds):new Vector3(exit.arrival.x,exit.arrival.y,transform.position.z);
         arrival=SnapToRoad(arrival);State.x=arrival.x;State.y=arrival.y;
-        trackedLocation=null;trackedShop=false;offeredRoom=null;
+        trackedLocation=null;trackedShop=false;
         PlacePlayer();BuildWorld();
         yield return Interface.FadeLocation(1,0);
         IsEnteringRoom=false;Save(false);Notify(LocationName+" • "+RpgLocations.Description(State.place),7);
@@ -120,8 +119,8 @@ public sealed partial class RpgInterface
         }
         locationFade.gameObject.SetActive(true);locationFade.transform.SetAsLastSibling();
         float elapsed=0;
-        while(elapsed<.2f)
-        {elapsed+=Time.unscaledDeltaTime;locationFade.color=new Color(0,0,0,Mathf.Lerp(from,to,elapsed/.2f));yield return null;}
+        while(elapsed<RpgEntranceRules.FadeSeconds)
+        {elapsed+=Time.unscaledDeltaTime;locationFade.color=new Color(0,0,0,Mathf.Lerp(from,to,elapsed/RpgEntranceRules.FadeSeconds));yield return null;}
         locationFade.color=new Color(0,0,0,to);if(to==0)locationFade.gameObject.SetActive(false);
     }
     private void ShowLocationMap()

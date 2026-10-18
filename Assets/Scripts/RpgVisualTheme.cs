@@ -89,13 +89,47 @@ public static class RpgVisualTheme
         const int n=24;var pixels=new Color32[n*n];
         Color32 ink=new Color32(39,39,39,255),gold=new Color32(246,193,80,255),light=new Color32(255,240,176,255),wood=new Color32(155,83,44,255),green=new Color32(75,171,58,255),steel=new Color32(166,220,218,255);
         System.Action<int,int,int,int,Color32> box=(x,y,w,h,c)=>{for(int yy=y;yy<y+h;yy++)for(int xx=x;xx<x+w;xx++)if(xx>=0&&yy>=0&&xx<n&&yy<n)pixels[yy*n+xx]=c;};
-        if(kind=="heart")
+        if(kind=="upgrade")
+        {
+            for(int y=2;y<22;y++)for(int x=2;x<22;x++)
+                if(Mathf.Abs(x-12)+Mathf.Abs(y-12)<=8)box(x,y,1,1,gold);
+            box(11,7,2,10,light);box(7,11,10,2,light);
+        }
+        else if(kind=="candle")
+        {box(8,3,8,13,ink);box(9,4,6,11,light);box(11,15,2,3,wood);box(10,18,4,4,gold);box(11,19,2,2,light);}
+        else if(kind=="gold")
+        {
+            for(int y=3;y<21;y++)for(int x=3;x<21;x++)
+                if((x-12)*(x-12)+(y-12)*(y-12)<72)box(x,y,1,1,gold);
+            box(11,6,2,12,wood);box(7,11,10,2,light);
+        }
+        else if(kind=="heart")
         {
             string[] rows={"001110011100","011111111110","111111111111","111111111111","011111111110","001111111100","000111111000","000011110000","000001100000"};
             for(int y=0;y<rows.Length;y++)for(int x=0;x<12;x++)if(rows[y][x]=='1')box(2+x,16-y,1,1,new Color32(35,42,42,255));
             for(int y=1;y<rows.Length-1;y++)for(int x=1;x<11;x++)if(rows[y][x]=='1'&&rows[y-1][x]=='1'&&rows[y+1][x]=='1'&&rows[y][x-1]=='1'&&rows[y][x+1]=='1')box(2+x,16-y,1,1,new Color32(47,196,153,255));
             box(5,14,2,1,light);
         }
+        else if(kind=="bow")
+        {box(5,3,2,18,wood);box(7,3,3,2,gold);box(9,5,3,3,wood);box(11,8,2,8,wood);box(9,16,3,3,wood);box(7,19,3,2,gold);box(5,4,1,16,light);box(4,11,15,1,steel);box(17,10,3,3,steel);}
+        else if(kind=="entrance")
+        {
+            box(4,2,16,21,ink);box(5,3,14,19,gold);box(7,3,10,17,wood);
+            box(9,3,6,14,ink);box(15,10,2,2,light);box(2,1,20,3,steel);
+        }
+        else if(kind=="wolf")
+        {
+            box(7,5,10,15,ink);box(8,6,8,13,steel);
+            box(5,14,14,7,ink);box(6,15,12,5,steel);
+            box(5,19,4,4,ink);box(15,19,4,4,ink);
+            box(8,15,2,1,gold);box(14,15,2,1,gold);
+            box(10,11,4,4,light);box(11,11,2,2,ink);
+            box(5,5,3,6,ink);box(16,5,3,6,ink);box(11,1,2,5,steel);
+        }
+        else if(kind=="bat")
+        {box(10,8,4,9,ink);box(2,11,8,4,steel);box(14,11,8,4,steel);box(1,15,4,4,ink);box(19,15,4,4,ink);box(10,16,1,3,gold);box(13,16,1,3,gold);}
+        else if(kind=="fist")
+        {box(5,5,14,13,ink);box(6,6,12,11,wood);box(4,9,6,6,gold);for(int i=0;i<4;i++)box(6+i*3,14,2,5,light);}
         else if(kind.Contains("weapon")||kind=="sword")
         {for(int i=0;i<13;i++){box(5+i,5+i,4,4,ink);box(6+i,6+i,2,2,steel);}box(4,2,3,6,wood);box(2,7,9,3,gold);box(18,19,2,2,light);}
         else if(kind.Contains("armor"))

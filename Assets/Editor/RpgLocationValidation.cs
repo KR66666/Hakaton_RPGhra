@@ -11,6 +11,18 @@ public static class RpgLocationValidation
     {
         int count=0;
         Action<bool,string> check=(value,message)=>{if(!value)throw new Exception(message);count++;};
+        check(RpgEntranceRules.IsEntrance("shop") && RpgEntranceRules.IsEntrance("locationExit") && RpgEntranceRules.IsEntrance("secretRoom") && !RpgEntranceRules.IsEntrance("mayor"),"Only location entrances use door interactions");
+        check(RpgEntranceRules.InReach(Vector2.zero,new Vector2(1.3f,0)) && !RpgEntranceRules.InReach(Vector2.zero,new Vector2(1.4f,0)),"Shop and all location doors share one interaction distance");
+        check(RpgEntranceRules.Prompt("Knihovna")=="[E] Vstoupit: Knihovna" && RpgEntranceRules.Prompt("Obchod")=="[E] Vstoupit: Obchod","Door prompts have the same wording");
+        check(!RpgLocations.Blocked(RpgPlace.Library,new Vector3(13,8)),"Secret room entrance is reachable outside bookcase colliders");
+        var miniView=RpgMiniMapView.View(new Vector2(.5f,.5f));
+        check(Math.Abs(miniView.width-.4f)<.0001f && Math.Abs(miniView.height-.4f)<.0001f,"Minimap displays a 2.5x local crop");
+        check(Vector2.Distance(RpgMiniMapView.Project(new Vector2(.5f,.5f),miniView),new Vector2(.5f,.5f))<.0001f,"Player is centered in the local minimap");
+        var corner=RpgMiniMapView.View(Vector2.zero);
+        check(corner.xMin==0 && corner.yMin==0,"Minimap crop stays inside the map at the lower edge");
+        corner=RpgMiniMapView.View(Vector2.one);
+        check(Math.Abs(corner.xMax-1)<.0001f && Math.Abs(corner.yMax-1)<.0001f,"Minimap crop stays inside the map at the upper edge");
+        check(RpgMiniMapView.Project(Vector2.zero,miniView).x<0 && RpgMiniMapView.Project(Vector2.one,miniView).x>1,"Distant markers project outside the visible crop");
         check(RpgLocations.Normalize((RpgPlace)99)==RpgPlace.Town,"Unknown saved locations must fall back to town");
         check(new RpgState().place==RpgPlace.Town,"Old saves and new games default to town");
         check(RpgLocations.Find(RpgPlace.Town,RpgPlace.DarkForest)==null,"Dark forest is reached through the forest");
@@ -82,7 +94,7 @@ public static class RpgLocationValidation
         {
             var saved=new RpgState{place=place,x=1,y=-7,health=38,gold=67,cellarQuest=5};
             var restored=JsonUtility.FromJson<RpgState>(JsonUtility.ToJson(saved));restored.Normalize();
-            if(restored.place!=place||restored.x!=1||restored.y!=-7||restored.health!=38||restored.gold!=67||restored.cellarQuest!=5)
+            if(restored.place!=place||restored.x!=1||restored.y!=-7||restored.health!=38||restored.gold!=67||restored.cellarQuest!=4)
                 throw new Exception("Location save round trip failed: "+place);
             var map=RpgLocationArt.Map(place);
             if(map==null||map.texture.filterMode!=FilterMode.Point||Mathf.Abs(map.bounds.size.x-32)>.01f||Mathf.Abs(map.bounds.size.y-24)>.01f)

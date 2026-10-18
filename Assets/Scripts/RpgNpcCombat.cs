@@ -6,7 +6,7 @@ public sealed partial class RpgGame
     private string battleNpcId;
     public bool CanChallengeNpc(string id)
     {
-        if(string.IsNullOrEmpty(id) || State.NpcDefeated(id) || InBattle || IsEnteringRoom || State.health<=0)return false;
+        if(!State.CanDefeatNpc(id) || InBattle || IsEnteringRoom || State.health<=0)return false;
         if(id=="merchant" && Interface.InRoom)return true;
         var target=worldItems.Find(item=>item.id==id && item.obj!=null && item.obj.activeSelf);
         return target!=null && Vector2.Distance(transform.position,target.obj.transform.position)<=3;
@@ -14,9 +14,10 @@ public sealed partial class RpgGame
     public void StartNpcBattle(string id)
     {
         if(!CanChallengeNpc(id))return;
+        if(id=="guard"){Interface.Close();State.RecordArchiveNpc(id);NpcVictory(id);Save(false);return;}
         var target=worldItems.Find(item=>item.id==id && item.obj!=null);
         string title=target!=null?target.title:id=="merchant"?"Obchodnice Eliška":"Obyvatel";
-        Interface.Close();Save(false);
+        Interface.Close();if(!IsTestLocation)State.RecordArchiveNpc(id);Save(false);
         battleEnemy=null;battleNpcId=id;
         battle=new RpgTurnBattle(State,id=="guard"?72:48,false,title);
         Interface.ShowBattle(battle);
@@ -32,7 +33,8 @@ public sealed partial class RpgGame
         worldItems.RemoveAll(item=>item.id==id);
         if(id=="healer")BuildCompanion();
         DialogueNpcId=null;
-        Notify("NPC poraženo. "+(id=="guard" || id=="elder" || id=="merchant"?
+        if(id=="guard"){Notify("Petr poražen • získáváš 1 svíčku navíc. Celkem: "+State.candles+".",7);return;}
+        Notify("NPC poraženo. "+(id=="elder" || id=="merchant"?
             "Zůstaly po něm poznámky k cestě za svíčkami. Postup najdeš v mobilu [Q].":""),7);
     }
 }
@@ -41,13 +43,13 @@ public sealed partial class RpgInterface
 {
     private void NpcChallenge(string id)
     {
-        if(game.CanChallengeNpc(id))Action("Vyzvat k souboji",()=>game.StartNpcBattle(id));
+        if(game.CanChallengeNpc(id) && (id=="guard" || game.State.CanFight(false)))Action(id=="guard"?"Porazit Petra • získat svíčku":"Vyzvat k souboji",()=>game.StartNpcBattle(id));
     }
     public void ShowFallenGuideNotes()
     {
         var s=game.State;
         Open("cellarJournal","PRŮVODCOVY POZNÁMKY",
-            "Zůstaly po něm poznámky: Matěj ví o svíčkách ve sklepě obchodu. Pro rituál jsou potřeba tři. Ve zřícenině kostela je rozmísti do rohů trojúhelníku a zapal je. Podle zápisků tě to má probudit ze snu.\n\n"+s.CellarObjective);
+            "Zůstaly po něm poznámky: Matěj ví o svíčkách ve sklepě obchodu. Ve zřícenině kostela je rozmísti na rituální obrazec a zapal je. Podle zápisků tě to má probudit ze snu.\n\n"+s.CellarObjective);
         if(s.cellarQuest==6 && !s.ritualKnown)Action("Použít pokyny k rituálu",game.CompleteCellarQuest);
         Action("Zpět k úkolům",ShowPhoneJournal);
         Action("Odložit mobil",Close);

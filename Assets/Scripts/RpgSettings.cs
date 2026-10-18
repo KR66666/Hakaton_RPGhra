@@ -10,6 +10,7 @@ public sealed class RpgSettings : MonoBehaviour
     private GameObject panel;
     private AudioSource musicSource,effectsSource;
     private AudioClip click;
+    private AudioClip itemReward,pointReward;
     private float master,music,effects;
     private bool mute;
     private int defaultQuality;
@@ -64,6 +65,27 @@ public sealed class RpgSettings : MonoBehaviour
         click=AudioClip.Create("UI click",sound.Length,1,rate,false);click.SetData(sound,0);
     }
     public static void PlayEffect(){if(instance!=null&&instance.effectsSource!=null&&instance.click!=null)instance.effectsSource.PlayOneShot(instance.click);}
+    public static void PlayReward(bool point)
+    {
+        if(instance==null || instance.effectsSource==null)return;
+        var clip=point?instance.pointReward:instance.itemReward;
+        if(clip==null)
+        {
+            const int rate=22050;float duration=point?.45f:.27f;
+            var samples=new float[Mathf.CeilToInt(rate*duration)];
+            for(int i=0;i<samples.Length;i++)
+            {
+                float t=(float)i/rate;
+                float baseTone=point?660:880;
+                float envelope=Mathf.Clamp01(t/.008f)*Mathf.Clamp01((duration-t)/.08f)*Mathf.Exp(-t*5);
+                // Two gently decaying tones make a small, non-looping chime.
+                samples[i]=.18f*envelope*(Mathf.Sin(2*Mathf.PI*baseTone*t)+.4f*Mathf.Sin(2*Mathf.PI*baseTone*1.5f*t));
+            }
+            clip=AudioClip.Create(point?"Bod vylepšení • zvonek":"Předmět • cinknutí",samples.Length,1,rate,false);clip.SetData(samples,0);
+            if(point)instance.pointReward=clip;else instance.itemReward=clip;
+        }
+        instance.effectsSource.PlayOneShot(clip,.8f);
+    }
     public static void Show()
     {
         if(instance==null)return;
