@@ -135,7 +135,7 @@ public static class RpgValidation
             var originalBounds = new Bounds(new Vector3(0, 2, 0), new Vector3(40, 26.666666f, 1));
             var bounds=RpgWorldGeometry.ExpandedBounds(originalBounds);
             Check(Vector3.Distance(RpgWorldGeometry.PixelPosition(new Vector2(768,512),bounds),originalBounds.center)<.001f,"Expansion preserves legacy quest/NPC world coordinates",ref checks);
-            Check(!RpgWorldGeometry.Blocked(new Vector3(.5f,3.5f), bounds, RpgWorldGeometry.FeetOffset), "New village spawn is inside the open square", ref checks);
+            Check(!RpgWorldGeometry.Blocked(new Vector3(.5f,3.5f,0), bounds, RpgWorldGeometry.FeetOffset), "New village spawn is inside the open square", ref checks);
             var house = RpgWorldGeometry.ExpandedPixelPosition(new Vector2(650,300),bounds);
             Check(RpgWorldGeometry.Blocked(house, bounds, -0.45f), "House footprint blocks movement", ref checks);
             Check(!AtPixelBlocked(1150, 434, bounds), "Bridge is walkable", ref checks);
@@ -375,8 +375,9 @@ public static class RpgValidation
             Check(Resources.Load<Sprite>("ArabellaPortrait")!=null && Resources.Load<Sprite>("MerchantPortrait")!=null && Resources.Load<Sprite>("ShopInterior")!=null, "Both portraits and the shop background load", ref checks);
             game.Interface.Close();
             Check(!game.Interface.InRoom && !game.Interface.IsModal, "Leaving shop restores outdoor view", ref checks);
+            game.RestoreState(new RpgState { currentArea = 1 });
             game.AcceptQuest();
-            Check(game.State.questStage == 1 && game.Enemies.Count == 6, "Quest and encounter creation", ref checks);
+            Check(game.State.currentArea > 0 && game.State.questStage == 1 && game.Enemies.Count == 6, "Quest and encounter creation in a combat area", ref checks);
             var first = game.Enemies[0];
             first.Hit(1000, Vector2.right);
             Check(game.State.banditsDefeated == 1 && game.State.gold == 47, "Combat gives XP and loot", ref checks);

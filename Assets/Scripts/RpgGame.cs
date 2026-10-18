@@ -666,13 +666,37 @@ public sealed partial class RpgGame : MonoBehaviour
     private RpgState ReadSave()
     {
         if(IsTestLocation)return null;
+        if (TryReadSaveFile(SavePath, out var saved)) return saved;
+
+        string backupPath = SavePath + ".bak";
+        if (TryReadSaveFile(backupPath, out saved))
+        {
+            Debug.LogWarning("Hlavní uložení nelze načíst; byla obnovena záložní hra.");
+            return saved;
+        }
+        return null;
+    }
+
+    private static bool TryReadSaveFile(string path, out RpgState saved)
+    {
+        saved = null;
+        if (!File.Exists(path)) return false;
         try
         {
-            if (!File.Exists(SavePath)) return null;
-            var value = JsonUtility.FromJson<RpgState>(File.ReadAllText(SavePath));
-            return value != null && value.version == 1 ? value : null;
+            var value = JsonUtility.FromJson<RpgState>(File.ReadAllText(path));
+            if (value == null || value.version != 1)
+            {
+                Debug.LogWarning("Uloženou hru nelze načíst: soubor je prázdný nebo má nepodporovanou verzi. " + path);
+                return false;
+            }
+            saved = value;
+            return true;
         }
-        catch (Exception exception) { Debug.LogWarning("Uloženou hru nelze načíst: " + exception.Message); return null; }
+        catch (Exception exception)
+        {
+            Debug.LogWarning("Uloženou hru nelze načíst: " + path + ". " + exception.Message);
+            return false;
+        }
     }
 
     public void Save(bool announce = true)

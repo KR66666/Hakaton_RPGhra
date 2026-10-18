@@ -21,12 +21,17 @@ Předchozí příběh se automaticky načte. Nový příběh lze začít v nabí
 
 ## Herní průchod
 
-1. Na náměstí promluv s rychtářem Radovanem a přijmi úkol.
-2. U Elišky nakup lektvary nebo vylepši meč a zbroj. Mira léčí a mění dvě byliny na lektvar.
-3. Sbírej truhly (zlaté značky) a byliny (zelené značky).
-4. Poraz pět nájezdníků. Úder nepřítele je předem signalizován červenou barvou.
-5. Na severu se objeví velitel Vranek. Poraz ho a vrať se k Radovanovi pro odměnu.
-6. Po splnění lze pokračovat v průzkumu. Po smrti tě Mira zachrání za ztrátu až 10 zlata.
+Havranov je bezpečná výchozí vesnice; jeho obyvatelé nejsou nepřátelé. Začni
+rozhovorem s Petrem Křížem u východního mostu a sleduj úkol v deníku **Q**.
+Dokonči příběh Tajemství sklepa: promluv s dědou Matějem a Eliškou, prozkoumej
+sklep a předej rozluštěný vzkaz Petrovi. Tím se odemkne mapa výprav.
+
+Na mapě **M** vyber bojovou výpravu. Tam přijmi úkol u Radovana a poraz pět
+nájezdníků; po jejich poražení se objeví velitel Vranek. Nepřátelský úder je
+signalizován červeně. Po vítězství se vrať k Radovanovi pro odměnu. U Elišky
+můžeš nakoupit lektvary a vylepšit výbavu; Mira léčí a mění dvě byliny na
+lektvar. Truhly a byliny lze sbírat při průzkumu. Po smrti tě Mira zachrání
+za ztrátu až 10 zlata.
 
 XP zvyšují úroveň, maximální zdraví a útok. Vybavení lze vylepšit pětkrát.
 Dialogy a inventář pozastavují pohyb i nepřátelskou AI.
