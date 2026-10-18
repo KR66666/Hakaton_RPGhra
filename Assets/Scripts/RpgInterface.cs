@@ -14,6 +14,10 @@ public sealed class RpgInterface : MonoBehaviour
     private float toastUntil;
     private string currentModal;
     private Font font;
+    private RectTransform miniMap, miniPlayer, miniGoal, goalArrow;
+    private Text goalHint;
+    private Sprite directionSprite;
+    private readonly System.Collections.Generic.List<RectTransform> enemyDots = new System.Collections.Generic.List<RectTransform>();
     private bool shopScene;
     private Image arabellaPortrait, merchantPortrait;
     private readonly System.Collections.Generic.List<Sprite> portraitCrops = new System.Collections.Generic.List<Sprite>();
@@ -63,6 +67,17 @@ public sealed class RpgInterface : MonoBehaviour
         Label(tracker, "DENÍK DOBRODRUHA  [Q]", new Vector2(18, -12), new Vector2(335, 26), 18, Gold);
         quest = Label(tracker, "", new Vector2(18, -44), new Vector2(335, 112), 18, new Color(0.88f, 0.9f, 0.92f));
 
+        var miniBox=Panel(canvas,"Mini map",new Vector2(-20,-205),new Vector2(250,198),new Vector2(1,1));
+        Label(miniBox,"MAPKA • modrá = ty",new Vector2(10,-168),new Vector2(230,25),14,Gold);
+        miniMap=Rect(miniBox,"Village overview",new Vector2(10,-10),new Vector2(230,153));
+        var miniImage=miniMap.gameObject.AddComponent<Image>();miniImage.sprite=game.MapSprite;miniImage.color=new Color(.8f,.8f,.8f);miniImage.raycastTarget=false;
+        var miniClick=miniBox.gameObject.AddComponent<Button>();miniClick.targetGraphic=miniBox.GetComponent<Image>();miniClick.onClick.AddListener(ShowWorldMap);
+        for(int i=0;i<8;i++)enemyDots.Add(MapDot("Enemy",new Color(.95f,.25f,.2f),5));
+        miniGoal=MapDot("Quest goal",Gold,9);miniPlayer=MapDot("Player",Color.cyan,7);
+        goalHint=Label(canvas,"",Vector2.zero,new Vector2(480,30),17,Gold);Anchor(goalHint.rectTransform,new Vector2(.5f,1),new Vector2(0,-118));goalHint.alignment=TextAnchor.MiddleCenter;
+        goalArrow=Rect(goalHint.transform,"Goal direction",new Vector2(-14,-8),new Vector2(12,12));
+        var arrowImage=goalArrow.gameObject.AddComponent<Image>();arrowImage.sprite=DirectionSprite();arrowImage.color=Gold;arrowImage.raycastTarget=false;
+
         var controls = Panel(canvas, "Controls", new Vector2(0, 16), new Vector2(1100, 72), new Vector2(0.5f, 0));
         combat = Label(controls, "", new Vector2(18, -9), new Vector2(1064, 25), 18, Gold);
         var keys = Label(controls, "WASD / šipky  pohyb     Shift  běh     Mezerník  úhyb     E  mluvit / sebrat     I  batoh     Q  deník     Esc  pauza     M  mapa     C  postava", new Vector2(18, -39), new Vector2(1064, 24), 16, Color.white);
@@ -102,7 +117,54 @@ public sealed class RpgInterface : MonoBehaviour
         quest.text = QuestSummary() + (active > 0 ? $"\nVedlejší úkoly: {active}  [Q]" : "");
         hint.text = game.NearbyPrompt;
         combat.text = $"[J / levé tlačítko]  {(game.AttackCooldown > 0 ? "ŠVIH…" : "ÚTOK MEČEM")}      [H]  LEKTVAR ×{state.potions}      ÚTOK {state.Damage}      OBRANA {state.Defense}";
+        UpdateMiniMap();
+        if(state.trackedQuest>=0 && state.SideQuestStage(state.trackedQuest)==1) quest.text=SideSummary(state.trackedQuest)+"\nSledovaný úkol • Q pro změnu";
         if (Time.unscaledTime >= toastUntil) toast.text = "";
+    }
+
+    private Sprite DirectionSprite()
+    {
+        var texture=new Texture2D(14,14,TextureFormat.RGBA32,false){filterMode=FilterMode.Point};
+        var pixels=new Color32[196];
+        for(int y=0;y<14;y++)for(int x=0;x<14;x++)
+            if(y>=6&&Mathf.Abs(x-6.5f)<=13-y || y<7&&x>=5&&x<=8) pixels[y*14+x]=new Color32(255,255,255,255);
+        texture.SetPixels32(pixels);texture.Apply();
+        directionSprite=Sprite.Create(texture,new Rect(0,0,14,14),Vector2.one*.5f,14);return directionSprite;
+    }
+    private void OnDestroy()
+    {
+        if(directionSprite!=null){Destroy(directionSprite.texture);Destroy(directionSprite);}
+    }
+
+    private RectTransform MapDot(string name,Color color,float size)
+    {
+        var rect=Rect(miniMap,name,Vector2.zero,new Vector2(size,size));rect.pivot=Vector2.one*.5f;
+        var image=rect.gameObject.AddComponent<Image>();image.color=color;image.raycastTarget=false;return rect;
+    }
+    private void LocateDot(RectTransform dot,Vector3 position)
+    {
+        var bounds=game.MapBounds;
+        dot.anchoredPosition=new Vector2(Mathf.Clamp01((position.x-bounds.min.x)/bounds.size.x)*230,-Mathf.Clamp01((bounds.max.y-position.y)/bounds.size.y)*153);
+    }
+    private void UpdateMiniMap()
+    {
+        LocateDot(miniPlayer,game.Player.position);
+        int index=0;
+        foreach(var enemy in game.Enemies)
+        {
+            if(enemy==null||enemy.Dead||index>=enemyDots.Count)continue;
+            enemyDots[index].gameObject.SetActive(true);LocateDot(enemyDots[index++],enemy.transform.position);
+        }
+        for(;index<enemyDots.Count;index++)enemyDots[index].gameObject.SetActive(false);
+        bool hasGoal=game.TryTrackedGoal(out var target,out var title);
+        miniGoal.gameObject.SetActive(hasGoal);goalArrow.gameObject.SetActive(hasGoal);
+        goalHint.text=hasGoal?title+" • "+Mathf.CeilToInt(Vector2.Distance(game.Player.position,target))+" m":"Žádný sledovaný cíl • otevři deník Q";
+        if(hasGoal)
+        {
+            LocateDot(miniGoal,target);
+            Vector2 delta=target-game.Player.position;
+            goalArrow.localRotation=Quaternion.Euler(0,0,Mathf.Atan2(delta.y,delta.x)*Mathf.Rad2Deg-90);
+        }
     }
 
     private string QuestSummary()
@@ -173,8 +235,9 @@ public sealed class RpgInterface : MonoBehaviour
     {
         if (game.State.health <= 0) return;
         if (currentModal == "journal") { Close(); return; }
-        Open("journal", "DENÍK ÚKOLŮ", QuestSummary() + "\n\nVEDLEJŠÍ PŘÍBĚHY\n" + SideSummary(0) + "\n" + SideSummary(1) + "\n" + SideSummary(2) + "\n\nPodrobnosti otevřeš tlačítkem. Úkoly zadávají obyvatelé vesnice.");
+        Open("journal", "DENÍK ÚKOLŮ", QuestSummary() + "\n\nVEDLEJŠÍ PŘÍBĚHY\n" + SideSummary(0) + "\n" + SideSummary(1) + "\n" + SideSummary(2) + "\n\nODMĚNY (zlato / XP): hlavní 150/150 • byliny 25/45 • zásoby 60/60 • zásilka 40/35.\nPodrobnosti a sledování otevřeš tlačítkem.");
         modalBody.fontSize = 18;
+        Action("Sledovat hlavní úkol",()=>game.TrackQuest(-1));
         Action("Byliny pro Miru", () => ShowSideQuest(0, false));
         Action("Ztracené zásoby", () => ShowSideQuest(1, false));
         Action("Zásilka pro strážného", () => ShowSideQuest(2, false));
@@ -378,6 +441,7 @@ public sealed class RpgInterface : MonoBehaviour
             Action("Odevzdat úkol a získat odměnu", () => game.CompleteSideQuest(id));
         else if (!atGiver && state.SideQuestStage(id) != 2)
             Action("Úkol přijmeš a odevzdáš u zadavatele", () => game.Notify("Vyhledej zadavatele ve vesnici."));
+        if(state.SideQuestStage(id)==1) Action("Sledovat na mapce",()=>game.TrackQuest(id));
         Action(atGiver ? "Zpět k rozhovoru" : "Zpět do deníku", () =>
         {
             if (!atGiver) { currentModal = null; ToggleJournal(); }

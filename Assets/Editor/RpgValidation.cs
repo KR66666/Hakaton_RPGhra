@@ -10,10 +10,10 @@ public static class RpgValidation
     {
         EditorApplication.delayCall += () =>
         {
-            if (!SessionState.GetBool("RPG.Validation.v20", false))
+            if (!SessionState.GetBool("RPG.Validation.v22", false))
             {
                 Run();
-                SessionState.SetBool("RPG.Validation.v20", true);
+                SessionState.SetBool("RPG.Validation.v22", true);
             }
         };
     }
@@ -124,7 +124,14 @@ public static class RpgValidation
             Check(upgradedCopy.vitalityRank==1&&upgradedCopy.strengthRank==1&&upgradedCopy.UpgradePoints==0,"Attribute upgrades survive save round trip",ref checks);
             upgradedCopy.level=30;upgradedCopy.vitalityRank=5;
             Check(!upgradedCopy.UpgradeAttribute(0)&&!upgradedCopy.UpgradeAttribute(-1),"Attribute caps and invalid choices are rejected",ref checks);
+            var tracked=new RpgState { trackedQuest=2 };
+            var trackedCopy=JsonUtility.FromJson<RpgState>(JsonUtility.ToJson(tracked));trackedCopy.Normalize();
+            Check(trackedCopy.trackedQuest==2,"Selected quest tracking survives saving",ref checks);
+            trackedCopy.trackedQuest=99;trackedCopy.Normalize();
+            Check(trackedCopy.trackedQuest>=-1&&trackedCopy.trackedQuest<=2,"Invalid tracking selection is normalized",ref checks);
             CheckNavigation(bounds, ref checks);
+            Check(!AtPixelBlocked(120,220,bounds) && AtPixelBlocked(130,150,bounds), "Mill lane is accessible but the mill itself blocks walking",ref checks);
+            CheckAllRoadsConnected(bounds,ref checks);
             state = new RpgState();
             Check(!state.FinishSideQuest(0) && !state.AcceptSideQuest(-1) && !state.AcceptSideQuest(3), "Side quests require valid acceptance", ref checks);
             Check(state.AcceptSideQuest(0) && !state.AcceptSideQuest(0), "Side quest accepted once", ref checks);
@@ -163,6 +170,32 @@ public static class RpgValidation
     {
         if (!condition) throw new InvalidOperationException(description);
         checks++;
+    }
+
+    private static void CheckAllRoadsConnected(Bounds bounds,ref int checks)
+    {
+        const int width=384,height=256;
+        var walkable=new bool[width*height];var visited=new bool[width*height];
+        int total=0;
+        for(int y=0;y<height;y++)for(int x=0;x<width;x++)
+        {
+            bool open=!AtPixelBlocked(x*4,y*4,bounds);walkable[y*width+x]=open;if(open)total++;
+        }
+        var queue=new System.Collections.Generic.Queue<int>();
+        int start=150*width+192;queue.Enqueue(start);visited[start]=true;int reachable=0;
+        while(queue.Count>0)
+        {
+            int cell=queue.Dequeue(),x=cell%width,y=cell/width;reachable++;
+            for(int direction=0;direction<4;direction++)
+            {
+                int nx=x+(direction==0?-1:direction==1?1:0),ny=y+(direction==2?-1:direction==3?1:0);
+                if(nx<0||nx>=width||ny<0||ny>=height)continue;
+                int next=ny*width+nx;
+                if(!walkable[next]||visited[next])continue;
+                visited[next]=true;queue.Enqueue(next);
+            }
+        }
+        Check(total>10000&&reachable==total,$"All village roads connect to the square ({reachable}/{total} samples)",ref checks);
     }
 
     private static bool AtPixelBlocked(float x, float y, Bounds bounds)
@@ -234,6 +267,11 @@ public static class RpgValidation
             Check(Mathf.Abs(Mathf.DeltaAngle(movement.transform.eulerAngles.z, -90)) < 0.01f, "Walking left mirrors the side view", ref checks);
             movement.MoveInDirection(Vector2.right, 0.15f);
             Check(Mathf.Abs(Mathf.DeltaAngle(movement.transform.eulerAngles.z, 90)) < 0.01f, "Walking right uses an unmirrored side view", ref checks);
+            game.RestoreState(new RpgState());
+            game.State.trackedQuest=2;game.State.deliveryQuest=1;game.State.parcelDelivered=false;
+            Check(game.TryTrackedGoal(out var deliveryTarget,out var deliveryTitle) && deliveryTitle.Contains("Petrovi"),"Delivery tracker locates the roaming guard",ref checks);
+            game.State.parcelDelivered=true;
+            Check(game.TryTrackedGoal(out var returnTarget,out var returnTitle) && returnTitle.Contains("obchodnici") && Vector2.Distance(returnTarget,deliveryTarget)>1,"Delivered parcel redirects tracker to the fixed shop",ref checks);
             game.RestoreState(new RpgState());
             game.Interface.ShowRoomEntrance("merchant", "Obchodnice Eliška");
             Check(game.Interface.IsModal && !game.Interface.InRoom, "Entrance offers a choice before entering", ref checks);

@@ -20,6 +20,8 @@ public sealed class RpgGame : MonoBehaviour
     public List<RpgEnemy> Enemies { get; } = new List<RpgEnemy>();
     public Transform Player => transform;
     public Sprite HeroSprite { get; private set; }
+    public Sprite MapSprite => map!=null?map.sprite:null;
+    public Bounds MapBounds => map!=null?map.bounds:new Bounds(Vector3.zero,new Vector3(40,26.666f,1));
     private readonly List<WorldItem> worldItems = new List<WorldItem>();
     private readonly List<GameObject> worldObjects = new List<GameObject>();
     private SpriteRenderer map;
@@ -186,7 +188,7 @@ public sealed class RpgGame : MonoBehaviour
         else State.banditsDefeated++;
         State.gold += enemy.IsBoss ? 75 : 12;
         bool leveled = State.AddExperience(enemy.IsBoss ? 100 : 35);
-        Notify(leveled ? $"ÚROVEŇ {State.level}! Zdraví a výdrž obnoveny." : enemy.IsBoss ? "Velitel padl! Vrať se k rychtáři pro odměnu." : $"Nájezdník poražen • +35 XP • +12 zlata ({Mathf.Min(5, State.banditsDefeated)}/5)");
+        Notify(leveled ? $"ÚROVEŇ {State.level}! Zdraví a výdrž obnoveny. Nový bod vylepšení • C." : enemy.IsBoss ? "Velitel padl! Vrať se k rychtáři pro odměnu." : $"Nájezdník poražen • +35 XP • +12 zlata ({Mathf.Min(5, State.banditsDefeated)}/5)");
         if (State.banditsDefeated >= 5 && !State.bossDefeated) SpawnBoss();
         BuildCompanion();
         Save(false);
@@ -376,7 +378,7 @@ public sealed class RpgGame : MonoBehaviour
 
     public void AcceptQuest()
     {
-        State.AcceptQuest(); Interface.Close();
+        State.AcceptQuest(); State.trackedQuest=-1; Interface.Close();
         Notify("Úkol přijat: poraz 5 nájezdníků a jejich velitele.", 6);
         Save(false);
     }
@@ -384,6 +386,7 @@ public sealed class RpgGame : MonoBehaviour
     public void AcceptSideQuest(int id)
     {
         if (!State.AcceptSideQuest(id)) return;
+        State.trackedQuest=id;
         Interface.Close(); Notify("Nový úkol přijat. Podrobnosti najdeš v deníku [Q].", 5); Save(false);
     }
 
@@ -445,6 +448,45 @@ public sealed class RpgGame : MonoBehaviour
                 if (enemy != null && !enemy.Dead && Vector2.Distance(enemy.transform.position, companionObject.transform.position) < 2)
                 { enemy.Hit(8, Facing); nextCompanionHeal = Time.time + 2; break; }
         }
+    }
+
+    public void TrackQuest(int id)
+    {
+        if(id< -1 || id>2)return;
+        State.trackedQuest=id;Save(false);Interface.Close();Notify("Cíl označený na malé mapě.");
+    }
+    public bool TryTrackedGoal(out Vector3 position,out string description)
+    {
+        position=transform.position;description="";
+        int quest=State.trackedQuest;
+        if(quest>=0 && State.SideQuestStage(quest)!=1)quest=-1;
+        string kind=null;
+        if(quest==0) { kind=State.herbs>=4?"healer":"herb";description=State.herbs>=4?"Odevzdej byliny Miře":"Nasbírej byliny"; }
+        else if(quest==1) { kind=State.SuppliesFound>=2?"mayor":"supply";description=State.SuppliesFound>=2?"Odevzdej zásoby Radovanovi":"Najdi ztracené zásoby"; }
+        else if(quest==2) { kind=State.parcelDelivered?"shop":"guard";description=State.parcelDelivered?"Vrať se k obchodnici":"Doruč zásilku Petrovi"; }
+        else if(State.questStage==0 || State.CanFinishQuest) {kind="mayor";description=State.CanFinishQuest?"Vyzvedni odměnu":"Promluv s Radovanem";}
+        else if(State.questStage==1 && !State.bossDefeated)
+        {
+            float closest=float.MaxValue;bool found=false;
+            foreach(var enemy in Enemies)
+            {
+                if(enemy==null||enemy.Dead || State.banditsDefeated>=5&&!enemy.IsBoss)continue;
+                float distance=Vector2.Distance(transform.position,enemy.transform.position);
+                if(distance<closest){closest=distance;position=enemy.transform.position;description=enemy.IsBoss?"Poraz velitele":"Poraz nájezdníky";found=true;}
+            }
+            return found;
+        }
+        if(kind==null)return false;
+        float nearest=float.MaxValue;bool target=false;
+        foreach(var item in worldItems)
+        {
+            if(item.obj==null||!item.obj.activeSelf||item.kind!=kind)continue;
+            float distance=Vector2.Distance(transform.position,item.obj.transform.position);
+            if(distance<nearest){nearest=distance;position=item.obj.transform.position;target=true;}
+        }
+        if(!target && kind=="herb")
+            foreach(var item in worldItems)if(item.kind=="garden"&&item.obj!=null){position=item.obj.transform.position;target=true;description="Miřin záhonek • dorůstá";break;}
+        return target;
     }
 
     public void UpgradeCharacter(int attribute)

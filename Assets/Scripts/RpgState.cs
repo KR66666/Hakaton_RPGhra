@@ -61,6 +61,7 @@ public sealed class RpgState
     public float stamina = 100;
     public float x;
     public float y;
+    public int trackedQuest = -1;
     public int questStage;
     public int banditsDefeated;
     public bool bossDefeated;
@@ -182,6 +183,7 @@ public sealed class RpgState
         herbs = Mathf.Clamp(herbs, 0, 999);
         weaponLevel = Mathf.Clamp(weaponLevel, 0, 5);
         armorLevel = Mathf.Clamp(armorLevel, 0, 5);
+        trackedQuest=Mathf.Clamp(trackedQuest,-1,2);
         questStage = Mathf.Clamp(questStage, 0, 2);
         herbsQuest = Mathf.Clamp(herbsQuest, 0, 2);
         suppliesQuest = Mathf.Clamp(suppliesQuest, 0, 2);
@@ -228,21 +230,24 @@ public static class RpgWorldGeometry
         new Road(750,440,744,402,20), // Existing shop doorstep below the north-square house.
         new Road(650,450,535,448,22), new Road(535,448,420,466,20),
         new Road(420,466,282,428,18), new Road(282,428,210,403,17),
-        new Road(210,403,110,466,18), new Road(110,466,145,535,16),
-        new Road(145,535,165,625,15), new Road(165,625,268,655,18),
+        new Road(210,403,150,420,17), new Road(150,420,108,420,16),
+        new Road(108,420,108,466,15), new Road(108,466,106,535,15),
+        new Road(106,535,145,570,15),
+        new Road(145,570,165,625,15), new Road(165,625,268,655,18),
         new Road(268,655,292,683,16), new Road(292,683,276,772,15),
         new Road(276,772,276,858,15), new Road(276,858,205,850,15),
-        new Road(205,850,145,842,14), new Road(145,842,122,905,14),
-        new Road(122,905,122,1024,14),
+        new Road(205,850,145,842,14), new Road(145,842,152,905,14),
+        new Road(152,905,152,1015,14),
         new Road(210,403,224,320,14), new Road(224,320,240,260,14),
-        new Road(240,260,224,190,14), new Road(224,190,180,150,14),
-        new Road(180,150,205,90,14), new Road(205,90,240,0,14),
+        new Road(240,260,224,190,14), new Road(224,190,205,190,14),
+        new Road(205,190,205,90,14), new Road(205,90,240,0,14),
         new Road(224,320,280,289,13), new Road(280,289,370,285,13),
         new Road(370,285,400,266,13), new Road(400,266,400,180,13),
-        new Road(400,180,370,112,13), new Road(370,112,380,0,13),
+        new Road(400,180,384,172,12), new Road(384,172,384,120,11),
+        new Road(384,120,384,10,11),
         new Road(110,466,108,300,12), new Road(108,300,125,245,12),
-        new Road(535,448,535,285,15), new Road(535,285,555,200,14),
-        new Road(555,200,545,100,14), new Road(545,100,550,0,14),
+        new Road(535,448,535,285,15), new Road(535,285,565,285,15), new Road(565,285,565,200,14),
+        new Road(565,200,550,170,14), new Road(550,170,550,100,14), new Road(550,100,550,10,14),
         new Road(900,420,915,300,16), new Road(915,300,908,275,16),
         new Road(915,300,810,300,16), new Road(810,300,670,282,14),
         new Road(670,282,570,280,14), new Road(570,280,535,285,14),
@@ -254,11 +259,25 @@ public static class RpgWorldGeometry
         new Road(1340,930,1360,1024,13),
         new Road(975,650,1010,720,18), new Road(1010,720,1065,770,16),
         new Road(1065,770,1050,840,14), new Road(1050,840,1055,950,12),
-        new Road(1055,950,1060,1024,12), new Road(1065,770,1190,700,14),
-        new Road(1190,700,1290,690,13), new Road(1290,690,1335,740,13),
+        new Road(1055,950,1060,1024,12), new Road(1065,770,1190,720,15),
+        new Road(1190,720,1240,700,14), new Road(1240,700,1290,690,14), new Road(1290,690,1335,740,13),
         new Road(640,680,560,705,15), new Road(560,705,560,835,12),
         new Road(560,835,620,860,14), new Road(620,860,680,900,15),
-        new Road(680,900,710,1024,15)
+        new Road(680,900,710,1015,15),
+        // Dirt lane below the mill and its connection to the western village.
+        new Road(205,190,205,220,14), new Road(205,220,120,220,14),
+        new Road(120,220,15,220,14), new Road(125,245,120,220,14),
+        // Northern and eastern residential lanes, outside the castle walls.
+        new Road(1075,523,1092,420,12), new Road(1092,420,1092,330,12),
+        new Road(1092,330,1070,250,14), new Road(1070,250,1090,170,14),
+        new Road(1090,170,1170,140,14), new Road(1170,140,1240,170,14),
+        new Road(1240,170,1290,175,14), new Road(1290,175,1300,230,14), new Road(1300,230,1290,285,13),
+        new Road(1290,285,1290,304,12), new Road(1290,304,1210,304,12),
+        // Lanes around the southern houses connect both sides of the village.
+        new Road(276,858,335,855,14), new Road(335,855,460,855,14),
+        new Road(460,855,560,835,14), new Road(680,900,770,860,13),
+        new Road(770,860,920,850,13), new Road(920,850,920,985,13),
+        new Road(920,985,1055,985,13)
     };
     private static readonly Rect[] MarketStalls =
     {
@@ -270,6 +289,7 @@ public static class RpgWorldGeometry
     };
     private static readonly Rect[] Buildings =
     {
+        new Rect(83,108,93,92), // Mill body; the lane passes around its southern side.
         new Rect(276, 306, 207, 112), new Rect(454, 172, 88, 104),
         new Rect(394, 30, 107, 130), new Rect(284, 50, 91, 57),
         new Rect(550, 295, 125, 101), new Rect(688, 314, 88, 73),
@@ -311,9 +331,9 @@ public static class RpgWorldGeometry
         var point = new Vector2(
             (position.x - map.min.x) / map.size.x * 1536,
             (map.max.y - position.y - feetOffset) / map.size.y * 1024);
-        return !WalkablePixel(point) || !WalkablePixel(point + new Vector2(4, 0)) ||
-            !WalkablePixel(point - new Vector2(4, 0)) || !WalkablePixel(point + new Vector2(0, 4)) ||
-            !WalkablePixel(point - new Vector2(0, 4));
+        return !WalkablePixel(point) || !WalkablePixel(point + new Vector2(3, 0)) ||
+            !WalkablePixel(point - new Vector2(3, 0)) || !WalkablePixel(point + new Vector2(0, 3)) ||
+            !WalkablePixel(point - new Vector2(0, 3));
     }
 
     private static bool WalkablePixel(Vector2 point)
@@ -321,7 +341,7 @@ public static class RpgWorldGeometry
         if (point.x < 5 || point.x > 1531 || point.y < 5 || point.y > 1019) return false;
         foreach (var building in Buildings)
         {
-            var padded = new Rect(building.xMin - 5, building.yMin - 5, building.width + 10, building.height + 10);
+            var padded = new Rect(building.xMin - 2, building.yMin - 2, building.width + 4, building.height + 4);
             if (padded.Contains(point)) return false;
         }
         foreach (var stall in MarketStalls) if (stall.Contains(point)) return false;
