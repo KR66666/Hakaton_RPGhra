@@ -12,8 +12,8 @@ public sealed class RpgGame : MonoBehaviour
     public RpgState State { get; private set; }
     public RpgInterface Interface { get; private set; }
     public bool IsEnteringRoom { get; private set; }
-    public bool BlockMovement => IsEnteringRoom || !Application.isFocused || Interface != null && Interface.IsModal || State == null || State.health <= 0;
-    public float SpeedMultiplier => BlockMovement ? 0 : Time.time < dodgeUntil ? 2.5f : Sprinting ? 1.5f : 1;
+    public bool BlockMovement => RpgSettings.CapturesInput || IsEnteringRoom || !Application.isFocused || Interface != null && Interface.IsModal || State == null || State.health <= 0;
+    public float SpeedMultiplier => BlockMovement ? 0 : (Time.time < dodgeUntil ? 2.5f : Sprinting ? 1.5f : 1) * (1 + State.agilityRank*.04f);
     public Vector2 Facing { get; set; } = Vector2.down;
     public string NearbyPrompt { get; private set; }
     public float AttackCooldown => Mathf.Clamp01((nextAttack - Time.time) / 0.42f);
@@ -87,11 +87,12 @@ public sealed class RpgGame : MonoBehaviour
 
     private void Update()
     {
-        if (State == null || Interface == null || IsEnteringRoom) return;
+        if (State == null || Interface == null || IsEnteringRoom || RpgSettings.CapturesInput) return;
         var keyboard = Keyboard.current;
         if (keyboard != null && Application.isFocused)
         {
             if (keyboard.escapeKey.wasPressedThisFrame) Interface.TogglePause();
+            if (keyboard.cKey.wasPressedThisFrame) Interface.ShowCharacterUpgrades();
             if (keyboard.mKey.wasPressedThisFrame) Interface.ShowWorldMap();
             if (keyboard.iKey.wasPressedThisFrame) Interface.ToggleInventory();
             if (keyboard.qKey.wasPressedThisFrame) Interface.ToggleJournal();
@@ -126,6 +127,7 @@ public sealed class RpgGame : MonoBehaviour
 
     private void Attack()
     {
+        RpgSettings.PlayEffect();
         if (Time.time < nextAttack) return;
         if (State.stamina < 10) { Notify("Dochází výdrž. Na chvíli přestaň útočit."); return; }
         State.stamina -= 10;
@@ -443,6 +445,12 @@ public sealed class RpgGame : MonoBehaviour
                 if (enemy != null && !enemy.Dead && Vector2.Distance(enemy.transform.position, companionObject.transform.position) < 2)
                 { enemy.Hit(8, Facing); nextCompanionHeal = Time.time + 2; break; }
         }
+    }
+
+    public void UpgradeCharacter(int attribute)
+    {
+        if(!State.UpgradeAttribute(attribute)) { Notify("Potřebuješ bod vylepšení nebo máš maximální stupeň.");return; }
+        Save(false);Interface.ShowCharacterUpgrades();
     }
 
     public void BuyPotion()

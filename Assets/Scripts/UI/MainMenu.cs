@@ -56,6 +56,10 @@ public sealed class MainMenu : MonoBehaviour
         Button(canvas.transform, "Archiv", -82, OpenArchive);
         Button(canvas.transform, "Konec", -186, Quit);
 
+        var settings=Button(canvas.transform,"Nastavení",0,RpgSettings.Show);
+        var sr=settings.GetComponent<RectTransform>();sr.anchorMin=sr.anchorMax=new Vector2(1,0);sr.pivot=new Vector2(1,0);sr.anchoredPosition=new Vector2(-30,28);sr.sizeDelta=new Vector2(260,64);
+        var st=settings.GetComponentInChildren<Text>();st.rectTransform.sizeDelta=new Vector2(190,60);st.rectTransform.anchoredPosition=new Vector2(20,0);st.fontSize=23;
+        var gear=Box("Settings gear",settings.transform,new Vector2(-94,0),new Vector2(34,34));var gi=gear.gameObject.AddComponent<Image>();gi.sprite=RpgSettings.GearSprite();gi.raycastTarget=false;
         if (EventSystem.current == null)
         {
             var events = new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
@@ -127,6 +131,7 @@ public sealed class MainMenu : MonoBehaviour
         colors.pressedColor = new Color(.65f, .65f, .7f);
         colors.fadeDuration = 0;
         button.colors = colors;
+        button.onClick.AddListener(RpgSettings.PlayEffect);
         button.onClick.AddListener(action);
         Label("Label", rect, title, 29, Vector2.zero, new Vector2(420, 76));
         return button;

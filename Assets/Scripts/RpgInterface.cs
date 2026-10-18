@@ -55,13 +55,17 @@ public sealed class RpgInterface : MonoBehaviour
         var mapCaption=Label(mapButton,"MAPA  [M]",new Vector2(0,0),new Vector2(180,42),20,Gold);
         mapCaption.alignment=TextAnchor.MiddleCenter;
 
+        var characterButton=Panel(canvas,"Character upgrades",new Vector2(0,-68),new Vector2(180,38),new Vector2(.5f,1));
+        var characterClick=characterButton.gameObject.AddComponent<Button>();characterClick.targetGraphic=characterButton.GetComponent<Image>();
+        characterClick.onClick.AddListener(ShowCharacterUpgrades);
+        var characterCaption=Label(characterButton,"POSTAVA  [C]",Vector2.zero,new Vector2(180,38),18,Gold);characterCaption.alignment=TextAnchor.MiddleCenter;
         var tracker = Panel(canvas, "Quest tracker", new Vector2(-20, -20), new Vector2(370, 166), new Vector2(1, 1));
         Label(tracker, "DENÍK DOBRODRUHA  [Q]", new Vector2(18, -12), new Vector2(335, 26), 18, Gold);
         quest = Label(tracker, "", new Vector2(18, -44), new Vector2(335, 112), 18, new Color(0.88f, 0.9f, 0.92f));
 
         var controls = Panel(canvas, "Controls", new Vector2(0, 16), new Vector2(1100, 72), new Vector2(0.5f, 0));
         combat = Label(controls, "", new Vector2(18, -9), new Vector2(1064, 25), 18, Gold);
-        var keys = Label(controls, "WASD / šipky  pohyb     Shift  běh     Mezerník  úhyb     E  mluvit / sebrat     I  batoh     Q  deník     Esc  pauza     M  mapa", new Vector2(18, -39), new Vector2(1064, 24), 16, Color.white);
+        var keys = Label(controls, "WASD / šipky  pohyb     Shift  běh     Mezerník  úhyb     E  mluvit / sebrat     I  batoh     Q  deník     Esc  pauza     M  mapa     C  postava", new Vector2(18, -39), new Vector2(1064, 24), 16, Color.white);
         keys.alignment = TextAnchor.MiddleCenter;
         combat.alignment = TextAnchor.MiddleCenter;
 
@@ -145,8 +149,24 @@ public sealed class RpgInterface : MonoBehaviour
     {
         var state = game.State;
         Open("inventory", "BATOH A VYBAVENÍ", $"Zlato: {state.gold}     |     Léčivé lektvary: {state.potions}\nLéčivé byliny: {state.herbs}   •   Zásoby pro vesnici: {state.SuppliesFound}/2\nBalíček pro Petra: {(state.deliveryQuest == 1 && !state.parcelDelivered ? "v batohu" : state.parcelDelivered ? "doručen" : "nepřevzat")}\n\nŽelezný meč +{state.weaponLevel}   •   Útok {state.Damage}\nKožená zbroj +{state.armorLevel}   •   Obrana {state.Defense}\n\nÚroveň {state.level}   •   {state.experience}/{state.NextLevelExperience} XP\nLektvar obnoví 60 zdraví. Vybavení vylepšuje Eliška.");
+        Action("Vylepšit postavu  [C]",ShowCharacterUpgrades);
         Action("Vypít lektvar", () => { game.DrinkPotion(); ShowInventory(); });
         Action("Zavřít  [I / Esc]", Close);
+    }
+
+    public void ShowCharacterUpgrades()
+    {
+        if(game.State.health<=0)return;
+        var s=game.State;
+        Open("character","POSTAVA • VYLEPŠENÍ",$"{(s.heroIsBoy?"Hrdina":"Arabella")} • úroveň {s.level}\nVolné body: {s.UpgradePoints} • jeden bod za každou novou úroveň\n\nVitalita {s.vitalityRank}/5: +15 maximálního zdraví za bod\nSíla {s.strengthRank}/5: +3 poškození za bod\nHbitost {s.agilityRank}/5: +4 % rychlosti za bod\n\nZdraví {s.MaxHealth} • Útok {s.Damage} • Rychlost +{s.agilityRank*4} %\nMeč +{s.weaponLevel} • Zbroj +{s.armorLevel} (vylepšuje obchodnice)");
+        for(int i=0;i<3;i++)
+        {
+            int attribute=i;int rank=i==0?s.vitalityRank:i==1?s.strengthRank:s.agilityRank;
+            string name=i==0?"Vitalita":i==1?"Síla":"Hbitost";
+            Action(rank>=5?name+" • maximum":name+" • vylepšit za 1 bod",()=>game.UpgradeCharacter(attribute));
+            actions.GetChild(actions.childCount-1).GetComponent<Button>().interactable=s.UpgradePoints>0&&rank<5;
+        }
+        Action("Zavřít",Close);
     }
 
     public void ToggleJournal()
@@ -473,7 +493,7 @@ public sealed class RpgInterface : MonoBehaviour
 
     private void Open(string kind, string title, string body)
     {
-        if (InRoom && (kind == "map" || kind == "pause" || kind == "death" || kind == "travel")) LeaveRoomVisuals();
+        if (InRoom && (kind == "map" || kind == "pause" || kind == "death" || kind == "travel" || kind == "character")) LeaveRoomVisuals();
         if (mapContent != null) { mapContent.gameObject.SetActive(false); Destroy(mapContent.gameObject); mapContent = null; }
         currentModal = kind;
         modalBody.fontSize = 22;

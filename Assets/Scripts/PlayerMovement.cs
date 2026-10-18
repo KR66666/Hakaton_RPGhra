@@ -23,7 +23,7 @@ public sealed class PlayerMovement : MonoBehaviour
         character = GetComponent<SpriteRenderer>();
         // Foreshorten the supplied front-facing artwork in its local plane before heading rotation.
         var spriteScale = transform.localScale;
-        transform.localScale = new Vector3(spriteScale.x * 0.85f, spriteScale.y * 0.85f, spriteScale.z);
+        transform.localScale = new Vector3(spriteScale.x * 0.68f, spriteScale.y * 0.68f, spriteScale.z);
         if (followCamera == null)
             followCamera = Camera.main;
     }
@@ -173,3 +173,4 @@ public sealed class HeroWalkAnimation
             if(Application.isPlaying) Object.Destroy(sprite); else Object.DestroyImmediate(sprite);
     }
 }
+

@@ -46,6 +46,17 @@ public sealed class RpgState
     public int herbs;
     public int weaponLevel;
     public int armorLevel;
+    public int vitalityRank, strengthRank, agilityRank;
+    public int UpgradePoints => Mathf.Max(0, level-1-vitalityRank-strengthRank-agilityRank);
+    public bool UpgradeAttribute(int attribute)
+    {
+        if(UpgradePoints<=0 || attribute<0 || attribute>2)return false;
+        int rank=attribute==0?vitalityRank:attribute==1?strengthRank:agilityRank;
+        if(rank>=5)return false;
+        if(attribute==0){vitalityRank++;health=Mathf.Min(MaxHealth,health+15);}
+        else if(attribute==1)strengthRank++;else agilityRank++;
+        return true;
+    }
     public float health = 100;
     public float stamina = 100;
     public float x;
@@ -62,8 +73,8 @@ public sealed class RpgState
     public List<string> collected = new List<string>();
     public List<string> defeated = new List<string>();
 
-    public int MaxHealth => 100 + (level - 1) * 20;
-    public int Damage => 18 + (level - 1) * 4 + weaponLevel * 9;
+    public int MaxHealth => 100 + (level - 1) * 20 + vitalityRank*15;
+    public int Damage => 18 + (level - 1) * 4 + weaponLevel * 9 + strengthRank*3;
     public int Defense => armorLevel * 3;
     public int NextLevelExperience => 50 + (level - 1) * 40;
     public bool CanFinishQuest => questStage == 1 && banditsDefeated >= 5 && bossDefeated;
@@ -162,6 +173,9 @@ public sealed class RpgState
         foreach (var progress in areaProgress) progress.defeated = progress.defeated ?? new List<string>();
         if (questStage == 2 && !completedAreas.Contains(currentArea)) completedAreas.Add(currentArea);
         level = Mathf.Clamp(level, 1, 30);
+        vitalityRank=Mathf.Clamp(vitalityRank,0,Mathf.Min(5,level-1));
+        strengthRank=Mathf.Clamp(strengthRank,0,Mathf.Min(5,level-1-vitalityRank));
+        agilityRank=Mathf.Clamp(agilityRank,0,Mathf.Min(5,level-1-vitalityRank-strengthRank));
         experience = Mathf.Clamp(experience, 0, 100000);
         gold = Mathf.Clamp(gold, 0, 1000000);
         potions = Mathf.Clamp(potions, 0, 999);

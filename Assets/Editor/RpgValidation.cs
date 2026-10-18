@@ -10,10 +10,10 @@ public static class RpgValidation
     {
         EditorApplication.delayCall += () =>
         {
-            if (!SessionState.GetBool("RPG.Validation.v19", false))
+            if (!SessionState.GetBool("RPG.Validation.v20", false))
             {
                 Run();
-                SessionState.SetBool("RPG.Validation.v19", true);
+                SessionState.SetBool("RPG.Validation.v20", true);
             }
         };
     }
@@ -115,6 +115,15 @@ public static class RpgValidation
             Check(MedievalNpcAppearance.Get("guard") == MedievalNpcAppearance.Get("guard"), "NPC sprites are reused without allocating on rebuild", ref checks);
             Check(MedievalNpcAppearance.Get("bandit",0) != MedievalNpcAppearance.Get("bandit",1) &&
                 MedievalNpcAppearance.Get("boss") != MedievalNpcAppearance.Get("bandit"), "Bandits have variants and commander has unique armor", ref checks);
+            var upgraded=new RpgState();
+            Check(!upgraded.UpgradeAttribute(0)&&upgraded.UpgradePoints==0,"Cannot upgrade without earned points",ref checks);
+            upgraded.AddExperience(175);
+            Check(upgraded.UpgradePoints==2&&upgraded.UpgradeAttribute(0)&&upgraded.UpgradeAttribute(1),"Level gains grant spendable attribute points",ref checks);
+            Check(upgraded.UpgradePoints==0&&upgraded.MaxHealth==155&&upgraded.Damage==29&&!upgraded.UpgradeAttribute(2),"Upgrade effects apply and points cannot be overspent",ref checks);
+            var upgradedCopy=JsonUtility.FromJson<RpgState>(JsonUtility.ToJson(upgraded));upgradedCopy.Normalize();
+            Check(upgradedCopy.vitalityRank==1&&upgradedCopy.strengthRank==1&&upgradedCopy.UpgradePoints==0,"Attribute upgrades survive save round trip",ref checks);
+            upgradedCopy.level=30;upgradedCopy.vitalityRank=5;
+            Check(!upgradedCopy.UpgradeAttribute(0)&&!upgradedCopy.UpgradeAttribute(-1),"Attribute caps and invalid choices are rejected",ref checks);
             CheckNavigation(bounds, ref checks);
             state = new RpgState();
             Check(!state.FinishSideQuest(0) && !state.AcceptSideQuest(-1) && !state.AcceptSideQuest(3), "Side quests require valid acceptance", ref checks);
