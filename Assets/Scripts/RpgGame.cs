@@ -11,7 +11,8 @@ public sealed class RpgGame : MonoBehaviour
     public static RpgGame Instance { get; private set; }
     public RpgState State { get; private set; }
     public RpgInterface Interface { get; private set; }
-    public bool BlockMovement => !Application.isFocused || Interface != null && Interface.IsModal || State == null || State.health <= 0;
+    public bool IsEnteringRoom { get; private set; }
+    public bool BlockMovement => IsEnteringRoom || !Application.isFocused || Interface != null && Interface.IsModal || State == null || State.health <= 0;
     public float SpeedMultiplier => BlockMovement ? 0 : Time.time < dodgeUntil ? 2.5f : Sprinting ? 1.5f : 1;
     public Vector2 Facing { get; set; } = Vector2.down;
     public string NearbyPrompt { get; private set; }
@@ -24,6 +25,9 @@ public sealed class RpgGame : MonoBehaviour
     private SpriteRenderer map;
     private SpriteRenderer playerRenderer;
     private HeroWalkAnimation actorAppearance;
+    private string offeredRoom;
+    private Vector3 roomReturnPosition, entryScale;
+    private bool hiddenInRoom;
     private GameObject companionObject;
     private float nextCompanionHeal;
     private float nextAttack, dodgeUntil, nextDamage, nextSave, nextRegen;
@@ -83,7 +87,7 @@ public sealed class RpgGame : MonoBehaviour
 
     private void Update()
     {
-        if (State == null || Interface == null) return;
+        if (State == null || Interface == null || IsEnteringRoom) return;
         var keyboard = Keyboard.current;
         if (keyboard != null && Application.isFocused)
         {
@@ -196,7 +200,7 @@ public sealed class RpgGame : MonoBehaviour
         foreach (var obj in worldObjects) if (obj != null) Destroy(obj);
         worldObjects.Clear(); worldItems.Clear(); Enemies.Clear();
         AddPerson("mayor", "Rychtář Radovan", "mayor", new Vector2(-2.1f, 0.8f), new Color(0.85f, 0.72f, 0.35f));
-        AddPerson("merchant", "Obchodnice Eliška", "merchant", new Vector2(3.2f, -1.1f), new Color(0.45f, 0.85f, 1));
+        AddShopEntrance();
         AddPerson("healer", "Bylinkářka Mira", "healer", new Vector2(-1.6f, -2.2f), new Color(0.55f, 1, 0.7f));
         AddPerson("guard", "Strážný Petr", "guard", new Vector2(13.5f, 3.3f), new Color(0.6f, 0.7f, 1));
         AddPickup("chest1", "Opuštěná truhla", "chest", new Vector2(4.6f, 3), new Color(1, 0.75f, 0.25f));
@@ -240,10 +244,20 @@ public sealed class RpgGame : MonoBehaviour
         obj.transform.position = SnapToRoad(position);
         obj.transform.localScale = Vector3.one * 0.9f;
         var renderer = obj.AddComponent<SpriteRenderer>();
-        renderer.sprite = HeroSprite; renderer.color = tint; renderer.sortingOrder = 2;
+        renderer.sprite = MedievalNpcAppearance.Get(kind); renderer.color = Color.white; renderer.sortingOrder = 2;
         AddLabel(obj.transform, title, new Vector3(0, 0.9f, 0), new Color(1, 0.9f, 0.58f));
         worldItems.Add(new WorldItem { id = id, title = title, kind = kind, obj = obj });
         worldObjects.Add(obj);
+        obj.AddComponent<VillageNpcRoutine>().Initialize(this,kind,title);
+    }
+    private Vector3 ShopApproach => RpgWorldGeometry.PixelPosition(new Vector2(744,411),map.bounds);
+    private void AddShopEntrance()
+    {
+        var entrance = new GameObject("Obchod • vstup v domě na pozadí");
+        entrance.transform.position = ShopApproach;
+        AddLabel(entrance.transform,"OBCHOD • Eliška",new Vector3(0,.7f,0),new Color(1,.85f,.5f));
+        worldItems.Add(new WorldItem { id="shop", title="Obchod • Eliška", kind="shop", obj=entrance });
+        worldObjects.Add(entrance);
     }
 
     private void AddPickup(string id, string title, string kind, Vector2 position, Color tint)
@@ -270,20 +284,71 @@ public sealed class RpgGame : MonoBehaviour
         return result;
     }
 
+    public Vector3 RoomDoor(string kind) => kind=="merchant" ? RpgWorldGeometry.PixelPosition(new Vector2(734,384),map.bounds) : transform.position;
+    public bool AtRoomDoor(string kind) => kind=="merchant" && Vector2.Distance(transform.position,ShopApproach)<=.42f;
     private void UpdatePrompt()
     {
-        var nearest = NearestItem();
-        NearbyPrompt = !BlockMovement && nearest != null ? "[E]  " + nearest.title : "";
+        var nearest=NearestItem();
+        NearbyPrompt=!BlockMovement && nearest!=null ? "[E] "+nearest.title : "";
+        float distance=Vector2.Distance(transform.position,ShopApproach);
+        if(distance>1.2f) offeredRoom=null;
+        if(BlockMovement)return;
+        if(distance<1.2f) NearbyPrompt=AtRoomDoor("merchant")?"[E] Vejít do obchodu":"Obchod • přijdi ke vchodu domu";
+        if(AtRoomDoor("merchant") && offeredRoom!="shop")
+        { offeredRoom="shop";Interface.ShowRoomEntrance("merchant","Obchodnice Eliška"); }
     }
-
+    public void BeginRoomEntry(string kind)
+    {
+        if(kind!="merchant" || IsEnteringRoom || hiddenInRoom) return;
+        if(!AtRoomDoor(kind)) { Notify("Přijdi ještě blíž ke dveřím."); return; }
+        Interface.Close();
+        StartCoroutine(EnterRoomSequence(kind));
+    }
+    private System.Collections.IEnumerator EnterRoomSequence(string kind)
+    {
+        IsEnteringRoom=true;
+        roomReturnPosition=ShopApproach;entryScale=transform.localScale;
+        Vector3 door=RoomDoor(kind),start=transform.position;
+        var movement=GetComponent<PlayerMovement>();
+        float elapsed=0;
+        while(elapsed<.7f)
+        {
+            elapsed+=Time.deltaTime;
+            var previous=transform.position;
+            // Only this scripted, short doorway crossing may pass the building edge.
+            transform.position=Vector3.Lerp(start,door,Mathf.Clamp01(elapsed/.7f));
+            Vector2 direction=door-start;
+            if(movement!=null) movement.PlayEntranceStep(direction,elapsed*1.4f);
+            yield return null;
+        }
+        elapsed=0;
+        while(elapsed<.3f)
+        {
+            elapsed+=Time.deltaTime;float t=Mathf.Clamp01(elapsed/.3f);
+            transform.localScale=Vector3.Lerp(entryScale,entryScale*.3f,t);
+            var color=playerColor;color.a=1-t;playerRenderer.color=color;
+            yield return null;
+        }
+        playerRenderer.enabled=false;hiddenInRoom=true;
+        transform.localScale=entryScale;playerRenderer.color=playerColor;
+        IsEnteringRoom=false;
+        Interface.EnterRoom(kind);
+    }
+    public void RestoreOutdoorPlayer()
+    {
+        if(!hiddenInRoom)return;
+        hiddenInRoom=false;playerRenderer.enabled=true;playerRenderer.color=playerColor;
+        transform.position=roomReturnPosition;transform.localScale=entryScale;
+    }
     private void Interact()
     {
-        var item = NearestItem();
-        if (item == null) { Notify("Přijdi blíž k postavě nebo předmětu."); return; }
-        if (item.kind == "mayor") Interface.ShowMayor();
-        else if (item.kind == "merchant") Interface.ShowMerchant();
-        else if (item.kind == "healer") Interface.ShowHealer();
-        else if (item.kind == "guard") Interface.ShowGuard();
+        if(AtRoomDoor("merchant")) { Interface.ShowRoomEntrance("merchant","Obchodnice Eliška");return; }
+        var item=NearestItem();
+        if(item==null) { Notify("Přijdi blíž k postavě nebo předmětu.");return; }
+        if(item.kind=="shop") { Notify("Přijdi těsně ke vchodu domu.");return; }
+        if(item.kind=="mayor") Interface.ShowMayor();
+        else if(item.kind=="healer") Interface.ShowHealer();
+        else if(item.kind=="guard") Interface.ShowGuard();
         else if (item.kind == "garden")
         {
             long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -358,8 +423,8 @@ public sealed class RpgGame : MonoBehaviour
         companionObject = new GameObject(State.travelCompanion == 1 ? "Doprovod Petr" : "Doprovod Mira");
         companionObject.transform.position = SnapToRoad(transform.position + Vector3.left);
         var renderer = companionObject.AddComponent<SpriteRenderer>();
-        renderer.sprite = HeroSprite; renderer.sortingOrder = 3;
-        renderer.color = State.travelCompanion == 1 ? new Color(.55f,.7f,1) : new Color(.55f,1,.7f);
+        renderer.sprite = MedievalNpcAppearance.Get(State.travelCompanion == 1 ? "guard" : "healer"); renderer.sortingOrder = 3;
+        renderer.color = Color.white;
         companionObject.transform.localScale = Vector3.one * .75f;
         AddLabel(companionObject.transform, companionObject.name, new Vector3(0,.9f,0), Color.cyan);
         worldObjects.Add(companionObject);

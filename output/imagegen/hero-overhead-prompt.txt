@@ -1,0 +1,5 @@
+Built-in image_gen; user-approved identity-preserving edit.
+References: Image (2).jpg (girl), Image (4).jpg (boy).
+Final prompt:
+Correct ONLY the camera perspective of all six sprites. Current version is too front-facing. Need STRICT 90 DEGREE VERTICAL OVERHEAD camera looking straight DOWN, like top view of a person on a floorplan. Head CROWN dominates and overlaps upper torso. NO nose, NO face, NO visible front chest, NO frontal jacket drawstrings, NO long vertical legs. Show top surfaces of hair, shoulders, short foreshortened arms, boots projecting from beneath torso. Each character footprint is roughly round/square rather than tall. Preserve long brown hair female TOP row, short brown hair male BOTTOM row, black clothes brown trousers boots. Keep 3 columns: symmetric planted feet IDLE, left step, right step. Same scale, six separate centered cells, real transparency no glow no shadow no text. Do not rotate the flat frontal drawing: redraw top surfaces from direct overhead.
+Final asset: Assets/Resources/HeroOverhead.png

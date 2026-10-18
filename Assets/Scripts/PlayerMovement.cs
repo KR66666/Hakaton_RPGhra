@@ -32,6 +32,7 @@ public sealed class PlayerMovement : MonoBehaviour
     {
         var keyboard = Keyboard.current;
         var game = RpgGame.Instance;
+        if (game != null && game.IsEnteringRoom) return;
         if (keyboard == null || !Application.isFocused || game != null && game.BlockMovement)
         {
             StopWalking();
@@ -103,9 +104,16 @@ public sealed class PlayerMovement : MonoBehaviour
 
     public static int WalkingFrame(float distance)
     {
-        return Mathf.FloorToInt(Mathf.Max(0, distance) / 0.3f) % 2;
+        int phase = Mathf.FloorToInt(Mathf.Max(0, distance) / 0.2f) % 4;
+        return phase == 0 ? 1 : phase == 2 ? 2 : 0;
     }
     public Sprite WalkingSprite(int direction, int step) => walkingAnimation?.Frame(direction, step, RpgGame.Instance != null && RpgGame.Instance.State != null && RpgGame.Instance.State.heroIsBoy);
+
+    public void PlayEntranceStep(Vector2 direction,float distance)
+    {
+        if(direction.sqrMagnitude>.0001f) facing=direction.normalized;
+        ShowWalkingFrame(WalkingFrame(distance));
+    }
 
     private void StopWalking()
     {
@@ -134,17 +142,34 @@ public sealed class PlayerMovement : MonoBehaviour
     private void OnDestroy() { walkingAnimation?.Dispose(); }
 }
 
-// Preserve the supplied characters. Heading is controlled only by map-plane rotation.
+// Three genuine overhead poses per hero. All movement headings rotate this same set.
 public sealed class HeroWalkAnimation
 {
-    private readonly Sprite[,] frames = new Sprite[2, 2];
+    [System.Serializable] public sealed class FrameDefinition { public float x,y,width,height,ppu; }
+    [System.Serializable] public sealed class Sheet { public FrameDefinition[] frames; }
+    private readonly Sprite[,] frames = new Sprite[2,3];
+    private readonly System.Collections.Generic.List<Sprite> owned = new System.Collections.Generic.List<Sprite>();
     public HeroWalkAnimation(Sprite standing)
     {
-        frames[0,0] = Resources.Load<Sprite>("HeroUserStepA") ?? standing;
-        frames[0,1] = Resources.Load<Sprite>("HeroUserStepB") ?? frames[0,0];
-        frames[1,0] = Resources.Load<Sprite>("HeroBoyStepA") ?? standing;
-        frames[1,1] = Resources.Load<Sprite>("HeroBoyStepB") ?? frames[1,0];
+        for(int hero=0;hero<2;hero++) for(int pose=0;pose<3;pose++)
+            frames[hero,pose]=Resources.Load<Sprite>(hero==1?"HeroBoyStepA":"HeroUserStepA") ?? standing;
+        var texture=Resources.Load<Texture2D>("HeroOverhead");
+        var json=Resources.Load<TextAsset>("HeroOverhead");
+        if(texture==null||json==null) return;
+        var sheet=JsonUtility.FromJson<Sheet>(json.text);
+        if(sheet?.frames==null||sheet.frames.Length!=6)return;
+        for(int i=0;i<6;i++)
+        {
+            var f=sheet.frames[i];
+            var sprite=Sprite.Create(texture,new Rect(f.x,f.y,f.width,f.height),Vector2.one*.5f,f.ppu);
+            sprite.name=(i<3?"Girl":"Boy")+(i%3==0?" idle":i%3==1?" left foot":" right foot");
+            frames[i/3,i%3]=sprite;owned.Add(sprite);
+        }
     }
-    public Sprite Frame(int direction, int step, bool boy = false) => frames[boy ? 1 : 0, step == 1 ? 1 : 0];
-    public void Dispose() { }
+    public Sprite Frame(int direction,int step,bool boy=false) => frames[boy?1:0,Mathf.Clamp(step,0,2)];
+    public void Dispose()
+    {
+        foreach(var sprite in owned)
+            if(Application.isPlaying) Object.Destroy(sprite); else Object.DestroyImmediate(sprite);
+    }
 }

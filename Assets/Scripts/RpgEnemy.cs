@@ -19,8 +19,8 @@ public sealed class RpgEnemy : MonoBehaviour
         game = owner; Id = id; home = origin; IsBoss = boss;
         maxHealth = health = (boss ? 220 : 48) + game.State.currentArea * (boss ? 35 : 10);
         appearance = gameObject.AddComponent<SpriteRenderer>();
-        appearance.sprite = game.HeroSprite;
-        tint = boss ? new Color(0.85f, 0.35f, 0.55f) : new Color(1, 0.62f, 0.56f);
+        appearance.sprite = MedievalNpcAppearance.Get(boss ? "boss" : "bandit", id.Length > 0 ? id[id.Length-1] % 4 : 0);
+        tint = Color.white;
         appearance.color = tint; appearance.sortingOrder = 3;
         transform.localScale = Vector3.one * (boss ? 1.25f : 0.85f);
         label = RpgGame.AddLabel(transform, boss ? "VELITEL VRANEK" : "Nájezdník", new Vector3(0, 0.9f, 0), new Color(1, 0.65f, 0.6f));

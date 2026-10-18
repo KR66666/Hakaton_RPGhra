@@ -10,12 +10,20 @@ public static class RpgValidation
     {
         EditorApplication.delayCall += () =>
         {
-            if (!EditorApplication.isPlayingOrWillChangePlaymode && !SessionState.GetBool("RPG.Validation.v13", false))
+            if (!SessionState.GetBool("RPG.Validation.v19", false))
             {
                 Run();
-                SessionState.SetBool("RPG.Validation.v13", true);
+                SessionState.SetBool("RPG.Validation.v19", true);
             }
         };
+    }
+
+    [MenuItem("Tools/RPG/Preview Shop Dialogue %#F7")]
+    public static void PreviewShop()
+    {
+        var game=RpgGame.Instance;
+        if(game!=null && game.Interface!=null) game.Interface.EnterRoom("merchant");
+        else Debug.Log("Start the village first, then preview the shop dialogue.");
     }
 
     [MenuItem("Tools/RPG/Run Gameplay Checks")]
@@ -55,6 +63,7 @@ public static class RpgValidation
             var house = new Vector3((350 - 768) / 38.4f, (512 - 350) / 38.4f + 2 + 0.45f, 0);
             Check(RpgWorldGeometry.Blocked(house, bounds, -0.45f), "House footprint blocks movement", ref checks);
             Check(!AtPixelBlocked(1410, 477, bounds), "Bridge is walkable", ref checks);
+            Check(!AtPixelBlocked(744,411,bounds), "Existing shop doorstep is reachable on the road network", ref checks);
             Check(AtPixelBlocked(1390, 200, bounds), "River away from bridge is blocked", ref checks);
             Check(AtPixelBlocked(50, 50, bounds), "Grass outside paths is blocked", ref checks);
             Check(AtPixelBlocked(600, 550, bounds), "Market stalls are blocked", ref checks);
@@ -65,7 +74,7 @@ public static class RpgValidation
             Check(Vector2.Distance(swept, end) > 2 && !RpgWorldGeometry.Blocked(swept, bounds, RpgWorldGeometry.FeetOffset), "Long movement cannot tunnel through roof", ref checks);
             var recovered = RpgWorldGeometry.NearestWalkable(house, bounds);
             Check(!RpgWorldGeometry.Blocked(recovered, bounds, RpgWorldGeometry.FeetOffset), "Old save on a roof relocates to road", ref checks);
-            Check(PlayerMovement.WalkingFrame(0.1f) == 0 && PlayerMovement.WalkingFrame(0.4f) == 1 && PlayerMovement.WalkingFrame(0.7f) == 0, "Two supplied steps alternate by actual distance", ref checks);
+            Check(PlayerMovement.WalkingFrame(0.1f)==1 && PlayerMovement.WalkingFrame(0.3f)==0 && PlayerMovement.WalkingFrame(0.5f)==2 && PlayerMovement.WalkingFrame(0.7f)==0, "Overhead left-idle-right-idle cycle", ref checks);
             Check(PlayerMovement.FacingIndex(Vector2.up) == 1 && PlayerMovement.FacingIndex(Vector2.down) == 0 &&
                 PlayerMovement.FacingIndex(Vector2.right) == 2 && PlayerMovement.FacingIndex(Vector2.left) == 3,
                 "Four movement directions select four character views", ref checks);
@@ -77,10 +86,8 @@ public static class RpgValidation
                 Check(animation.Frame(0,0,false) != animation.Frame(0,0,true), "Boy and girl have distinct appearances", ref checks);
                 for(int direction=0;direction<4;direction++)
                     Check(animation.Frame(direction,0) == animation.Frame(0,0), "All directions rotate the same supplied artwork", ref checks);
-                Check(animation.Frame(0,0,true) == Resources.Load<Sprite>("HeroBoyStepA") &&
-                    animation.Frame(0,1,true) == Resources.Load<Sprite>("HeroBoyStepB"), "Boy uses both supplied male images", ref checks);
-                Check(animation.Frame(0,0,false) == Resources.Load<Sprite>("HeroUserStepA") &&
-                    animation.Frame(0,1,false) == Resources.Load<Sprite>("HeroUserStepB"), "Girl uses both supplied female images", ref checks);
+                Check(animation.Frame(0,0,true).name=="Boy idle" && animation.Frame(0,1,true).name=="Boy left foot" && animation.Frame(0,2,true).name=="Boy right foot", "Boy has distinct overhead standing and steps", ref checks);
+                Check(animation.Frame(0,0,false).name=="Girl idle" && animation.Frame(0,1,false).name=="Girl left foot" && animation.Frame(0,2,false).name=="Girl right foot", "Girl has distinct overhead standing and steps", ref checks);
                 state.heroIsBoy = true;
                 Check(JsonUtility.FromJson<RpgState>(JsonUtility.ToJson(state)).heroIsBoy, "Hero choice survives saving", ref checks);
                 Check(Mathf.Abs(Mathf.DeltaAngle(PlayerMovement.FacingAngle(Vector2.down), 0)) < 0.01f &&
@@ -103,6 +110,11 @@ public static class RpgValidation
             Check(campaign.EnterArea(1,0,false,false) && campaign.banditsDefeated==3, "Returning restores unfinished level progress", ref checks);
             var campaignCopy=JsonUtility.FromJson<RpgState>(JsonUtility.ToJson(campaign));campaignCopy.Normalize();
             Check(campaignCopy.currentArea==1 && campaignCopy.completedAreas.Contains(0) && campaignCopy.areaProgress.Count>0, "Map progress survives save round trip", ref checks);
+            Check(MedievalNpcAppearance.Get("mayor") != MedievalNpcAppearance.Get("guard") &&
+                MedievalNpcAppearance.Get("merchant") != MedievalNpcAppearance.Get("healer"), "NPC roles have distinct sprites", ref checks);
+            Check(MedievalNpcAppearance.Get("guard") == MedievalNpcAppearance.Get("guard"), "NPC sprites are reused without allocating on rebuild", ref checks);
+            Check(MedievalNpcAppearance.Get("bandit",0) != MedievalNpcAppearance.Get("bandit",1) &&
+                MedievalNpcAppearance.Get("boss") != MedievalNpcAppearance.Get("bandit"), "Bandits have variants and commander has unique armor", ref checks);
             CheckNavigation(bounds, ref checks);
             state = new RpgState();
             Check(!state.FinishSideQuest(0) && !state.AcceptSideQuest(-1) && !state.AcceptSideQuest(3), "Side quests require valid acceptance", ref checks);
@@ -197,7 +209,7 @@ public static class RpgValidation
             game.RestoreState(new RpgState());
             var movement = game.GetComponent<PlayerMovement>();
             var appearance = game.GetComponent<SpriteRenderer>();
-            var opposite = movement.WalkingSprite(0, 1);
+            var opposite = movement.WalkingSprite(0, 2);
             Check(opposite != null, "Second walking step loads in the running game", ref checks);
             movement.MoveInDirection(Vector2.down, 0);
             var idle = appearance.sprite;
@@ -214,6 +226,15 @@ public static class RpgValidation
             movement.MoveInDirection(Vector2.right, 0.15f);
             Check(Mathf.Abs(Mathf.DeltaAngle(movement.transform.eulerAngles.z, 90)) < 0.01f, "Walking right uses an unmirrored side view", ref checks);
             game.RestoreState(new RpgState());
+            game.Interface.ShowRoomEntrance("merchant", "Obchodnice Eliška");
+            Check(game.Interface.IsModal && !game.Interface.InRoom, "Entrance offers a choice before entering", ref checks);
+            game.Interface.Close();
+            Check(!game.Interface.IsModal && !game.Interface.InRoom, "Declining leaves player outside", ref checks);
+            game.Interface.EnterRoom("merchant");
+            Check(game.Interface.InRoom && game.Interface.IsModal && game.BlockMovement, "Shop interior blocks world movement", ref checks);
+            Check(Resources.Load<Sprite>("ArabellaPortrait")!=null && Resources.Load<Sprite>("MerchantPortrait")!=null && Resources.Load<Sprite>("ShopInterior")!=null, "Both portraits and the shop background load", ref checks);
+            game.Interface.Close();
+            Check(!game.Interface.InRoom && !game.Interface.IsModal, "Leaving shop restores outdoor view", ref checks);
             game.AcceptQuest();
             Check(game.State.questStage == 1 && game.Enemies.Count == 6, "Quest and encounter creation", ref checks);
             var first = game.Enemies[0];

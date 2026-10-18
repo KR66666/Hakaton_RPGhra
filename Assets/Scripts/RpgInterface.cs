@@ -14,6 +14,11 @@ public sealed class RpgInterface : MonoBehaviour
     private float toastUntil;
     private string currentModal;
     private Font font;
+    private bool shopScene;
+    private Image arabellaPortrait, merchantPortrait;
+    private readonly System.Collections.Generic.List<Sprite> portraitCrops = new System.Collections.Generic.List<Sprite>();
+    private RectTransform roomView;
+    public bool InRoom => roomView != null;
     private RectTransform mapContent;
     private int travelCompanion;
     private bool travelCart;
@@ -112,6 +117,8 @@ public sealed class RpgInterface : MonoBehaviour
     public void Close()
     {
         if (game.State.health <= 0 && currentModal == "death") return;
+        LeaveRoomVisuals();
+        game.RestoreOutdoorPlayer();
         modal.gameObject.SetActive(false); currentModal = null;
     }
 
@@ -175,10 +182,138 @@ public sealed class RpgInterface : MonoBehaviour
         Action("Odejít", Close);
     }
 
+    public void ShowRoomEntrance(string kind, string title)
+    {
+        if(kind!="merchant") return;
+        Open("entrance", "VEJÍT DOVNITŘ?", title + " tě zve dál.\n\nChceš vejít do místnosti a promluvit si?");
+        Action("Vejít do místnosti", () => game.BeginRoomEntry(kind));
+        Action("Odmítnout • zůstat venku", Close);
+    }
+    public void EnterRoom(string kind)
+    {
+        if(kind!="merchant")return;
+        BuildRoom(kind);
+        if(kind == "merchant") ShowShopDialogue(0); else if(kind == "healer") ShowHealer(); else ShowMayor();
+    }
+    private void BuildRoom(string kind)
+    {
+        LeaveRoomVisuals();
+        roomView = Rect(canvas,"Interior",Vector2.zero,Vector2.zero);
+        roomView.anchorMin=Vector2.zero;roomView.anchorMax=Vector2.one;roomView.offsetMin=roomView.offsetMax=Vector2.zero;
+        roomView.SetSiblingIndex(modal.GetSiblingIndex());
+        if(kind == "merchant") { BuildShopScene(); return; }
+        roomView.gameObject.AddComponent<Image>().color=new Color(.12f,.08f,.055f);
+        for(int y=0;y<10;y++) for(int x=0;x<16;x++)
+        {
+            var plank=Rect(roomView,"Wood plank",new Vector2(x*100,-y*90),new Vector2(98,88));
+            var image=plank.gameObject.AddComponent<Image>();image.raycastTarget=false;
+            image.color=new Color(.22f+(x+y)%3*.025f,.14f+(x%2)*.015f,.08f);
+        }
+        for(int shelf=0;shelf<3;shelf++)
+        {
+            var board=Panel(roomView,"Shelf",new Vector2(55,-85-shelf*125),new Vector2(530,16),new Vector2(0,1));
+            board.GetComponent<Image>().color=new Color(.4f,.26f,.12f);
+            for(int bottle=0;bottle<8;bottle++)
+            {
+                var item=Panel(roomView,"Goods",new Vector2(75+bottle*60,-42-shelf*125),new Vector2(24,40),new Vector2(0,1));
+                item.GetComponent<Image>().color=bottle%2==0?new Color(.25f,.48f,.3f):new Color(.6f,.38f,.18f);
+            }
+        }
+        var portrait=Rect(roomView,"Speaker portrait",new Vector2(80,-150),new Vector2(390,430));
+        var portraitImage=portrait.gameObject.AddComponent<Image>();portraitImage.preserveAspect=true;portraitImage.raycastTarget=false;
+        portraitImage.sprite=kind=="merchant"?Resources.Load<Sprite>("ShopWomanPortrait"):MedievalNpcAppearance.Get(kind);
+        var counter=Panel(roomView,"Counter",new Vector2(35,-580),new Vector2(550,110),new Vector2(0,1));
+        counter.GetComponent<Image>().color=new Color(.25f,.14f,.07f);
+        var hero=Rect(roomView,"Your character",new Vector2(220,-650),new Vector2(150,190));
+        var heroImage=hero.gameObject.AddComponent<Image>();heroImage.preserveAspect=true;heroImage.raycastTarget=false;
+        heroImage.sprite=Resources.Load<Sprite>(game.State.heroIsBoy?"HeroBoyStepA":"HeroUserStepA");
+        Label(roomView,"TVOJE POSTAVA",new Vector2(190,-835),new Vector2(230,35),20,Gold);
+        modalTitle.transform.parent.GetComponent<RectTransform>().anchoredPosition=new Vector2(300,0);
+        modal.GetComponent<Image>().color=new Color(0,0,0,.22f);
+    }
+    private void LeaveRoomVisuals()
+    {
+        if(roomView!=null) { roomView.gameObject.SetActive(false);Destroy(roomView.gameObject);roomView=null; }
+        foreach(var crop in portraitCrops) if(crop!=null) Destroy(crop);
+        portraitCrops.Clear();
+        shopScene=false; arabellaPortrait=null; merchantPortrait=null;
+        if(modalTitle!=null)
+        {
+            var box=modalTitle.transform.parent.GetComponent<RectTransform>();
+            Anchor(box,new Vector2(.5f,.5f),Vector2.zero);box.sizeDelta=new Vector2(760,650);
+            modalTitle.rectTransform.anchoredPosition=new Vector2(32,-22);modalTitle.rectTransform.sizeDelta=new Vector2(650,45);modalTitle.fontSize=30;
+            modalBody.rectTransform.anchoredPosition=new Vector2(32,-85);modalBody.rectTransform.sizeDelta=new Vector2(696,290);
+            actions.anchoredPosition=new Vector2(32,-378);actions.sizeDelta=new Vector2(696,245);
+        }
+        if(modal!=null) modal.GetComponent<Image>().color=new Color(0,0,0,.68f);
+    }
+
+    private void BuildShopScene()
+    {
+        shopScene=true;
+        roomView.gameObject.AddComponent<Image>().color=new Color(.1f,.06f,.03f);
+        var backdrop=Rect(roomView,"Shop background",Vector2.zero,Vector2.zero);
+        backdrop.anchorMin=Vector2.zero;backdrop.anchorMax=Vector2.one;backdrop.pivot=Vector2.one*.5f;backdrop.offsetMin=backdrop.offsetMax=Vector2.zero;
+        var background=backdrop.gameObject.AddComponent<Image>();background.sprite=Resources.Load<Sprite>("ShopInterior");background.color=Color.white;
+        var aspect=backdrop.gameObject.AddComponent<AspectRatioFitter>();aspect.aspectMode=AspectRatioFitter.AspectMode.EnvelopeParent;
+        aspect.aspectRatio=background.sprite!=null?background.sprite.rect.width/background.sprite.rect.height:16f/9f;
+        arabellaPortrait=RoomPortrait("Arabella", "ArabellaPortrait",new Vector2(40,246));
+        merchantPortrait=RoomPortrait("Obchodnice", "MerchantPortrait",new Vector2(1060,246));
+        modal.GetComponent<Image>().color=Color.clear;
+    }
+    private Image RoomPortrait(string title,string resource,Vector2 position)
+    {
+        var rect=Rect(roomView,title,Vector2.zero,new Vector2(500,600));
+        bool right=resource=="MerchantPortrait";
+        rect.anchorMin=new Vector2(right?1:0,0);rect.anchorMax=new Vector2(right?1:0,1);
+        rect.offsetMin=new Vector2(right?-540:40,264);rect.offsetMax=new Vector2(right?-40:540,-30);
+        var image=rect.gameObject.AddComponent<Image>();
+        var original=Resources.Load<Sprite>(resource);
+        if(original!=null)
+        {
+            var crop=original.rect;float trim=resource=="ArabellaPortrait"?.22f:.1f;
+            crop.y+=crop.height*trim;crop.height*=1-trim;
+            image.sprite=Sprite.Create(original.texture,crop,new Vector2(.5f,0),original.pixelsPerUnit);
+            portraitCrops.Add(image.sprite);
+        }
+        image.preserveAspect=true;image.raycastTarget=false;
+        return image;
+    }
+    private void ShopDialogLayout(string speaker)
+    {
+        if(!shopScene)return;
+        var box=modalTitle.transform.parent.GetComponent<RectTransform>();
+        Anchor(box,new Vector2(.5f,0),new Vector2(0,20));box.sizeDelta=new Vector2(1480,244);
+        box.GetComponent<Image>().color=new Color(.045f,.075f,.085f,.98f);
+        modalTitle.rectTransform.anchoredPosition=new Vector2(28,-14);modalTitle.rectTransform.sizeDelta=new Vector2(990,36);modalTitle.fontSize=26;
+        modalBody.rectTransform.anchoredPosition=new Vector2(28,-60);modalBody.rectTransform.sizeDelta=new Vector2(1010,162);modalBody.fontSize=21;
+        actions.anchoredPosition=new Vector2(1070,-24);actions.sizeDelta=new Vector2(380,210);
+        if(arabellaPortrait!=null) arabellaPortrait.color=speaker=="ARABELLA"?Color.white:new Color(.78f,.78f,.78f);
+        if(merchantPortrait!=null) merchantPortrait.color=speaker=="ARABELLA"?new Color(.78f,.78f,.78f):Color.white;
+    }
+    private void ShowShopDialogue(int line)
+    {
+        string[] speakers={"OBCHODNICE","ARABELLA","OBCHODNICE","ARABELLA"};
+        string[] lines={
+            "Vítej v mém obchodě, Arabello. Cesta do Havranova byla jistě dlouhá. Co pro tebe mohu udělat?",
+            "Dobrý den. Ve vesnici se mluví o nájezdnících. Potřebuji zásoby a pořádnou výbavu, než vyrazím dál.",
+            "Mám léčivé lektvary a mohu ti vylepšit meč i zbroj. A pokud chceš pomoci, čeká tu zásilka pro strážného Petra.",
+            "Děkuji. Ukažte mi prosím zboží — a ráda si poslechnu, s čím vám mohu pomoci."};
+        line=Mathf.Clamp(line,0,lines.Length-1);
+        Open("shopDialogue",speakers[line],lines[line]);ShopDialogLayout(speakers[line]);
+        if(line<lines.Length-1) Action("Pokračovat →",()=>ShowShopDialogue(line+1));
+        else
+        {
+            Action("Prohlédnout zboží",ShowMerchant);
+            Action("Převzít úkol od obchodnice",()=>ShowSideQuest(2,true));
+        }
+        Action("Odejít z obchodu",Close);
+    }
+
     public void ShowMerchant()
     {
         var state = game.State;
-        Open("merchant", "ELIŠKA • OBCHOD A KOVÁRNA", $"„Dobrý meč a zásoba lektvarů. Víc dobrodruh nepotřebuje.“\n\nTvé zlato: {state.gold}\nLektvary: {state.potions}   •   Meč +{state.weaponLevel}   •   Zbroj +{state.armorLevel}\n\nLektvar: +60 zdraví.\nMeč: +9 poškození za stupeň. Zbroj: −3 zranění za stupeň.");
+        Open("merchant", "OBCHODNICE • ZBOŽÍ A VÝBAVA", $"„Dobrý meč a zásoba lektvarů. Víc dobrodruh nepotřebuje.“\n\nTvé zlato: {state.gold}\nLektvary: {state.potions}   •   Meč +{state.weaponLevel}   •   Zbroj +{state.armorLevel}\n\nLektvar: +60 zdraví.\nMeč: +9 poškození za stupeň. Zbroj: −3 zranění za stupeň.");
         Action("Koupit lektvar • 15 zl.", () => { game.BuyPotion(); ShowMerchant(); });
         Action(state.weaponLevel >= 5 ? "Meč • maximální stupeň" : $"Vylepšit meč • {40 + state.weaponLevel * 30} zl.", () => { game.Upgrade(true); ShowMerchant(); });
         Action(state.armorLevel >= 5 ? "Zbroj • maximální stupeň" : $"Vylepšit zbroj • {40 + state.armorLevel * 30} zl.", () => { game.Upgrade(false); ShowMerchant(); });
@@ -338,6 +473,7 @@ public sealed class RpgInterface : MonoBehaviour
 
     private void Open(string kind, string title, string body)
     {
+        if (InRoom && (kind == "map" || kind == "pause" || kind == "death" || kind == "travel")) LeaveRoomVisuals();
         if (mapContent != null) { mapContent.gameObject.SetActive(false); Destroy(mapContent.gameObject); mapContent = null; }
         currentModal = kind;
         modalBody.fontSize = 22;
@@ -347,17 +483,19 @@ public sealed class RpgInterface : MonoBehaviour
             var child = actions.GetChild(i); child.gameObject.SetActive(false); child.SetParent(null); Destroy(child.gameObject);
         }
         modal.gameObject.SetActive(true);
+        if(shopScene) ShopDialogLayout(kind=="shopDialogue"?title:"OBCHODNICE");
     }
 
     private void Action(string title, Action callback)
     {
         int index = actions.childCount;
-        var rect = Rect(actions, title, new Vector2(0, -index * 50), new Vector2(696, 42));
+        float width=shopScene?380:696, height=shopScene?34:42, spacing=shopScene?42:50;
+        var rect = Rect(actions, title, new Vector2(0, -index * spacing), new Vector2(width, height));
         var image = rect.gameObject.AddComponent<Image>(); image.color = new Color(0.16f, 0.21f, 0.23f);
         var button = rect.gameObject.AddComponent<Button>(); button.targetGraphic = image;
         var colors = button.colors; colors.highlightedColor = new Color(1, 0.88f, 0.6f); colors.pressedColor = new Color(0.6f, 0.8f, 0.7f); button.colors = colors;
         button.onClick.AddListener(() => callback());
-        var text = Label(rect, title, new Vector2(12, 0), new Vector2(672, 42), 21, Gold); text.alignment = TextAnchor.MiddleCenter;
+        var text = Label(rect, title, new Vector2(12, 0), new Vector2(width-24, height), shopScene?18:21, Gold); text.alignment = TextAnchor.MiddleCenter;
     }
 
     private Image Bar(Transform parent, Vector2 position, Color color)

@@ -211,6 +211,7 @@ public static class RpgWorldGeometry
     };
     private static readonly Road[] Roads =
     {
+        new Road(750,440,744,402,20), // Existing shop doorstep below the north-square house.
         new Road(650,450,535,448,22), new Road(535,448,420,466,20),
         new Road(420,466,282,428,18), new Road(282,428,210,403,17),
         new Road(210,403,110,466,18), new Road(110,466,145,535,16),
