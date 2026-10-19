@@ -108,7 +108,7 @@ public sealed class PlayerMovement : MonoBehaviour
         int phase = Mathf.FloorToInt(Mathf.Max(0, distance) / 0.2f) % 4;
         return phase == 0 ? 1 : phase == 2 ? 2 : 0;
     }
-    public bool UsesDirectionalHero => walkingAnimation!=null && walkingAnimation.HasDirectional && !(RpgGame.Instance?.State?.heroIsBoy ?? false);
+    public bool UsesDirectionalHero => walkingAnimation!=null && RpgDirectionalHero.IsAvailable(RpgGame.Instance?.State?.heroIsBoy ?? false);
     public static int DirectionalWalkingFrame(float distance) => 1+Mathf.FloorToInt(Mathf.Max(0,distance)/.3f)%4;
     public Sprite WalkingSprite(int direction, int step) => walkingAnimation?.Frame(direction, step, RpgGame.Instance != null && RpgGame.Instance.State != null && RpgGame.Instance.State.heroIsBoy);
 
@@ -149,7 +149,7 @@ public sealed class PlayerMovement : MonoBehaviour
     private void OnDestroy() { walkingAnimation?.Dispose(); }
 }
 
-// Supplied directional heroine frames; the existing boy keeps his original overhead artwork.
+// Both supplied heroes share directional frame timing, size and movement.
 public sealed class HeroWalkAnimation
 {
     [System.Serializable] public sealed class FrameDefinition { public float x,y,width,height,ppu; }
@@ -174,7 +174,7 @@ public sealed class HeroWalkAnimation
         }
     }
     public bool HasDirectional => RpgDirectionalHero.Available;
-    public Sprite Frame(int direction,int step,bool boy=false) => !boy && HasDirectional ? RpgDirectionalHero.Frame(direction,step) : frames[boy?1:0,Mathf.Clamp(step,0,2)];
+    public Sprite Frame(int direction,int step,bool boy=false) => RpgDirectionalHero.IsAvailable(boy) ? RpgDirectionalHero.Frame(direction,step,boy) : frames[boy?1:0,Mathf.Clamp(step,0,2)];
     public void Dispose()
     {
         foreach(var sprite in owned)

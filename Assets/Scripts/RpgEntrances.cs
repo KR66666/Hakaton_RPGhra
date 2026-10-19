@@ -44,12 +44,7 @@ public sealed partial class RpgGame
         if(exit==null || !RpgEntranceRules.InReach(transform.position,SnapToRoad(ExitPosition(exit))))return;
         Interface.ShowEntrance(RpgLocations.Name(destination),()=>TryTravelLocation(destination));
     }
-    private void OfferSecretEntry()
-    {
-        var entrance=worldItems.Find(item=>item.kind=="secretRoom" && item.obj!=null);
-        if(entrance==null || !RpgEntranceRules.InReach(transform.position,entrance.obj.transform.position))return;
-        Interface.ShowEntrance("Tajný pokoj knihovny",()=>BeginMiniTransition(Interface.ShowSecretRoom));
-    }
+
 }
 
 public sealed partial class RpgInterface

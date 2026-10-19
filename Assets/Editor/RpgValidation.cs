@@ -173,7 +173,9 @@ public static class RpgValidation
                 var originalMap=AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Characters/MedievalTown.png");
                 var fantasyMap=Resources.Load<Sprite>("MedievalTownExpanded");
                 Check(fantasyMap!=null && Vector2.Distance((Vector2)originalMap.bounds.size/RpgWorldGeometry.LegacyScale,(Vector2)fantasyMap.bounds.size)<.001f,$"Expanded artwork dimensions: expected {originalMap.bounds.size/RpgWorldGeometry.LegacyScale}, actual {(fantasyMap!=null?fantasyMap.bounds.size:Vector3.zero)}",ref checks);
-                Check(animation.Frame(0,0,true).name=="Boy idle" && animation.Frame(0,1,true).name=="Boy left foot" && animation.Frame(0,2,true).name=="Boy right foot", "Boy has distinct overhead standing and steps", ref checks);
+                Check(animation.Frame(0,0,true).name=="Hero Front 0" && animation.Frame(1,0,true).name=="Hero Back 0" && animation.Frame(3,0,true).name=="Hero Left 2", "Boy uses supplied directional standing frames", ref checks);
+                Check(animation.Frame(3,1,true)!=animation.Frame(3,2,true)&&animation.Frame(3,2,true)!=animation.Frame(3,3,true),"Boy profile walk alternates supplied leg poses",ref checks);
+                Check(Mathf.Abs(animation.Frame(0,0,true).bounds.size.y-animation.Frame(0,0,false).bounds.size.y)<.001f,"Boy and girl share world height",ref checks);
                 Check(animation.Frame(0,0,false).name=="Heroine Front 0" && animation.Frame(1,0,false).name=="Heroine Back 0" && animation.Frame(3,0,false).name=="Heroine Left 2", "Heroine uses exact supplied directional frames", ref checks);
                 state.heroIsBoy = true;
                 Check(JsonUtility.FromJson<RpgState>(JsonUtility.ToJson(state)).heroIsBoy, "Hero choice survives saving", ref checks);
@@ -374,7 +376,7 @@ public static class RpgValidation
             Check(!game.Interface.IsModal && !game.Interface.InRoom, "Declining leaves player outside", ref checks);
             game.Interface.EnterRoom("merchant");
             Check(game.Interface.InRoom && game.Interface.IsModal && game.BlockMovement, "Shop interior blocks world movement", ref checks);
-            Check(Resources.Load<Sprite>("ArabellaPortrait")!=null && Resources.Load<Sprite>("MerchantPortrait")!=null && Resources.Load<Sprite>("ShopInterior")!=null, "Both portraits and the shop background load", ref checks);
+            Check(RpgPortraitFit.ArabellaShop()!=null && Resources.Load<Sprite>("MerchantPortrait")!=null, "Both current shop portraits load", ref checks);
             game.Interface.Close();
             Check(!game.Interface.InRoom && !game.Interface.IsModal, "Leaving shop restores outdoor view", ref checks);
             game.AcceptQuest();

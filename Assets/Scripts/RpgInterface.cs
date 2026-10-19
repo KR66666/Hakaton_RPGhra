@@ -136,7 +136,7 @@ public sealed partial class RpgInterface : MonoBehaviour
         mapButton.anchoredPosition=new Vector2(-105,-20);
         characterButton.anchoredPosition=new Vector2(105,-20);
         tracker.anchoredPosition=new Vector2(-20,-290);
-        goalPanel.anchoredPosition=new Vector2(0,-270);
+        goalPanel.anchoredPosition=new Vector2(0,-205);
         toast.rectTransform.anchoredPosition=new Vector2(0,-365);
         interactionPanel.anchoredPosition=new Vector2(0,108);
         hudRoot.SetAsFirstSibling();
@@ -250,7 +250,7 @@ public sealed partial class RpgInterface : MonoBehaviour
             var cancel=entranceCancel;entranceCancel=null;cancel();return;
         }
         if(inCellar){ReturnFromCellar();return;}
-        if(InRoom || currentModal=="secretRoom")
+        if(InRoom)
         {
             game.BeginMiniTransition(CloseImmediately);return;
         }
@@ -295,7 +295,7 @@ public sealed partial class RpgInterface : MonoBehaviour
         string questItems="";
         if(state.KnowsSideQuest(1) || state.SuppliesFound>0)questItems+=$"\nZásoby pro vesnici: {state.SuppliesFound}/2";
         if(state.KnowsSideQuest(2))questItems+="\nBalíček pro Petra: "+(state.parcelDelivered?"doručen":state.deliveryQuest==1?"v batohu":"nepřevzat");
-        Open("inventory", "BATOH A VYBAVENÍ", $"Svíčky: {state.candles}   •   Rituál vyžaduje 3   •   Cyklus {state.cycle}\nZlato: {state.gold}     |     Léčivé lektvary: {state.potions}"+questItems+
+        Open("inventory", "BATOH A VYBAVENÍ", $"Svíčky: {state.candles}   •   Rituál vyžaduje {state.RequiredCandles}   •   Cyklus {state.cycle}\nZlato: {state.gold}     |     Léčivé lektvary: {state.potions}"+(state.libraryCandleTaken?"\nSvíčka z tajného pokoje: získána":"")+questItems+
             $"\n\n{(state.hasIronSword ? "Železný meč +"+state.weaponLevel : "Beze zbraně")}   •   Útok {state.Damage}\nKožená zbroj +{state.armorLevel}   •   Obrana {state.Defense}\n\nBody vylepšení: {state.UpgradePoints}\n{(state.hasBow ? "Luk ve výbavě. " : "")}{(state.swordTrained ? "Boj s mečem naučen. " : "")}{(state.bowTrained ? "Boj s lukem naučen. " : "")}Lektvar obnoví 15 zdraví. Zbroj vylepšuje Eliška. Meč prodává kovář od druhého cyklu.");
         Action("Vylepšit postavu  [C]",ShowCharacterUpgrades);
         Action("Vypít lektvar", () => { game.DrinkPotion(); ShowInventory(); });
@@ -433,7 +433,17 @@ public sealed partial class RpgInterface : MonoBehaviour
         roomView.gameObject.AddComponent<Image>().color=new Color(.1f,.06f,.03f);
         var backdrop=Rect(roomView,"Shop background",Vector2.zero,Vector2.zero);
         backdrop.anchorMin=Vector2.zero;backdrop.anchorMax=Vector2.one;backdrop.pivot=Vector2.one*.5f;backdrop.offsetMin=backdrop.offsetMax=Vector2.zero;
-        var background=backdrop.gameObject.AddComponent<Image>();background.sprite=Resources.Load<Sprite>("ShopInterior");background.color=Color.white;RpgVisualTheme.Picture(background,false,3);
+        var background=backdrop.gameObject.AddComponent<Image>();background.sprite=Resources.Load<Sprite>("ShopInterior");background.color=Color.white;
+        if(background.sprite==null)
+        {
+            background.color=new Color(.22f,.14f,.08f);
+            for(int i=0;i<12;i++)
+            {
+                var plank=Rect(backdrop,"Dřevěné obložení",new Vector2(0,-i*80),new Vector2(1600,76));
+                plank.gameObject.AddComponent<Image>().color=i%2==0?new Color(.30f,.20f,.12f):new Color(.25f,.16f,.09f);
+            }
+        }
+        else RpgVisualTheme.Picture(background,false,3);
         var aspect=backdrop.gameObject.AddComponent<AspectRatioFitter>();aspect.aspectMode=AspectRatioFitter.AspectMode.EnvelopeParent;
         aspect.aspectRatio=background.sprite!=null?background.sprite.rect.width/background.sprite.rect.height:16f/9f;
 

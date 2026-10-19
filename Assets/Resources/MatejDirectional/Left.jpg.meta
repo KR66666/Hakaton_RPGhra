@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: d7716c57b4134567bf50da59a97f7e59
+guid: 9baf5c95f9624494833a88319f755dbd
 TextureImporter:
   serializedVersion: 13
   mipmaps:
     enableMipMap: 0
-  isReadable: 0
+  isReadable: 1
   textureSettings:
     serializedVersion: 2
     filterMode: 0
@@ -13,7 +13,7 @@ TextureImporter:
     wrapV: 1
   textureCompression: 0
   spriteMode: 1
-  spritePixelsToUnits: 369.43972835314
+  spritePixelsToUnits: 100
   spriteMeshType: 1
   spriteAlignment: 9
   spritePivot: {x: 0.5, y: 0.5}
@@ -30,4 +30,5 @@ TextureImporter:
   userData:
   assetBundleName:
   assetBundleVariant:
+
 

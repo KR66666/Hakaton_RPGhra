@@ -3,11 +3,11 @@ using UnityEngine;
 // One geometry for all conversations, regardless of speaker or backdrop.
 public static class RpgDialogueLayout
 {
-    public static readonly Vector2 Size=new Vector2(1320,540);
-    public static readonly Rect Portrait=new Rect(24,22,238,496);
-    public static readonly Rect Title=new Rect(286,22,1008,44);
-    public static readonly Rect Body=new Rect(286,84,1008,210);
-    public static readonly Rect Actions=new Rect(286,314,1008,204);
+    public static readonly Vector2 Size=new Vector2(1480,540);
+    public static readonly Rect Portrait=new Rect(24,22,400,496);
+    public static readonly Rect Title=new Rect(448,22,1008,44);
+    public static readonly Rect Body=new Rect(448,84,1008,210);
+    public static readonly Rect Actions=new Rect(448,314,1008,204);
     public const float ButtonWidth=492,ButtonHeight=60;
     public static Vector2 ButtonPosition(int index) => new Vector2(index%2*516,-index/2*72);
     public static bool IsConversation(string kind)
@@ -58,27 +58,33 @@ public sealed partial class RpgInterface
         conversationActive=true;
         var box=modalTitle.transform.parent.GetComponent<RectTransform>();
         Anchor(box,new Vector2(.5f,0),new Vector2(0,22));box.sizeDelta=RpgDialogueLayout.Size;
+        bool fullPetr=kind=="guideInstruction"||kind=="cellarGuide"||kind=="guard";
+        var portraitArea=RpgDialogueLayout.Portrait;
         RpgVisualTheme.Panel(box.GetComponent<UnityEngine.UI.Image>());
         var outline=box.GetComponent<UnityEngine.UI.Outline>();if(outline!=null)outline.enabled=false;
         modal.GetComponent<UnityEngine.UI.Image>().color=new Color(0,0,0,InRoom?.18f:.38f);
         conversationPortrait=Panel(box,"Portrét mluvčího",Vector2.zero,Vector2.zero,new Vector2(0,1));
-        PlaceDialogueRect(conversationPortrait,RpgDialogueLayout.Portrait);
+        PlaceDialogueRect(conversationPortrait,portraitArea);
         conversationPortrait.gameObject.AddComponent<UnityEngine.UI.RectMask2D>();
         var art=Rect(conversationPortrait,"Mluvčí",Vector2.zero,Vector2.zero);
         art.anchorMin=Vector2.zero;art.anchorMax=Vector2.one;art.pivot=new Vector2(.5f,0);
         art.offsetMin=new Vector2(8,0);art.offsetMax=new Vector2(-8,-8);
         var image=art.gameObject.AddComponent<UnityEngine.UI.Image>();image.sprite=RpgPortraitFit.VisibleSprite(ConversationPortrait(kind,speaker));image.preserveAspect=true;image.raycastTarget=false;
-        // Bring Petr's face closer while keeping the portrait clipped to its frame.
-        if(kind=="guideInstruction"||kind=="cellarGuide"||kind=="guard")
-            art.localScale=new Vector3(1.65f,1.65f,1);
+        // Use the wider portrait column for every speaker, with a close waist-up crop.
+        art.localScale=new Vector3(1.1f,1.1f,1);
+        art.offsetMin=new Vector2(8,-40);art.offsetMax=new Vector2(-8,-48);
+        if(fullPetr)
+        {
+            art.localScale=new Vector3(1.35f,1.35f,1);
+            art.offsetMin=new Vector2(8,-60);art.offsetMax=new Vector2(-8,-68);
+        }
         // Seat the portrait behind a small wooden lip: the source's cut waist
         // meets the frame instead of floating visibly above its lower edge.
-        var lip=Rect(conversationPortrait,"Spodní hrana rámu",Vector2.zero,new Vector2(RpgDialogueLayout.Portrait.width-4,7));
+        var lip=Rect(conversationPortrait,"Spodní hrana rámu",Vector2.zero,new Vector2(portraitArea.width-4,7));
         Anchor(lip,new Vector2(.5f,0),Vector2.zero);
         lip.gameObject.AddComponent<UnityEngine.UI.Image>().color=new Color(.20f,.14f,.085f);
         PlaceDialogueRect(modalTitle.rectTransform,RpgDialogueLayout.Title);modalTitle.fontSize=34;
         PlaceDialogueRect(actions,RpgDialogueLayout.Actions);
-
         ApplyScrollableBody(RpgDialogueLayout.Body,28);
     }
     private void ApplyScrollableBody(Rect textArea,int fontSize)
@@ -118,7 +124,7 @@ public sealed partial class RpgInterface
         if(kind=="merchant"||kind=="shopDialogue"||kind=="cellarMerchant")return Resources.Load<Sprite>("MerchantPortrait");
         if(kind=="mayor")return MedievalNpcAppearance.Get("mayor");
         if(kind=="healer")return MedievalNpcAppearance.Get("healer");
-        if(kind=="cellarElder")return MedievalNpcAppearance.Get("healer",3);
+        if(kind=="cellarElder")return Resources.Load<Sprite>("MatejPortraitCutout");
         if(kind=="sideQuest")return speaker.Contains("MIRU")?MedievalNpcAppearance.Get("healer"):
             speaker.Contains("ZÁSOBY")?MedievalNpcAppearance.Get("mayor"):Resources.Load<Sprite>("MerchantPortrait");
         if(kind.StartsWith("cellar"))return game.State.heroIsBoy?game.HeroSprite:RpgPortraitFit.ArabellaShop();

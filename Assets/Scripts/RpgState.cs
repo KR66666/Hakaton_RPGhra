@@ -7,6 +7,12 @@ public sealed partial class RpgState
 {
     public int version = 1;
     public RpgPlace place = RpgPlace.Town;
+    public bool librarySecretOpened;
+    public bool TakeLibraryCandle()
+    {
+        if(!librarySecretOpened||place!=RpgPlace.SecretLibrary)return false;
+        return CollectExtraCandle(true);
+    }
     // 0 guide, 1 elder, 2 shop, 3 invitation, 4 cellar, 6 candles, 7 ritual instruction.
     public int cellarQuest;
     public int candleStoryVersion = 1;

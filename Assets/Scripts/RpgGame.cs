@@ -71,7 +71,7 @@ public sealed partial class RpgGame : MonoBehaviour
         playerColor = playerRenderer.color;
         var background = GameObject.Find("Background");
         if (background != null) map = background.GetComponent<SpriteRenderer>();
-        var fantasyMap=Resources.Load<Sprite>("MedievalTownExpanded") ?? Resources.Load<Sprite>("SpaciousVillage") ?? Resources.Load<Sprite>("FantasyVillage");
+        var fantasyMap=Resources.Load<Sprite>("MedievalTownDetailed") ?? Resources.Load<Sprite>("MedievalTownExpanded") ?? Resources.Load<Sprite>("SpaciousVillage") ?? Resources.Load<Sprite>("FantasyVillage");
         if(map!=null && fantasyMap!=null)
         {
             var expanded=RpgWorldGeometry.ExpandedBounds(map.bounds);
@@ -273,7 +273,7 @@ public sealed partial class RpgGame : MonoBehaviour
         obj.transform.position = SnapToRoad(position);
         obj.transform.localScale = Vector3.one * 0.9f;
         var renderer = obj.AddComponent<SpriteRenderer>();
-        renderer.sprite = MedievalNpcAppearance.Get(kind == "elder" ? "healer" : kind, kind == "elder" ? 3 : 0);
+        renderer.sprite = (kind=="guard"?RpgDirectionalHero.PetrFrame(0,0):kind=="elder"?RpgDirectionalHero.MatejFrame(0,0):null) ?? MedievalNpcAppearance.Get(kind=="elder"?"healer":kind,kind=="elder"?3:0);
         // Keep Unity's native sprite material: the palette/UV filter is for scenery,
         // and can change fine actor details as render batches and camera position change.
         renderer.color = Color.white; renderer.sortingOrder = 2;
@@ -282,7 +282,7 @@ public sealed partial class RpgGame : MonoBehaviour
         obj.AddComponent<RpgNpcNameplate>().Initialize(this,npcLabel,title,id);
         worldItems.Add(new WorldItem { id = id, title = title, kind = kind, obj = obj });
         worldObjects.Add(obj);
-        if(!IsTestLocation && kind!="elder") obj.AddComponent<VillageNpcRoutine>().Initialize(this,kind,title);
+        if(!IsTestLocation) obj.AddComponent<VillageNpcRoutine>().Initialize(this,kind,title);
     }
     private Vector3 ShopApproach => RpgWorldGeometry.PixelPosition(RpgWorldGeometry.ShopApproachPixel,map.bounds);
     private void AddExpandedDistrict(string title,Vector2 point,string resident)
@@ -343,6 +343,7 @@ public sealed partial class RpgGame : MonoBehaviour
             if (item.obj == null || !item.obj.activeSelf) continue;
             float current = Vector2.Distance(transform.position, item.obj.transform.position);
             if (RpgEntranceRules.IsEntrance(item.kind) && current > RpgEntranceRules.Reach) continue;
+            if(item.kind=="secretBook"&&current>RpgSecretBookGlow.BookReach)continue;
             if (current < distance) { result = item; distance = current; }
         }
         return result;
@@ -382,10 +383,15 @@ public sealed partial class RpgGame : MonoBehaviour
         var item=NearestItem();
         if(item==null) { Notify("Přijdi blíž k postavě nebo předmětu.");return; }
         if(item.kind=="extraCandle"){CollectCycleCandle(false);return;}
-        if(item.kind=="secretRoom"){OfferSecretEntry();return;}
         if(item.kind=="ritual") { TryRitual();return; }
         if(item.kind=="locationExit") { OfferLocationEntry((RpgPlace)int.Parse(item.id));return; }
         if(item.kind=="shop") { Interface.ShowRoomEntrance("merchant","Obchod");return; }
+        if(item.kind=="secretBook") {PullLibraryBook(item.obj);return;}
+        if(item.kind=="archiveCandle")
+        {
+            CollectCycleCandle(true);
+            return;
+        }
         DialogueNpcId=item.id;
         if(item.kind=="merchant" && IsTestLocation) {Interface.EnterRoom("merchant");return;}
         if(item.kind=="testgear") {Interface.ShowTestTools();return;}

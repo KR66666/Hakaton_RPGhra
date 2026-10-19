@@ -23,7 +23,7 @@ public static class RpgArchive
         }
         else if(category==2)
         {
-            foreach(var place in new[]{RpgPlace.Town,RpgPlace.Forest,RpgPlace.DarkForest,RpgPlace.Library,RpgPlace.ChurchRuins})
+            foreach(var place in new[]{RpgPlace.Town,RpgPlace.Forest,RpgPlace.DarkForest,RpgPlace.Library,RpgPlace.ChurchRuins,RpgPlace.SecretLibrary})
                 if(state.archivePlaces.Contains(PlaceKey(place)))entries.Add(RpgLocations.Name(place).ToUpperInvariant()+"\nNavštívená lokace.");
             if(state.archivePlaces.Contains("shop"))entries.Add("OBCHOD\nNavštívený obchod v Havranově.");
             if(state.archivePlaces.Contains("cellar"))entries.Add("SKLEP OBCHODU\nNavštívený sklep pod obchodem.");

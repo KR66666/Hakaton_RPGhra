@@ -67,8 +67,6 @@ public sealed partial class RpgGame
         if(State.cycle<2)return;
         if(State.place==RpgPlace.Forest && !State.forestCandleTaken)
             AddPickup("forestCandle","Svíčka v lese","extraCandle",new Vector2(1,5),Color.yellow);
-        if(State.place==RpgPlace.Library)
-            AddEntranceMarker("secretRoom","Tajný pokoj knihovny","secretRoom",new Vector3(13,8));
         if(State.place==RpgPlace.DarkForest)
         {
             SpawnEnemy("flying0",new Vector2(0,3),false);
@@ -77,7 +75,7 @@ public sealed partial class RpgGame
     }
     private void CollectCycleCandle(bool library)
     {
-        if(!State.CollectExtraCandle(library))return;
+        if(!(library?State.TakeLibraryCandle():State.CollectExtraCandle(false)))return;
         BuildWorld();Save(false);Interface.Close();Notify("Svíčka získána • celkem "+State.candles+"/"+State.RequiredCandles);
     }
 }
@@ -92,12 +90,4 @@ public sealed partial class RpgInterface
         if(s.cycle>=3 && !s.hasBow)Action("Koupit luk • 40 zl.",()=>{game.BuyBow();ShowExistingHunter();});
         NpcChallenge(game.DialogueNpcId);Action("Odejít",Close);
     }
-    public void ShowSecretRoom()
-    {
-        var s=game.State;
-        Open("secretRoom","TAJNÝ POKOJ KNIHOVNY",s.libraryCandleTaken?"Tajný pokoj už jsi prohledal. Svíčku máš.":"Za odsunutým regálem odhaluješ tajný pokoj. Na kamenném podstavci leží svíčka.");
-        if(!s.libraryCandleTaken)Action("Vzít svíčku",()=>game.TakeLibraryCandle());
-        Action("Vrátit se do knihovny",Close);
-    }
 }
-public sealed partial class RpgGame { public void TakeLibraryCandle(){if(State.place==RpgPlace.Library)CollectCycleCandle(true);} }

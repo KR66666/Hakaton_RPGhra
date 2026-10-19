@@ -13,9 +13,15 @@ public sealed class VillageNpcRoutine : MonoBehaviour
     private Vector3 detourTarget;
     private readonly RpgNpcStuckWatch stuckWatch=new RpgNpcStuckWatch();
     private TextMesh label;
+    private bool isMatej;
+    private bool isPetr;
+    private SpriteRenderer matejRenderer;
+    private Vector2 matejFacing=Vector2.down;
+    private float matejDistance;
     public void Initialize(RpgGame owner,string role,string name)
     {
         game=owner;title=name;label=GetComponentInChildren<TextMesh>();
+        isMatej=role=="elder";isPetr=role=="guard";if(isMatej||isPetr)matejRenderer=GetComponent<SpriteRenderer>();
         stuckWatch.Reset(transform.position);
         var points=RpgNpcPatrols.Points(role,name);
         var map=GameObject.Find("Background").GetComponent<SpriteRenderer>().bounds;
@@ -28,21 +34,24 @@ public sealed class VillageNpcRoutine : MonoBehaviour
             if(distance<closest){closest=distance;next=i;}
         }
         routeDirection=Random.value<.5f?-1:1;
-        activity=role=="guard"?"hlídá cestu":role=="healer"?"připravuje obvazy":
+        activity=role=="guard"?"hlídá cestu":role=="healer"?"připravuje obvazy":role=="elder"?"odpočívá na náměstí":
             name.Contains("Kovář")?"kuje podkovy":name.Contains("Mlynář")?"kontroluje mouku":
-            name.Contains("Rybář")?"opravuje sítě":name.Contains("Selka")?"přebírá zeleninu":
+            name.Contains("Rybář")?"opravuje sítě":name.Contains("Pekař")?"připravuje chléb":name.Contains("Tesař")?"opravuje stánek":name.Contains("Selka")?"přebírá zeleninu":
             name.Contains("Trhovkyně")?"rovná zboží":"odpočívá u cesty";
         waitUntil=Time.time+Random.Range(.5f,1.5f);
     }
     private void Update()
     {
         if(game==null || route==null)return;
-        if(game.BlockMovement){stuckWatch.Reset(transform.position);return;}
-        if(Time.time<waitUntil) { stuckWatch.Reset(transform.position);if(label!=null)label.text=title+"\n"+activity;return; }
-        if(label!=null)label.text=title+(Vector2.Distance(transform.position,game.Player.position)<1.2f?"\n[E] Promluvit":"");
+        if(game.BlockMovement){stuckWatch.Reset(transform.position);MatejPose(Vector2.zero);return;}
+        if(Vector2.Distance(transform.position,game.Player.position)<1.2f)
+        {stuckWatch.Reset(transform.position);if(label!=null)label.text=title+"\n[E] Promluvit";MatejPose(Vector2.zero);return;}
+        if(Time.time<waitUntil) { stuckWatch.Reset(transform.position);if(label!=null)label.text=title+"\n"+activity;MatejPose(Vector2.zero);return; }
+        if(label!=null)label.text=title;
         Vector3 before=transform.position;
         Vector3 target=detouring?detourTarget:route[next];
         transform.position=game.MoveResident(transform,Vector3.MoveTowards(before,target,Time.deltaTime*.9f));
+        MatejPose(transform.position-before);
         if(Vector2.Distance(transform.position,target)<.15f)
         {
             stuckWatch.Reset(transform.position);
@@ -67,5 +76,15 @@ public sealed class VillageNpcRoutine : MonoBehaviour
             detourTarget=candidate;detouring=true;break;
         }
         stuckWatch.Reset(transform.position);
+    }
+    private void MatejPose(Vector2 movement)
+    {
+        if((!isMatej&&!isPetr)||matejRenderer==null)return;
+        bool moving=movement.sqrMagnitude>.000001f;
+        if(moving){matejFacing=movement;matejDistance+=movement.magnitude;}else matejDistance=0;
+        int direction=PlayerMovement.FacingIndex(matejFacing);
+        int step=moving?PlayerMovement.DirectionalWalkingFrame(matejDistance):0;
+        matejRenderer.sprite=isPetr?RpgDirectionalHero.PetrFrame(direction,step):RpgDirectionalHero.MatejFrame(direction,step);
+        matejRenderer.flipX=direction==2;
     }
 }
