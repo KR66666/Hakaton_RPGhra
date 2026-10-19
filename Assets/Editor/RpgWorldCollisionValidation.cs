@@ -41,6 +41,9 @@ public static class RpgWorldCollisionValidation
             else check(!RpgLocations.Blocked(exit.to,exit.arrival),"Arrival overlaps an interior obstacle");
         }
         check(RpgWorldGeometry.FootRadius>=.16f,"Player footprint is too small to protect walls and corners");
+        check(RpgTownExpansion.BoundaryAt(new Vector2(514,414)),"Red road outline is present in the collision mask");
+        check(!RpgTownExpansion.Walkable(new Vector2(514,414)),"Movement cannot cross the red road outline");
+        check(RpgTownExpansion.Walkable(new Vector2(525,434)),"The marked road remains walkable inside its outline");
         return count;
     }
 #if UNITY_EDITOR

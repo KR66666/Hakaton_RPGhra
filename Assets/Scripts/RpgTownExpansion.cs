@@ -1,13 +1,51 @@
+using System;
 using UnityEngine;
 
 // Native 1536 x 1024 coordinates traced on MedievalTownExpanded.png.
 public static class RpgTownExpansion
 {
+    private const int MapWidth = 1536;
+    private const int MapHeight = 1024;
+    private const float BoundaryExtension = 12f;
+    private static readonly Color32[] boundaryMask = LoadBoundaryMask();
+
     private struct Lane
     {
         public Vector2 a,b;public float radius;
         public Lane(float x,float y,float xx,float yy,float r){a=new Vector2(x,y);b=new Vector2(xx,yy);radius=r;}
     }
+
+    private static Color32[] LoadBoundaryMask()
+    {
+        var texture = Resources.Load<Texture2D>("TownCollisionBoundary");
+        if (texture == null)
+            throw new InvalidOperationException("Missing Resources/TownCollisionBoundary.png collision mask.");
+        if (!texture.isReadable || texture.width != MapWidth || texture.height != MapHeight)
+            throw new InvalidOperationException("Town collision mask must be readable and exactly 1536x1024.");
+        return texture.GetPixels32();
+    }
+
+    public static bool BoundaryAt(Vector2 point)
+    {
+        int x = Mathf.FloorToInt(point.x);
+        int y = Mathf.FloorToInt(point.y);
+        if (x < 0 || x >= MapWidth || y < 0 || y >= MapHeight)
+            return false;
+        return boundaryMask[(MapHeight - 1 - y) * MapWidth + x].r >= 128;
+    }
+
+    private static bool HasBoundaryBetween(Vector2 start, Vector2 end, Vector2 laneCenter, float ignoreRadius)
+    {
+        int steps = Mathf.Max(1, Mathf.CeilToInt(Vector2.Distance(start, end) / 1.5f));
+        for (int i = 0; i <= steps; i++)
+        {
+            Vector2 sample = Vector2.Lerp(start, end, i / (float)steps);
+            if (Vector2.Distance(sample, laneCenter) >= ignoreRadius && BoundaryAt(sample))
+                return true;
+        }
+        return false;
+    }
+
     private static readonly Lane[] lanes={
         new Lane(345,434,1100,434,20),new Lane(1100,434,1300,434,18),new Lane(1300,434,1440,450,18),new Lane(1440,450,1531,445,18),
         new Lane(780,180,780,810,20),new Lane(650,350,650,434,16),new Lane(460,310,460,434,16),
@@ -54,12 +92,22 @@ public static class RpgTownExpansion
         foreach(var roof in roofs)
             if(new Rect(roof.x-1,roof.y-1,roof.width+2,roof.height+2).Contains(point))return false;
         if((point-new Vector2(750,875)).sqrMagnitude<18*18)return false;
-        if(new Rect(724,354,199,142).Contains(point))return true;
+        if(new Rect(724,354,199,142).Contains(point))
+            return !BoundaryAt(point);
         foreach(var lane in lanes)
         {
             Vector2 segment=lane.b-lane.a;
             float t=Mathf.Clamp01(Vector2.Dot(point-lane.a,segment)/segment.sqrMagnitude);
-            if((point-(lane.a+segment*t)).sqrMagnitude<=lane.radius*lane.radius)return true;
+            Vector2 nearest=lane.a+segment*t;
+            Vector2 offset=point-nearest;
+            float distance=offset.magnitude;
+            float tracedLimit=lane.radius+BoundaryExtension;
+            // Red artwork near a road center is not a collision boundary.
+            float interiorTolerance=lane.radius*.65f;
+            if(distance>tracedLimit||HasBoundaryBetween(nearest,point,nearest,interiorTolerance))continue;
+            if(distance<=lane.radius)return true;
+            Vector2 boundarySearchEnd=nearest+offset.normalized*tracedLimit;
+            if(HasBoundaryBetween(point,boundarySearchEnd,nearest,interiorTolerance))return true;
         }
         return false;
     }

@@ -62,6 +62,7 @@ Při přepisu vzniká záložní soubor `.bak`.
 - `RpgEnemy.cs`: pronásledování, signalizovaný útok, zranění a odměny.
 - `RpgInterface.cs`: HUD, dialogy, batoh, deník, pauza a obrazovky smrti/vítězství.
 - `PlayerMovement.cs`: ovládání, běh, okraje mapy, překážky a sledování kamery.
+- `Resources/TownCollisionBoundary.png`: maska červeně vyznačených hranic cest pro kolize města.
 - `Resources/HeroStepB.png`: druhý krok chůze z dodané obrácené verze; oba kroky mají stejnou výšku a polohu chodidel.
 - `Editor/RpgValidation.cs`: kontroly pravidel a integrační ověření ve spuštěné scéně.
 
@@ -75,7 +76,7 @@ Výsledky jsou v konzoli Unity a v `Temp/RpgValidation.txt` a `Temp/RpgLiveValid
 
 Obsahuje jednu vesnici, hlavní úkol, tři vedlejší úkoly, šest nájezdníků, velitele a čtyři NPC.
 NPC a nepřátelé zatím používají barevné varianty stejného spritu; zvuk zatím chybí.
-Chůze je povolená na vyznačené síti cest, náměstí a kamenném mostu. Budovy, stánky, voda mimo most a plochy mimo cesty jsou blokované. Kolize kontroluje celou dráhu i při úhybu, aby nešlo přeskočit střechu. Starší uložená pozice mimo cestu se přesune na nejbližší průchozí místo.
+Chůze je povolená na vyznačené síti cest, náměstí a kamenném mostu; červeně vyznačené okraje cest tvoří nepřekročitelné hranice. Budovy, stánky, voda mimo most a plochy mimo cesty jsou blokované. Kolize kontroluje celou dráhu i při úhybu, aby nešlo přeskočit střechu. Starší uložená pozice mimo cestu se přesune na nejbližší průchozí místo.
 Nepřátelé mají lokální pronásledování, nikoli navigační síť pro cestu přes celou vesnici.
 
 Hrdinové používají přesně dodané postavy: Image (2)/(3) pro holku, Image (4)/imagine5 pro kluka. Odstraněné je pouze pozadí, proporce zůstávají. Kód střídá oba kroky podle skutečně ušlé vzdálenosti a otáčí celý obrázek podle směru včetně diagonál. Výběr pohlaví zůstává v menu a v uložené hře. Kamera snímá mapu shora; perspektiva dodaných obrázků se nepřekresluje.
