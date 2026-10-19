@@ -11,13 +11,14 @@ public sealed class VillageNpcRoutine : MonoBehaviour
     private TextMesh label;
     private bool isMatej;
     private bool isPetr;
+    private bool isBlacksmith;
     private SpriteRenderer matejRenderer;
     private Vector2 matejFacing=Vector2.down;
     private float matejDistance;
     public void Initialize(RpgGame owner,string role,string name)
     {
         game=owner;title=name;label=GetComponentInChildren<TextMesh>();
-        isMatej=role=="elder";isPetr=role=="guard";if(isMatej||isPetr)matejRenderer=GetComponent<SpriteRenderer>();
+        isMatej=role=="elder";isPetr=role=="guard";isBlacksmith=name.Contains("Kovář");if(isMatej||isPetr||isBlacksmith)matejRenderer=GetComponent<SpriteRenderer>();
         if(role=="district")
         {
             Vector3 start=transform.position;
@@ -67,12 +68,12 @@ public sealed class VillageNpcRoutine : MonoBehaviour
     }
     private void MatejPose(Vector2 movement)
     {
-        if((!isMatej&&!isPetr)||matejRenderer==null)return;
+        if((!isMatej&&!isPetr&&!isBlacksmith)||matejRenderer==null)return;
         bool moving=movement.sqrMagnitude>.000001f;
         if(moving){matejFacing=movement;matejDistance+=movement.magnitude;}else matejDistance=0;
         int direction=PlayerMovement.FacingIndex(matejFacing);
         int step=moving?PlayerMovement.DirectionalWalkingFrame(matejDistance):0;
-        matejRenderer.sprite=isPetr?RpgDirectionalHero.PetrFrame(direction,step):RpgDirectionalHero.MatejFrame(direction,step);
+        matejRenderer.sprite=isBlacksmith?RpgDirectionalHero.BlacksmithFrame(direction,step):isPetr?RpgDirectionalHero.PetrFrame(direction,step):RpgDirectionalHero.MatejFrame(direction,step);
         matejRenderer.flipX=direction==2;
     }
 }

@@ -401,7 +401,9 @@ public sealed partial class RpgInterface : MonoBehaviour
         roomView.gameObject.AddComponent<Image>().color=new Color(.1f,.06f,.03f);
         var backdrop=Rect(roomView,"Shop background",Vector2.zero,Vector2.zero);
         backdrop.anchorMin=Vector2.zero;backdrop.anchorMax=Vector2.one;backdrop.pivot=Vector2.one*.5f;backdrop.offsetMin=backdrop.offsetMax=Vector2.zero;
-        var background=backdrop.gameObject.AddComponent<Image>();background.sprite=Resources.Load<Sprite>("ShopInterior");background.color=Color.white;RpgVisualTheme.Picture(background,false,3);
+        var background=backdrop.gameObject.AddComponent<Image>();background.sprite=Resources.Load<Sprite>("ShopInterior");
+        background.color=background.sprite!=null?Color.white:new Color(.1f,.06f,.03f);background.raycastTarget=false;
+        if(background.sprite!=null)background.sprite.texture.filterMode=FilterMode.Point;
         var aspect=backdrop.gameObject.AddComponent<AspectRatioFitter>();aspect.aspectMode=AspectRatioFitter.AspectMode.EnvelopeParent;
         aspect.aspectRatio=background.sprite!=null?background.sprite.rect.width/background.sprite.rect.height:16f/9f;
 

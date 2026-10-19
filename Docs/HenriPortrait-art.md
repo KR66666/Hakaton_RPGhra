@@ -1,0 +1,3 @@
+Built-in ImageGen, background extraction edit mode. Source: Image (31).jpg. Output Assets/Resources/HenriPortrait.png uses genuine RGBA transparency and is loaded directly for the hero's dialogue portrait.
+
+Background extraction only, not a redraw. Remove white JPG background and white/grey matte fringe from this supplied pixel-art boy portrait to genuine transparent alpha PNG. Preserve the EXACT original character pixels as much as possible: same face, brown hair, expression, dark loose shirt, trousers at waist, pose and coarse pixel texture. No sharpening, beautifying, redesign or detail changes. Keep complete head and upper body through waist like input, tight transparent margins. No white outline, no grey halo, no background, no frame or text.
