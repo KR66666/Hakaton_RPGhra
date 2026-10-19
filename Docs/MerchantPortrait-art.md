@@ -1,0 +1,3 @@
+Built-in ImageGen, edit mode; replaces Assets/Resources/MerchantPortrait.png while preserving its Unity import metadata and dialogue references. Source: C:/Users/anhel/Downloads/Image (25).jpg.
+
+Background extraction only. Edit target: the supplied merchant woman portrait. Remove the entire printed grey/white checkerboard background and make it genuinely transparent alpha PNG. Preserve the exact supplied pixel-art woman: identical face, smile, white hair and headdress, blue medieval gown with gold and red embroidery, crossed arms, original colors, coarse pixel texture and pose. Do not redraw, beautify, sharpen or redesign her. Keep complete head and upper body through belt/waist; no frame, no text, no checkerboard in output. Tight transparent margins.

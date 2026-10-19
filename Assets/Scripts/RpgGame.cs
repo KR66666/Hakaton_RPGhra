@@ -71,7 +71,7 @@ public sealed partial class RpgGame : MonoBehaviour
         playerColor = playerRenderer.color;
         var background = GameObject.Find("Background");
         if (background != null) map = background.GetComponent<SpriteRenderer>();
-        var fantasyMap=Resources.Load<Sprite>("MedievalTownDetailed") ?? Resources.Load<Sprite>("MedievalTownExpanded") ?? Resources.Load<Sprite>("SpaciousVillage") ?? Resources.Load<Sprite>("FantasyVillage");
+        var fantasyMap=Resources.Load<Sprite>("MedievalTownHD") ?? Resources.Load<Sprite>("MedievalTownDetailed") ?? Resources.Load<Sprite>("MedievalTownExpanded") ?? Resources.Load<Sprite>("SpaciousVillage") ?? Resources.Load<Sprite>("FantasyVillage");
         if(map!=null && fantasyMap!=null)
         {
             var expanded=RpgWorldGeometry.ExpandedBounds(map.bounds);
