@@ -160,11 +160,23 @@ public sealed partial class RpgInterface
     public void ShowFinalWave()
     {
         var s=game.State;
-        Open("finalWave",s.storyComplete?"ÚNIK ZE SNU":"OBRANA RITUÁLU",s.storyComplete?
-            "Poslední stín padl. Hvězda se rozsvítí a cesta ven ze snu se otevírá. Dokončil jsi třetí cyklus.":
+        if(s.storyComplete){ShowEndGame();return;}
+        Open("finalWave","OBRANA RITUÁLU",
             $"Rituál přivolal nepřátele. Zbývá {s.finalEnemiesRemaining} z {RpgState.FinalWaveSize}. Kostel je obklíčený: obranu musíš dokončit v jednom pokusu. Útěk ze souboje nepřátele nezažene. Po porážce se celá vlna obnoví. Můžeš bojovat tahově nebo spustit zrychlený autoboj. Postup lze uložit a později pokračovat.");
-        if(!s.storyComplete){Action("Další nepřítel",game.StartFinalBattle);Action(game.AutoBattle?"Zastavit autoboj":"Spustit autoboj",game.ToggleAutoBattle);}
-        if(s.storyComplete)Action("Zavřít",Close);
-        else Action("Uložit a přejít do menu",game.ReturnToMenu);
+        Action("Další nepřítel",game.StartFinalBattle);
+        Action(game.AutoBattle?"Zastavit autoboj":"Spustit autoboj",game.ToggleAutoBattle);
+        Action("Uložit a přejít do menu",game.ReturnToMenu);
+    }
+
+    public void ShowEndGame()
+    {
+        var s=game.State;
+        Open("endGame","PŘÍBĚH DOKONČEN",
+            "Poslední stín padl. Hvězda se rozzářila a cesta ven ze snu se otevřela.\n\n" +
+            "Dokončil jsi třetí cyklus a ubránil závěrečný rituál. Svět je nyní bezpečný; " +
+            "můžeš dál prozkoumávat místa a doplnit svůj archiv.\n\n" +
+            $"Odemčené dovednosti: {s.unlockedSkills.Count} • Neutracené body: {s.UpgradePoints}");
+        Action("Pokračovat v průzkumu",Close);
+        Action("Uložit a vrátit se do hlavního menu",game.ReturnToMenu);
     }
 }

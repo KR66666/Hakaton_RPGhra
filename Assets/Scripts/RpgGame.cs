@@ -106,7 +106,8 @@ public sealed partial class RpgGame : MonoBehaviour
         if(!IsTestLocation){State.RecordArchivePlace(RpgArchive.PlaceKey(State.place));State.RecordOwnedArchiveItems();}
         if(startingNewStory){Save(false,true);startingNewStory=false;}
         Notify(IsTestLocation?"TESTOVACÍ LOKACE • E vyzkoušet • T nástroje • hlavní příběh se nepřepisuje":InTown?(State.cycle==1?"Vítej v Havranově. Promluv si s průvodcem [E].":"Znovu v Havranově. Tentokrát se rozhoduješ sám."):LocationName+" • "+RpgLocations.Description(State.place), 7);
-        if(State.FinalWaveActive)Interface.ShowFinalWave();
+        if(State.storyComplete)Interface.ShowEndGame();
+        else if(State.FinalWaveActive)Interface.ShowFinalWave();
         else if(!IsTestLocation && InTown && State.cycle==1 && !State.NpcDefeated("guard"))
         {
             if(!State.introSeen && State.cellarQuest==0 && !State.HasMetNpc("guard"))StartCoroutine(PlayDreamIntro());
@@ -700,7 +701,8 @@ public sealed partial class RpgGame : MonoBehaviour
         Facing=Vector2.down;playerRenderer.color=playerColor;playerRenderer.enabled=true;
         HeroSprite=actorAppearance.Frame(0,0,State.heroIsBoy);
         GetComponent<PlayerMovement>()?.ResetPose();
-        if(State.FinalWaveActive)Interface.ShowFinalWave();
+        if(State.storyComplete)Interface.ShowEndGame();
+        else if(State.FinalWaveActive)Interface.ShowFinalWave();
     }
 
     public void Notify(string text, float duration = 3.5f)

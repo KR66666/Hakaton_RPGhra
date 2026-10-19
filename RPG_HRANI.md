@@ -185,6 +185,7 @@ Tři příběhové cykly:
 - Od druhého cyklu jsou vedle tří sklepních svíček dostupné další: Petr, les, tajný pokoj za regálem knihovny. Celkem šest, poslední rituál potřebuje pět. Každý zdroj lze získat jen jednou za cyklus.
 - Netopýři jsou v lese a Temném lese od třetího cyklu; zasáhne je pouze naučený boj s vlastněným lukem. Blok má 35% šanci plně vykrýt ránu, jinak zranění půlí.
 - Závěrečná vlna umožňuje ruční tahy nebo volitelný zrychlený autoboj. Ten používá skutečné zbraně a lektvary, léčí při nejvýše 35 HP a může prohrát. Počet zbývajících nepřátel se ukládá po vítězství; útěk či porážka vlnu nedokončí. Během obrany nelze odejít z kostela ani zavřít nabídku. Před rituálem jsou nutné obě zbraně a výcvik. Po smrti se hráč probudí na náměstí a celá vlna se při dalším pokusu obnoví; uložení a návrat do menu umožní později pokračovat bez obnovení zdraví.
+- Po poražení posledního nepřítele se otevře nabídka **Příběh dokončen**: lze pokračovat v průzkumu světa nebo uložit postup a vrátit se do hlavního menu. Při načtení dokončeného příběhu se nabídka zobrazí znovu.
 
 Nepřátelé jsou pouze dva druhy: **vlk** (pozemní, pouze meč) a **netopýr** (létající, pouze luk). Platí pro průzkum, testovací lokaci i závěrečnou vlnu. Nájezdníci ani velitel se již negenerují; jejich staré záznamy se z archivu vyřazují. Starší bojový úkol se splní po pěti poražených tvorech bez dalšího bosse.
 
