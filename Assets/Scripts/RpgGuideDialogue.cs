@@ -48,7 +48,8 @@ public sealed partial class RpgInterface
     {
         if(game.State.NpcDefeated("guard")){ShowFallenGuideNotes();return;}
         if(game.State.cycle==2){ShowCellarGuide();return;}
-        Open("guideInstruction","PETR KŘÍŽ • RÁDCE","Vítej v Havranově! Jsem Petr Kříž. Tohle je tvůj příběh — prozkoumávej vesnici, mluv s lidmi a rozhoduj se po svém. Občas se ti ozvu s užitečnou radou.\n\n"+game.State.CellarObjective);
+        string objective=game.State.cellarQuest==0?"Promluv se mnou u mostu.":game.State.CellarObjective;
+        Open("guideInstruction","PETR KŘÍŽ • RÁDCE","Vítej v Havranově! Jsem Petr Kříž. Tohle je tvůj příběh — prozkoumávej vesnici, mluv s lidmi a rozhoduj se po svém. Občas se ti ozvu s užitečnou radou.\n\n"+objective);
         NpcChallenge("guard");
         Action("Začít dobrodružství",()=>{
             if(game.State.currentArea==0 && game.State.cellarQuest==0)game.StartCellarQuest();else Close();
