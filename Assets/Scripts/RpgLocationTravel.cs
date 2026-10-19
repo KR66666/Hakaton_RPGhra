@@ -17,6 +17,8 @@ public sealed partial class RpgGame
     {
         if(map==null)return;
         townMap=map.sprite;townMapPosition=map.transform.position;townMapScale=map.transform.localScale;townMapMaterial=map.sharedMaterial;
+        var oldHdLayer=map.gameObject.GetComponent<RpgTownHdScenery>();
+        if(oldHdLayer!=null)oldHdLayer.Show(false);
     }
     private void ApplyLocationMap()
     {
@@ -26,6 +28,7 @@ public sealed partial class RpgGame
         if(InTown||IsTestLocation)
         {
             map.sprite=townMap;map.transform.position=townMapPosition;map.transform.localScale=townMapScale;map.sharedMaterial=townMapMaterial;
+            if(map.sprite!=null)map.sprite.texture.filterMode=FilterMode.Point;
         }
         else
         {

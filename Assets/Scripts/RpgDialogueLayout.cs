@@ -118,17 +118,19 @@ public sealed partial class RpgInterface
     }
     private Sprite ConversationPortrait(string kind,string speaker)
     {
+        if(kind=="resident"&&speaker=="KNIHOVNICE")return RpgPortraitFit.Librarian();
+        if(kind=="resident"&&speaker.IndexOf("kovář",System.StringComparison.OrdinalIgnoreCase)>=0)return RpgPortraitFit.Blacksmith();
         if(kind=="guideInstruction"||kind=="cellarGuide"||kind=="guard")return GuidePortrait();
-        if(kind=="heroShopDialogue")return game.State.heroIsBoy?game.HeroSprite:RpgPortraitFit.ArabellaShop();
+        if(kind=="heroShopDialogue")return game.State.heroIsBoy?RpgPortraitFit.HenriShop():RpgPortraitFit.ArabellaShop();
         if(kind=="entrance")return RpgVisualTheme.Icon("entrance");
         if(kind=="merchant"||kind=="shopDialogue"||kind=="cellarMerchant")return Resources.Load<Sprite>("MerchantPortrait");
         if(kind=="mayor")return MedievalNpcAppearance.Get("mayor");
-        if(kind=="librarian")return MedievalNpcAppearance.Get("healer",1);
+        if(kind=="librarian")return RpgPortraitFit.Librarian() ?? MedievalNpcAppearance.Get("healer",1);
         if(kind=="healer")return MedievalNpcAppearance.Get("healer");
         if(kind=="cellarElder")return Resources.Load<Sprite>("MatejPortraitCutout");
         if(kind=="sideQuest")return speaker.Contains("MIRU")?MedievalNpcAppearance.Get("healer"):
             speaker.Contains("ZÁSOBY")?MedievalNpcAppearance.Get("mayor"):Resources.Load<Sprite>("MerchantPortrait");
-        if(kind.StartsWith("cellar"))return game.State.heroIsBoy?game.HeroSprite:RpgPortraitFit.ArabellaShop();
+        if(kind.StartsWith("cellar"))return game.State.heroIsBoy?RpgPortraitFit.HenriShop():RpgPortraitFit.ArabellaShop();
         return MedievalNpcAppearance.Get("villager");
     }
 }

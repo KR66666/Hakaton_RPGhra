@@ -421,7 +421,7 @@ public sealed partial class RpgInterface : MonoBehaviour
         roomView.gameObject.AddComponent<Image>().color=new Color(.1f,.06f,.03f);
         var backdrop=Rect(roomView,"Shop background",Vector2.zero,Vector2.zero);
         backdrop.anchorMin=Vector2.zero;backdrop.anchorMax=Vector2.one;backdrop.pivot=Vector2.one*.5f;backdrop.offsetMin=backdrop.offsetMax=Vector2.zero;
-        var background=backdrop.gameObject.AddComponent<Image>();background.sprite=Resources.Load<Sprite>("ShopInterior");background.color=Color.white;
+        var background=backdrop.gameObject.AddComponent<Image>();background.sprite=Resources.Load<Sprite>("ShopInterior");background.color=Color.white;background.raycastTarget=false;
         if(background.sprite==null)
         {
             background.color=new Color(.22f,.14f,.08f);
@@ -431,7 +431,7 @@ public sealed partial class RpgInterface : MonoBehaviour
                 plank.gameObject.AddComponent<Image>().color=i%2==0?new Color(.30f,.20f,.12f):new Color(.25f,.16f,.09f);
             }
         }
-        else RpgVisualTheme.Picture(background,false,3);
+        else background.sprite.texture.filterMode=FilterMode.Point;
         var aspect=backdrop.gameObject.AddComponent<AspectRatioFitter>();aspect.aspectMode=AspectRatioFitter.AspectMode.EnvelopeParent;
         aspect.aspectRatio=background.sprite!=null?background.sprite.rect.width/background.sprite.rect.height:16f/9f;
 

@@ -41,6 +41,15 @@ public static class RpgNpcValidation
             }
             check(length>300,"Patrol must cover more than a small local shuffle: "+name);
         }
+        var libraryRoute=RpgLibrarianRoutine.RoutePixels;
+        for(int i=0;i<libraryRoute.Length;i++)
+        {
+            var from=RpgLibrarianRoutine.RoutePosition(libraryRoute[i]);
+            var to=RpgLibrarianRoutine.RoutePosition(libraryRoute[(i+1)%libraryRoute.Length]);
+            for(int sample=0;sample<=20;sample++)
+                check(!RpgLocations.Blocked(RpgPlace.Library,Vector3.Lerp(from,to,sample/20f)),"Librarian patrol avoids the shelves: segment "+i);
+            check(Vector2.Distance(RpgLocations.Move(RpgPlace.Library,from,to),to)<.01f,"Librarian can finish patrol segment "+i);
+        }
         var stranger=RpgState.CreateNew(false);
         check(!stranger.HasMetNpc("healer") && stranger.MeetNpc("healer") && stranger.HasMetNpc("healer"),"Completing an introduction records the acquaintance");
         check(!stranger.MeetNpc("healer") && stranger.metNpcs.Count==1 && stranger.UpgradePoints==0,"Introductions do not repeat or award quest points");

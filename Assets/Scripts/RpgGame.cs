@@ -72,11 +72,12 @@ public sealed partial class RpgGame : MonoBehaviour
         playerColor = playerRenderer.color;
         var background = GameObject.Find("Background");
         if (background != null) map = background.GetComponent<SpriteRenderer>();
-        var fantasyMap=Resources.Load<Sprite>("MedievalTownHD") ?? Resources.Load<Sprite>("MedievalTownDetailed") ?? Resources.Load<Sprite>("MedievalTownExpanded") ?? Resources.Load<Sprite>("SpaciousVillage") ?? Resources.Load<Sprite>("FantasyVillage");
+        var fantasyMap=Resources.Load<Sprite>("MedievalTownExpanded") ?? Resources.Load<Sprite>("MedievalTownDetailed") ?? Resources.Load<Sprite>("SpaciousVillage") ?? Resources.Load<Sprite>("FantasyVillage");
         if(map!=null && fantasyMap!=null)
         {
             var expanded=RpgWorldGeometry.ExpandedBounds(map.bounds);
             map.sprite=fantasyMap;map.transform.position+=expanded.center-map.bounds.center;
+            map.sprite.texture.filterMode=FilterMode.Point;
             map.sharedMaterial=RpgVisualTheme.FantasyAtmosphere();
         }
         CaptureTownMap();
@@ -280,7 +281,7 @@ public sealed partial class RpgGame : MonoBehaviour
         obj.transform.position = SnapToRoad(position);
         obj.transform.localScale = Vector3.one * 0.9f;
         var renderer = obj.AddComponent<SpriteRenderer>();
-        renderer.sprite = (kind=="guard"?RpgDirectionalHero.PetrFrame(0,0):kind=="elder"?RpgDirectionalHero.MatejFrame(0,0):kind=="librarian"?MedievalNpcAppearance.Get("healer",1):null) ?? MedievalNpcAppearance.Get(kind=="elder"?"healer":kind,kind=="elder"?3:0);
+        renderer.sprite = (title.Contains("Kovář")?RpgDirectionalHero.BlacksmithFrame(0,0):kind=="guard"?RpgDirectionalHero.PetrFrame(0,0):kind=="elder"?RpgDirectionalHero.MatejFrame(0,0):kind=="librarian"?RpgLibrarianArtwork.Frame(0,-1):null) ?? MedievalNpcAppearance.Get(kind=="elder"?"healer":kind,kind=="elder"?3:0);
         // Keep Unity's native sprite material: the palette/UV filter is for scenery,
         // and can change fine actor details as render batches and camera position change.
         renderer.color = Color.white; renderer.sortingOrder = 2;
@@ -402,6 +403,7 @@ public sealed partial class RpgGame : MonoBehaviour
             return;
         }
         DialogueNpcId=item.id;
+        if(item.id=="librarian"){Interface.ShowLibrarian();return;}
         if(item.kind=="merchant" && IsTestLocation) {Interface.EnterRoom("merchant");return;}
         if(item.kind=="testgear") {Interface.ShowTestTools();return;}
         if(item.kind=="testpotion") {State.potions++;item.obj.SetActive(false);Notify("Testovací lektvar přidaný do batohu.");return;}

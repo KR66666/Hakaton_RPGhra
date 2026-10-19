@@ -78,7 +78,7 @@ public sealed class PlayerMovement : MonoBehaviour
     {
         if (followCamera == null)
             return;
-        var position = transform.position+Vector3.up*1.8f;
+        var position = transform.position;
         position.z = followCamera.transform.position.z;
         if (map != null && followCamera.orthographic)
         {

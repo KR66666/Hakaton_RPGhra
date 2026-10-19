@@ -4,7 +4,10 @@ public sealed partial class RpgGame
 {
     private void BuildLibrarian()
     {
-        if(State.place==RpgPlace.Library)AddPerson("librarian","Knihovnice Agáta","librarian",new Vector2(0,6.3f),Color.white);
+        if(State.place!=RpgPlace.Library || State.NpcDefeated("librarian"))return;
+        AddPerson("librarian","Knihovnice Agáta","librarian",new Vector2(0,6.3f),Color.white);
+        var librarian=worldItems.Find(item=>item.id=="librarian");
+        if(librarian!=null)librarian.obj.AddComponent<RpgLibrarianRoutine>().Initialize(this);
     }
     public void LearnForestRoute()
     {
