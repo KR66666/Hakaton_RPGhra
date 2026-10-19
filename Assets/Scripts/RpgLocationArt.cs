@@ -8,6 +8,11 @@ public static class RpgLocationArt
     public static Sprite Map(RpgPlace place)
     {
         if(cache.TryGetValue(place,out var sprite)&&sprite!=null)return sprite;
+        if(place==RpgPlace.Forest || place==RpgPlace.DarkForest)
+        {
+            sprite=Resources.Load<Sprite>(place==RpgPlace.Forest?"ForestMap":"DarkForestMap");
+            if(sprite!=null){cache[place]=sprite;return sprite;}
+        }
         if(place==RpgPlace.Library||place==RpgPlace.SecretLibrary)
         {
             sprite=Resources.Load<Sprite>(place==RpgPlace.Library?"LibraryWalkableMap":"LibrarySecretRoom");

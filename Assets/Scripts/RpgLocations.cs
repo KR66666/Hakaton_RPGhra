@@ -8,9 +8,10 @@ public sealed class RpgLocationExit
 {
     public readonly RpgPlace from, to;
     public readonly Vector2 point, arrival;
+    public readonly Vector2? approach;
     public readonly string directions;
-    public RpgLocationExit(RpgPlace from, RpgPlace to, Vector2 point, Vector2 arrival, string directions)
-    { this.from=from;this.to=to;this.point=point;this.arrival=arrival;this.directions=directions; }
+    public RpgLocationExit(RpgPlace from, RpgPlace to, Vector2 point, Vector2 arrival, string directions,Vector2? approach=null)
+    { this.from=from;this.to=to;this.point=point;this.arrival=arrival;this.directions=directions;this.approach=approach; }
 }
 
 public static class RpgLocations
@@ -19,20 +20,20 @@ public static class RpgLocations
     private static readonly Dictionary<RpgPlace,List<Rect>> obstacleCache=new Dictionary<RpgPlace,List<Rect>>();
     // Town coordinates are pixels on MedievalTownExpanded; other maps use world units.
     public static readonly RpgLocationExit[] Exits = {
-        new RpgLocationExit(RpgPlace.Library,RpgPlace.SecretLibrary,new Vector2(11.4f,3.7f),new Vector2(0,-7.5f*SecretRoomScale),"Skrytý průchod v regálu"),
-        new RpgLocationExit(RpgPlace.SecretLibrary,RpgPlace.Library,new Vector2(0,-9*SecretRoomScale),new Vector2(11.4f,3.7f),"Zpět do knihovny"),
-        new RpgLocationExit(RpgPlace.Town,RpgPlace.Forest,new Vector2(760,140),new Vector2(0,-7.5f),"Severní brána města"),
-        new RpgLocationExit(RpgPlace.Forest,RpgPlace.Town,new Vector2(0,-9),new Vector2(760,170),"Jižní cesta zpět do Havranova"),
-        new RpgLocationExit(RpgPlace.Forest,RpgPlace.DarkForest,new Vector2(0,9),new Vector2(0,-7.5f),"Severní stezka hlouběji do lesa"),
-        new RpgLocationExit(RpgPlace.DarkForest,RpgPlace.Forest,new Vector2(0,-9),new Vector2(0,7.5f),"Jižní stezka na okraj lesa"),
-        new RpgLocationExit(RpgPlace.Town,RpgPlace.Library,new Vector2(650,650),new Vector2(0,-7.5f),"Vchod do knihovny v jižní části města"),
-        new RpgLocationExit(RpgPlace.Library,RpgPlace.Town,new Vector2(0,-9),new Vector2(650,665),"Dveře zpět do města"),
-        new RpgLocationExit(RpgPlace.Town,RpgPlace.ChurchRuins,new Vector2(1045,395),new Vector2(0,-7.5f),"Cesta u kostela ve východní části města"),
-        new RpgLocationExit(RpgPlace.ChurchRuins,RpgPlace.Town,new Vector2(0,-9),new Vector2(1045,415),"Jižní brána zříceniny"),
+        new RpgLocationExit(RpgPlace.Library,RpgPlace.SecretLibrary,RpgWorldDoors.SecretPassage,RpgWorldDoors.SecretInsideApproach,"Skrytý průchod v regálu",RpgWorldDoors.SecretPassageApproach),
+        new RpgLocationExit(RpgPlace.SecretLibrary,RpgPlace.Library,RpgWorldDoors.SecretInside,RpgWorldDoors.SecretPassageApproach,"Zpět do knihovny",RpgWorldDoors.SecretInsideApproach),
+        new RpgLocationExit(RpgPlace.Town,RpgPlace.Forest,RpgWorldDoors.ForestGate,(Vector2)RpgForestGeometry.Entry,"Severní brána města"),
+        new RpgLocationExit(RpgPlace.Forest,RpgPlace.Town,(Vector2)RpgForestGeometry.Entry,RpgWorldDoors.ForestArrival,"Jižní cesta zpět do Havranova"),
+        new RpgLocationExit(RpgPlace.Forest,RpgPlace.DarkForest,(Vector2)RpgForestGeometry.DeeperExit,(Vector2)RpgForestGeometry.Entry,"Severní stezka hlouběji do lesa"),
+        new RpgLocationExit(RpgPlace.DarkForest,RpgPlace.Forest,(Vector2)RpgForestGeometry.Entry,(Vector2)RpgForestGeometry.DeeperExit,"Jihozápadní stezka na okraj lesa"),
+        new RpgLocationExit(RpgPlace.Town,RpgPlace.Library,RpgWorldDoors.Library,RpgWorldDoors.LibraryInsideApproach,"Vchod do knihovny v jižní části města",RpgWorldDoors.LibraryApproach),
+        new RpgLocationExit(RpgPlace.Library,RpgPlace.Town,RpgWorldDoors.LibraryInside,RpgWorldDoors.LibraryApproach,"Dveře zpět do města",RpgWorldDoors.LibraryInsideApproach),
+        new RpgLocationExit(RpgPlace.Town,RpgPlace.ChurchRuins,RpgWorldDoors.Church,new Vector2(0,-7.5f),"Cesta u kostela ve východní části města",RpgWorldDoors.ChurchApproach),
+        new RpgLocationExit(RpgPlace.ChurchRuins,RpgPlace.Town,new Vector2(0,-9),RpgWorldDoors.ChurchApproach,"Jižní brána zříceniny"),
     };
     public static string Name(RpgPlace place) => place==RpgPlace.Forest?"Les":place==RpgPlace.DarkForest?"Temný les":
         place==RpgPlace.Library?"Knihovna":place==RpgPlace.SecretLibrary?"Tajný archiv":place==RpgPlace.ChurchRuins?"Zřícenina kostela":"Havranov";
-    public static string Description(RpgPlace place) => place==RpgPlace.Forest?"Okraj lesa. Severní stezka vede do Temného lesa, jižní zpět do města.":
+    public static string Description(RpgPlace place) => place==RpgPlace.Forest?"Okraj lesa. Přes most na východě dojdeš do Temného lesa. Jihozápadní stezka vede zpět do města.":
         place==RpgPlace.DarkForest?"Hluboký, temný les. Na jihu najdeš cestu zpět na okraj lesa.":
         place==RpgPlace.Library?"Tichá knihovna s regály a čítárnou. Východ je v jižní stěně.":
         place==RpgPlace.SecretLibrary?"Zapomenutý archiv za tajným průchodem. Jižní dveře vedou zpět do knihovny.":
@@ -46,8 +47,7 @@ public static class RpgLocations
         var result=new List<Rect>();
         if(place==RpgPlace.Forest||place==RpgPlace.DarkForest)
         {
-            for(int y=-8;y<=8;y+=4)for(int x=-12;x<=12;x+=4)
-                if(Mathf.Abs(x)>2&&Mathf.Abs(y)>1)result.Add(new Rect(x-.8f,y-.8f,1.6f,1.6f));
+            foreach(var solid in RpgForestGeometry.Solids(place))result.Add(RpgForestGeometry.WorldRect(solid));
         }
         else if(place==RpgPlace.Library)
         {
@@ -82,10 +82,11 @@ public static class RpgLocations
     }
     private static Rect LibraryPixelRect(float x,float y,float width,float height) =>
         new Rect(x/48-16,12-(y+height)*24/1024,width/48,height*24/1024);
-    public static bool Blocked(RpgPlace place,Vector3 position,float radius=.2f)
+    public static bool Blocked(RpgPlace place,Vector3 position,float radius=RpgWorldGeometry.FootRadius)
     {
         float scale=place==RpgPlace.SecretLibrary?SecretRoomScale:1;
         if(Mathf.Abs(position.x)>15.5f*scale-radius||Mathf.Abs(position.y)>11.5f*scale-radius)return true;
+        if((place==RpgPlace.Forest || place==RpgPlace.DarkForest) && RpgForestGeometry.Blocked(place,position,radius))return true;
         foreach(var rect in Obstacles(place))
         {
             float x=Mathf.Clamp(position.x,rect.xMin,rect.xMax),y=Mathf.Clamp(position.y,rect.yMin,rect.yMax);
@@ -112,6 +113,7 @@ public static class RpgLocations
             var candidate=position+new Vector3(Mathf.Cos(i*Mathf.PI/16),Mathf.Sin(i*Mathf.PI/16),0)*radius;
             if(!Blocked(place,candidate))return candidate;
         }
+        if(place==RpgPlace.Forest || place==RpgPlace.DarkForest)return RpgForestGeometry.Entry;
         return new Vector3(0,-7.5f*(place==RpgPlace.SecretLibrary?SecretRoomScale:1),position.z);
     }
 }

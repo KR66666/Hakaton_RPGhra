@@ -16,7 +16,7 @@ public static class RpgNewGameValidation
         check(male.heroIsBoy&&!female.heroIsBoy,"Selected appearance must be preserved");
         foreach(var field in typeof(RpgState).GetFields(BindingFlags.Instance|BindingFlags.Public))
         {
-            if(field.Name==nameof(RpgState.heroIsBoy))continue;
+            if(field.Name==nameof(RpgState.heroIsBoy) || field.Name==nameof(RpgState.heroName))continue;
             var a=field.GetValue(male);var b=field.GetValue(female);
             if(a is IList list)check(list.Count==0&&((IList)b).Count==0&&!ReferenceEquals(a,b),"Independent empty collection: "+field.Name);
             else check(Equals(a,b),"Equal starting value: "+field.Name);

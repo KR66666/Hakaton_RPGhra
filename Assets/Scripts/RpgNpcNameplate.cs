@@ -8,14 +8,14 @@ public sealed class RpgNpcNameplate : MonoBehaviour
     private RpgGame game;
     private TextMesh label,shadow;
     private MeshRenderer ink,shadowInk;
-    private string title;
+    private string title,npcId;
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetRegistry() => plates.Clear();
     private void OnEnable(){if(!plates.Contains(this))plates.Add(this);}
     private void OnDisable(){plates.Remove(this);if(ink!=null)ink.enabled=false;if(shadowInk!=null)shadowInk.enabled=false;}
-    public void Initialize(RpgGame owner,TextMesh text,string name)
+    public void Initialize(RpgGame owner,TextMesh text,string name,string id=null)
     {
-        game=owner;label=text;title=name;label.characterSize=.045f;label.color=RpgVisualTheme.Cream;
+        game=owner;label=text;title=name;npcId=id;label.characterSize=.045f;label.color=RpgVisualTheme.Cream;
         ink=label.GetComponent<MeshRenderer>();
         var obj=new GameObject("Stín jména");obj.transform.SetParent(label.transform,false);obj.transform.localPosition=new Vector3(.025f,-.025f,.01f);
         shadow=obj.AddComponent<TextMesh>();shadow.font=label.font;shadow.fontSize=label.fontSize;shadow.characterSize=label.characterSize;
@@ -34,7 +34,7 @@ public sealed class RpgNpcNameplate : MonoBehaviour
             bool tied=Mathf.Approximately(otherDistance,distance);
             if((!tied&&otherDistance<distance)||(tied&&plates.IndexOf(other)<plates.IndexOf(this))){visible=false;break;}
         }
-        label.text=title;label.transform.rotation=Quaternion.identity;
+        label.text=game.State.HasMetNpc(npcId)?title:"Neznámý obyvatel";shadow.text=label.text;label.transform.rotation=Quaternion.identity;
         label.transform.position=transform.position+Vector3.up*.85f;
         ink.enabled=visible;shadowInk.enabled=visible;
     }

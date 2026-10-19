@@ -11,7 +11,7 @@ public sealed partial class RpgGame
             var shelf=new GameObject("Malá polička pro jedinou svíčku");shelf.transform.position=new Vector3(-9.5f,1.2f,0)*RpgLocations.SecretRoomScale;
             shelf.transform.localScale=Vector3.one*RpgLocations.SecretRoomScale;
             var shelfRenderer=shelf.AddComponent<SpriteRenderer>();shelfRenderer.sprite=SecretShelfArt();shelfRenderer.sortingOrder=2;worldObjects.Add(shelf);
-            if(!State.libraryCandleTaken)
+            if(State.cycle>=2 && !State.libraryCandleTaken)
             {
                 var candle=new GameObject("Jediná svíčka tajného pokoje");candle.transform.position=new Vector3(-9.5f,1.65f,0)*RpgLocations.SecretRoomScale;
                 candle.transform.localScale=Vector3.one*.9f;
@@ -26,7 +26,7 @@ public sealed partial class RpgGame
         if(State.librarySecretOpened)
         {
             var door=new GameObject("Otevřený tajný průchod");
-            door.transform.position=new Vector3(11.4f,4.7f,0);
+            door.transform.position=RpgWorldDoors.SecretPassage;
             var art=door.AddComponent<SpriteRenderer>();art.sprite=SecretArt(true);art.sortingOrder=1;
             worldObjects.Add(door);return;
         }

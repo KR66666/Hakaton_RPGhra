@@ -6,24 +6,34 @@ public sealed partial class RpgInterface
 {
     private bool guideDialogueActive;
     private Coroutine guideReveal;
+    private bool guideSkipRequested;
+    private int guideOpenedFrame;
     private static Sprite guidePortraitSprite;
     private void ResetGuideDialogue()
     {
         if(guideReveal!=null){StopCoroutine(guideReveal);guideReveal=null;}
         guideDialogueActive=false;
+        guideSkipRequested=false;
     }
     private void BuildGuideDialogue()
     {
         guideDialogueActive=true;
+        guideSkipRequested=false;guideOpenedFrame=Time.frameCount;
         if(Application.isPlaying)
             guideReveal=StartCoroutine(RevealGuide(modalTitle.transform.parent.GetComponent<RectTransform>(),modalBody.text));
+    }
+    private void UpdateGuideSkip()
+    {
+        if(!guideDialogueActive || guideReveal==null || Time.frameCount<=guideOpenedFrame)return;
+        var mouse=UnityEngine.InputSystem.Mouse.current;
+        if(mouse!=null && mouse.leftButton.wasPressedThisFrame)guideSkipRequested=true;
     }
     private IEnumerator RevealGuide(RectTransform box,string message)
     {
         Vector2 end=new Vector2(0,22);float elapsed=0;
         // Invisible remaining characters reserve their final line breaks while typing.
         modalBody.text="<color=#00000000>"+message+"</color>";
-        while(elapsed<.45f && guideDialogueActive)
+        while(elapsed<.45f && guideDialogueActive && !guideSkipRequested)
         {
             elapsed+=Time.unscaledDeltaTime;
             float t=1-Mathf.Pow(1-Mathf.Clamp01(elapsed/.45f),3);
@@ -33,7 +43,7 @@ public sealed partial class RpgInterface
         }
         box.anchoredPosition=end;
         int count=0;float characters=0;
-        while(count<message.Length && guideDialogueActive)
+        while(count<message.Length && guideDialogueActive && !guideSkipRequested)
         {
             characters+=Time.unscaledDeltaTime*55;count=Mathf.Min(message.Length,Mathf.FloorToInt(characters));
             modalBody.text=message.Substring(0,count)+"<color=#00000000>"+message.Substring(count)+"</color>";
@@ -41,15 +51,22 @@ public sealed partial class RpgInterface
             yield return null;
         }
         modalBody.text=message;
+        // Consume the revealing click so its release cannot also activate a
+        // dialogue choice underneath the pointer.
+        if(guideSkipRequested)
+        {
+            while(UnityEngine.InputSystem.Mouse.current!=null && UnityEngine.InputSystem.Mouse.current.leftButton.isPressed)yield return null;
+            yield return null;
+        }
         foreach(var button in actions.GetComponentsInChildren<Button>())button.interactable=true;
         guideReveal=null;
     }
     public void ShowGuideWelcome()
     {
+        if(game.State.cycle>=2)return;
         if(game.State.NpcDefeated("guard")){ShowFallenGuideNotes();return;}
-        if(game.State.cycle==2){ShowCellarGuide();return;}
-        string objective=game.State.cellarQuest==0?"Promluv se mnou u mostu.":game.State.CellarObjective;
-        Open("guideInstruction","PETR KŘÍŽ • RÁDCE","Vítej v Havranově! Jsem Petr Kříž. Tohle je tvůj příběh — prozkoumávej vesnici, mluv s lidmi a rozhoduj se po svém. Občas se ti ozvu s užitečnou radou.\n\n"+objective);
+        if(FirstMeeting("guard","Petr Kříž • průvodce","guideInstruction",ShowGuideWelcome))return;
+        Open("guideInstruction","PETR KŘÍŽ • RÁDCE","Tak tedy, "+game.State.HeroName+". Jestli hledáš cestu z toho podivného snu, místní pověsti mluví o rituálu se svíčkami. Ptej se obyvatel — oni zdejší místa znají lépe než ty.\n\n"+game.State.CellarObjective);
         NpcChallenge("guard");
         Action("Začít dobrodružství",()=>{
             if(game.State.currentArea==0 && game.State.cellarQuest==0)game.StartCellarQuest();else Close();
@@ -58,6 +75,8 @@ public sealed partial class RpgInterface
     }
     public void ShowGuideInstruction()
     {
+        if(game.State.cycle>=2)return;
+        if(FirstMeeting("guard","Petr Kříž • průvodce","guideInstruction",ShowGuideInstruction))return;
         if(game.State.NpcDefeated("guard")){ShowFallenGuideNotes();return;}
         int stage=game.State.cellarQuest;
         string message=stage==0?

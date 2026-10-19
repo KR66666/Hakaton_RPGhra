@@ -11,7 +11,7 @@ public static class RpgDialogueValidation
     {
         int checks=0;
         Action<bool,string> check=(ok,message)=>{if(!ok)throw new Exception(message);checks++;};
-        foreach(var kind in new[]{"guideInstruction","cellarGuide","guard","mayor","healer","merchant","shopDialogue","resident","entrance","sideQuest","cellarElder","cellarMerchant","cellarWalk","cellarRats","cellarEscape","cellarNote","cellarClue"})
+        foreach(var kind in new[]{"guideInstruction","cellarGuide","guard","mayor","healer","merchant","shopDialogue","resident","librarian","entrance","sideQuest","cellarElder","cellarMerchant","cellarWalk","cellarRats","cellarEscape","cellarNote","cellarClue"})
             check(RpgDialogueLayout.IsConversation(kind),"Conversation must use the shared layout: "+kind);
         foreach(var kind in new[]{"inventory","character","map","journal","pause","cellarJournal"})
             check(!RpgDialogueLayout.IsConversation(kind),"Utility window must keep its own layout: "+kind);

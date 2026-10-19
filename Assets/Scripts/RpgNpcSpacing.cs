@@ -13,20 +13,37 @@ public static class RpgNpcSpacing
     }
 }
 
+public sealed class RpgNpcStuckWatch
+{
+    private Vector2 anchor;
+    private float elapsed;
+    public void Reset(Vector2 position){anchor=position;elapsed=0;}
+    public bool Tick(Vector2 position,float deltaTime)
+    {
+        // Measure accumulated movement, not a per-frame step: high frame rates
+        // must not make a slowly moving NPC appear stationary.
+        if(Vector2.Distance(anchor,position)>=.06f){Reset(position);return false;}
+        elapsed+=Mathf.Max(0,deltaTime);
+        if(elapsed<=2)return false;
+        Reset(position);return true;
+    }
+}
+
 public sealed partial class RpgGame
 {
     public Vector3 MoveResident(Transform resident,Vector3 desired)
     {
         Vector3 current=resident.position;
         desired=MoveEnemy(current,desired);
-        return CanPassResidents(current,desired,resident,.65f)?desired:current;
+        return CanPassResidents(current,desired,resident,.65f) &&
+            RpgNpcSpacing.CanStep(current,desired,transform.position,.7f)?desired:current;
     }
     private bool CanPassResidents(Vector3 current,Vector3 desired,Transform ignore,float separation)
     {
         foreach(var item in worldItems)
         {
             if(item.obj==null||!item.obj.activeInHierarchy||item.obj.transform==ignore)continue;
-            if(item.kind!="mayor"&&item.kind!="merchant"&&item.kind!="healer"&&item.kind!="guard"&&item.kind!="elder"&&item.kind!="villager"&&item.kind!="district")continue;
+            if(item.kind!="mayor"&&item.kind!="merchant"&&item.kind!="healer"&&item.kind!="guard"&&item.kind!="elder"&&item.kind!="villager"&&item.kind!="district"&&item.kind!="librarian")continue;
             if(!RpgNpcSpacing.CanStep(current,desired,item.obj.transform.position,separation))return false;
         }
         return true;
