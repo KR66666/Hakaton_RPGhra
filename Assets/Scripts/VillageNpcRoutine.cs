@@ -45,7 +45,7 @@ public sealed class VillageNpcRoutine : MonoBehaviour
     {
         if(game==null || route==null)return;
         if(game.BlockMovement){stuckWatch.Reset(transform.position);MatejPose(Vector2.zero);return;}
-        if(Vector2.Distance(transform.position,game.Player.position)<1.2f)
+        if(Vector2.Distance(transform.position,game.Player.position)<RpgNpcSpacing.PlayerStopDistance)
         {stuckWatch.Reset(transform.position);if(label!=null)label.text=title+"\n[E] Promluvit";MatejPose(Vector2.zero);return;}
         if(Time.time<waitUntil) { stuckWatch.Reset(transform.position);if(label!=null)label.text=title+"\n"+activity;MatejPose(Vector2.zero);return; }
         if(label!=null)label.text=title;

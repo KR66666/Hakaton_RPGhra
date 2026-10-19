@@ -2,7 +2,11 @@ using UnityEngine;
 
 public static class RpgNpcSpacing
 {
-    public static bool CanStep(Vector2 current,Vector2 desired,Vector2 other,float separation=.65f)
+    // Separation follows actor silhouettes, not the full transparent sprite bounds.
+    public const float ResidentSeparation=.55f;
+    public const float PlayerSeparation=.55f;
+    public const float PlayerStopDistance=.7f;
+    public static bool CanStep(Vector2 current,Vector2 desired,Vector2 other,float separation=ResidentSeparation)
     {
         float previous=(current-other).sqrMagnitude;
         if(previous<separation*separation)
@@ -35,8 +39,8 @@ public sealed partial class RpgGame
     {
         Vector3 current=resident.position;
         desired=MoveEnemy(current,desired);
-        return CanPassResidents(current,desired,resident,.65f) &&
-            RpgNpcSpacing.CanStep(current,desired,transform.position,.7f)?desired:current;
+        return CanPassResidents(current,desired,resident,RpgNpcSpacing.ResidentSeparation) &&
+            RpgNpcSpacing.CanStep(current,desired,transform.position,RpgNpcSpacing.PlayerSeparation)?desired:current;
     }
     private bool CanPassResidents(Vector3 current,Vector3 desired,Transform ignore,float separation)
     {
@@ -55,9 +59,9 @@ public sealed partial class RpgGame
         for(int i=0;i<steps;i++)
         {
             var next=MoveInCurrentLocation(current,current+new Vector3(delta.x,0,0));
-            if(CanPassResidents(current,next,null,.7f))current.x=next.x;
+            if(CanPassResidents(current,next,null,RpgNpcSpacing.PlayerSeparation))current.x=next.x;
             next=MoveInCurrentLocation(current,current+new Vector3(0,delta.y,0));
-            if(CanPassResidents(current,next,null,.7f))current.y=next.y;
+            if(CanPassResidents(current,next,null,RpgNpcSpacing.PlayerSeparation))current.y=next.y;
         }
         return current;
     }

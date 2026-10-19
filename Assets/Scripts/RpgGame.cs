@@ -75,8 +75,11 @@ public sealed partial class RpgGame : MonoBehaviour
         var fantasyMap=Resources.Load<Sprite>("MedievalTownExpanded") ?? Resources.Load<Sprite>("MedievalTownDetailed") ?? Resources.Load<Sprite>("SpaciousVillage") ?? Resources.Load<Sprite>("FantasyVillage");
         if(map!=null && fantasyMap!=null)
         {
-            var expanded=RpgWorldGeometry.ExpandedBounds(map.bounds);
-            map.sprite=fantasyMap;map.transform.position+=expanded.center-map.bounds.center;
+            var originalBounds=map.bounds;
+            map.sprite=fantasyMap;
+            // The expanded artwork has a different aspect ratio from the scene's original map.
+            var expanded=RpgWorldGeometry.ExpandedBounds(originalBounds,map.bounds.size);
+            map.transform.position+=expanded.center-map.bounds.center;
             map.sprite.texture.filterMode=FilterMode.Point;
             map.sharedMaterial=RpgVisualTheme.FantasyAtmosphere();
         }
@@ -346,11 +349,12 @@ public sealed partial class RpgGame : MonoBehaviour
 
     private WorldItem NearestItem()
     {
-        WorldItem result = null; float distance = 2.5f;
+        WorldItem result = null; float distance = float.MaxValue;
         foreach (var item in worldItems)
         {
             if (item.obj == null || !item.obj.activeSelf) continue;
             float current = Vector2.Distance(transform.position, item.obj.transform.position);
+            if(current>RpgInteractionRules.Reach(item.kind))continue;
             if (RpgEntranceRules.IsEntrance(item.kind) && !RpgEntranceRules.CanUse(transform.position,item.obj.transform.position,item.entranceApproach.HasValue?(Vector2?)item.entranceApproach.Value:null)) continue;
             if(item.kind=="secretBook"&&current>RpgSecretBookGlow.BookReach)continue;
             if (current < distance) { result = item; distance = current; }

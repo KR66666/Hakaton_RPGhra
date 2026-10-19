@@ -10,7 +10,7 @@ public static class RpgNpcValidation
     {
         int checks=0;
         Action<bool,string> check=(ok,message)=>{if(!ok)throw new Exception(message);checks++;};
-        check(!RpgNpcSpacing.CanStep(new Vector2(-1,0),new Vector2(-.4f,0),Vector2.zero),"Residents stop before overlapping");
+        check(!RpgNpcSpacing.CanStep(new Vector2(-.8f,0),new Vector2(-.4f,0),Vector2.zero),"Residents stop before overlapping");
         check(!RpgNpcSpacing.CanStep(new Vector2(-3,0),new Vector2(3,0),Vector2.zero),"Long frames cannot pass through a resident");
         check(RpgNpcSpacing.CanStep(new Vector2(-2,-1),new Vector2(2,-1),Vector2.zero),"Residents can pass alongside one another");
         check(RpgNpcSpacing.CanStep(new Vector2(.2f,0),new Vector2(.3f,0),Vector2.zero),"Existing overlaps can separate");
@@ -18,6 +18,14 @@ public static class RpgNpcValidation
         check(RpgNpcSpacing.CanStep(Vector2.zero,new Vector2(.1f,0),Vector2.zero),"Residents at the same point can start separating");
         check(RpgNpcSpacing.CanStep(new Vector2(2,0),new Vector2(2,0),Vector2.zero),"Waiting away from another actor stays valid");
         check(RpgNpcSpacing.CanStep(new Vector2(-2,1),new Vector2(-1,1),Vector2.zero),"Normal unobstructed walking stays available");
+        check(!RpgNpcSpacing.CanStep(new Vector2(-.8f,0),new Vector2(-.4f,0),Vector2.zero,RpgNpcSpacing.PlayerSeparation),"Player and NPC stop at the tighter actor spacing");
+        check(RpgNpcSpacing.PlayerStopDistance>RpgNpcSpacing.PlayerSeparation &&
+            RpgNpcSpacing.PlayerStopDistance<1.2f,"NPCs approach the player without preserving the old oversized gap");
+        check(RpgInteractionRules.Reach("mayor")==1f && RpgInteractionRules.Reach("villager")==1f &&
+            RpgInteractionRules.Reach("chest")==.75f && RpgInteractionRules.Reach("ritual")==1.3f &&
+            RpgInteractionRules.Reach("secretBook")==RpgSecretBookGlow.BookReach &&
+            RpgInteractionRules.Reach("shop")==RpgEntranceRules.Reach,
+            "NPC, pickup and ritual interactions use target-sized reaches");
         var watch=new RpgNpcStuckWatch();watch.Reset(Vector2.zero);
         check(!watch.Tick(Vector2.zero,1) && !watch.Tick(Vector2.zero,1),"Standing blocked for exactly two seconds does not reverse early");
         check(watch.Tick(Vector2.zero,.01f),"Blocking longer than two seconds requests a new direction");

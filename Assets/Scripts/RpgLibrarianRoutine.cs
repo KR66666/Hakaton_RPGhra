@@ -23,7 +23,7 @@ public sealed class RpgLibrarianRoutine : MonoBehaviour
     private void Update()
     {
         if(game==null||art==null||route==null)return;
-        if(game.BlockMovement||Time.time<waitUntil||Vector2.Distance(transform.position,game.Player.position)<1.2f)
+        if(game.BlockMovement||Time.time<waitUntil||Vector2.Distance(transform.position,game.Player.position)<RpgNpcSpacing.PlayerStopDistance)
         {stuckWatch.Reset(transform.position);distance=0;Show(-1);return;}
         Vector3 before=transform.position;
         transform.position=game.MoveResident(transform,Vector3.MoveTowards(before,route[next],.75f*Time.deltaTime));

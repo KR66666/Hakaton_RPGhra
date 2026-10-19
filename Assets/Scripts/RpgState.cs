@@ -409,10 +409,13 @@ public static class RpgWorldGeometry
     public static readonly Vector2 LibraryApproachPixel=FromExpandedPixel(RpgWorldDoors.LibraryApproach);
     public static Bounds ExpandedBounds(Bounds original)
     {
-        var size=new Vector3(original.size.x/LegacyScale,original.size.y/LegacyScale,original.size.z);
+        return ExpandedBounds(original,new Vector2(original.size.x/LegacyScale,original.size.y/LegacyScale));
+    }
+    public static Bounds ExpandedBounds(Bounds original,Vector2 expandedSize)
+    {
         var centerPixel=ToExpandedPixel(new Vector2(768,512));
-        var shift=new Vector3((centerPixel.x/1536-.5f)*size.x,(.5f-centerPixel.y/1024)*size.y,0);
-        return new Bounds(original.center-shift,size);
+        var shift=new Vector3((centerPixel.x/1536-.5f)*expandedSize.x,(.5f-centerPixel.y/1024)*expandedSize.y,0);
+        return new Bounds(original.center-shift,new Vector3(expandedSize.x,expandedSize.y,original.size.z));
     }
 
     public static Vector3 Move(Vector3 current, Vector3 desired, Bounds map, float feetOffset = FeetOffset)
@@ -469,4 +472,3 @@ public static class RpgWorldGeometry
         return fallback;
     }
 }
-

@@ -22,6 +22,24 @@ public static class RpgEntranceRules
     public static string Prompt(string title) => "[E] Vstoupit: "+title;
 }
 
+public static class RpgInteractionRules
+{
+    public const float NpcReach=1f;
+    public const float ItemReach=.75f;
+    public const float RitualReach=1.3f;
+
+    public static float Reach(string kind)
+    {
+        if(RpgEntranceRules.IsEntrance(kind))return RpgEntranceRules.Reach;
+        if(kind=="ritual")return RitualReach;
+        if(kind=="secretBook")return RpgSecretBookGlow.BookReach;
+        if(kind=="mayor" || kind=="healer" || kind=="guard" || kind=="elder" ||
+            kind=="villager" || kind=="district" || kind=="librarian" || kind=="merchant")
+            return NpcReach;
+        return ItemReach;
+    }
+}
+
 public sealed partial class RpgGame
 {
     private void AddEntranceMarker(string id,string title,string kind,Vector3 position,Vector3? approach=null)

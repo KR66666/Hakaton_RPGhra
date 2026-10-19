@@ -19,6 +19,10 @@ Po stisku **Hrát** zvol **Nová hra** nebo **Načíst hru**. Nová hra otevře 
 | F5 | Uložení |
 | F9 | Načtení poslední uložené hry |
 
+Interakce s postavami vyžaduje přiblížení na 1 herní jednotku; běžné předměty
+jsou dosažitelné do 0,75 jednotky. Vstupy do budov a lokací mají vlastní dosah
+1,35 jednotky.
+
 ## Herní průchod
 
 1. Na náměstí promluv s rychtářem Radovanem a přijmi úkol.

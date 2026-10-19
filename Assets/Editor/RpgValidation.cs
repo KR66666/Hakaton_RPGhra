@@ -139,6 +139,13 @@ public static class RpgValidation
             var originalBounds = new Bounds(new Vector3(0, 2, 0), new Vector3(40, 26.666666f, 1));
             var bounds=RpgWorldGeometry.ExpandedBounds(originalBounds);
             Check(Vector3.Distance(RpgWorldGeometry.PixelPosition(new Vector2(768,512),bounds),originalBounds.center)<.001f,"Expansion preserves legacy quest/NPC world coordinates",ref checks);
+            var expandedSprite=AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Resources/MedievalTownExpanded.png");
+            if(expandedSprite!=null)
+            {
+                var actualBounds=RpgWorldGeometry.ExpandedBounds(originalBounds,expandedSprite.bounds.size);
+                var anchor=RpgWorldGeometry.ExpandedPixelPosition(RpgWorldGeometry.ToExpandedPixel(new Vector2(768,512)),actualBounds);
+                Check(Vector2.Distance(anchor,originalBounds.center)<.001f,"Expanded map aspect ratio keeps legacy positions aligned with the active artwork",ref checks);
+            }
             Check(!RpgWorldGeometry.Blocked(new Vector3(.5f,3.5f), bounds, RpgWorldGeometry.FeetOffset), "New village spawn is inside the open square", ref checks);
             var house = RpgWorldGeometry.ExpandedPixelPosition(new Vector2(650,300),bounds);
             Check(RpgWorldGeometry.Blocked(house, bounds, -0.45f), "House footprint blocks movement", ref checks);
