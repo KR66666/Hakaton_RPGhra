@@ -12,7 +12,7 @@ public sealed partial class RpgGame : MonoBehaviour
     public RpgState State { get; private set; }
     public bool IsTestLocation { get; private set; }
     public static bool AllowsHostileCombat(int area, bool testLocation, int quest) => quest == 1 && (area > 0 || testLocation);
-    public bool HostileCombatAllowed => !State.storyComplete && ((!InTown && State.cycle>=2) || (InTown || IsTestLocation) && AllowsHostileCombat(State.currentArea, IsTestLocation, State.questStage));
+    public bool HostileCombatAllowed => !State.storyComplete && (IsTestLocation?AllowsHostileCombat(State.currentArea,true,State.questStage):State.cycle>=2 && (!InTown || AllowsHostileCombat(State.currentArea,false,State.questStage)));
     public RpgInterface Interface { get; private set; }
     public bool IsEnteringRoom { get; private set; }
     public bool BlockMovement => InBattle || RpgSettings.CapturesInput || IsEnteringRoom || !Application.isFocused || Interface != null && Interface.IsModal || State == null || State.health <= 0;
@@ -44,6 +44,7 @@ public sealed partial class RpgGame : MonoBehaviour
     {
         public string id, title, kind;
         public GameObject obj;
+        public Vector3? entranceApproach;
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -103,8 +104,13 @@ public sealed partial class RpgGame : MonoBehaviour
         BuildWorld();
         if(!IsTestLocation){State.RecordArchivePlace(RpgArchive.PlaceKey(State.place));State.RecordOwnedArchiveItems();}
         if(startingNewStory){Save(false,true);startingNewStory=false;}
-        Notify(IsTestLocation?"TESTOVACÍ LOKACE • E vyzkoušet • T nástroje • hlavní příběh se nepřepisuje":InTown?"Vítej v Havranově. Promluv si s průvodcem [E].":LocationName+" • "+RpgLocations.Description(State.place), 7);
-        if(!IsTestLocation && InTown && !State.NpcDefeated("guard"))Interface.ShowGuideWelcome();
+        Notify(IsTestLocation?"TESTOVACÍ LOKACE • E vyzkoušet • T nástroje • hlavní příběh se nepřepisuje":InTown?(State.cycle==1?"Vítej v Havranově. Promluv si s průvodcem [E].":"Znovu v Havranově. Tentokrát se rozhoduješ sám."):LocationName+" • "+RpgLocations.Description(State.place), 7);
+        if(State.FinalWaveActive)Interface.ShowFinalWave();
+        else if(!IsTestLocation && InTown && State.cycle==1 && !State.NpcDefeated("guard"))
+        {
+            if(!State.introSeen && State.cellarQuest==0 && !State.HasMetNpc("guard"))StartCoroutine(PlayDreamIntro());
+            else Interface.ShowGuideWelcome();
+        }
     }
 
     private void Update()
@@ -134,7 +140,7 @@ public sealed partial class RpgGame : MonoBehaviour
         {
             bool moving = keyboard != null && (keyboard.wKey.isPressed || keyboard.aKey.isPressed || keyboard.sKey.isPressed || keyboard.dKey.isPressed || keyboard.upArrowKey.isPressed || keyboard.downArrowKey.isPressed || keyboard.leftArrowKey.isPressed || keyboard.rightArrowKey.isPressed);
             if (Sprinting && moving) State.stamina = Mathf.Max(0, State.stamina - Time.deltaTime * 23);
-            else if (Time.time >= nextRegen) State.stamina = Mathf.Min(100, State.stamina + Time.deltaTime * 21);
+            else if (Time.time >= nextRegen) State.stamina = Mathf.Min(State.MaxStamina, State.stamina + Time.deltaTime * 21);
         }
         if (playerRenderer != null)
             playerRenderer.color = Time.time < nextDamage && State.health > 0 ? Color.Lerp(playerColor, Color.red, 0.65f) : playerColor;
@@ -203,6 +209,7 @@ public sealed partial class RpgGame : MonoBehaviour
         AddPerson("healer", "Bylinkářka Mira", "healer", new Vector2(-1.6f, -2.2f), new Color(0.55f, 1, 0.7f));
         AddPerson("guard", "Petr Kříž • průvodce", "guard", new Vector2(13.5f, 3.3f), new Color(0.6f, 0.7f, 1));
         AddQuestContainers();
+        BuildHunterStash();
 
 
 
@@ -213,7 +220,7 @@ public sealed partial class RpgGame : MonoBehaviour
 
     public static RpgState CreateTestState(bool boy)
     {
-        var state=new RpgState {heroIsBoy=boy,upgradePoints=4,gold=9999,potions=30,cycle=2,hasIronSword=true,swordTrained=true,bowTrained=true,hasBow=true,suppliesQuest=1,deliveryQuest=1,x=-3,y=-.5f};
+        var state=new RpgState {heroIsBoy=boy,upgradePoints=8,gold=9999,potions=30,cycle=2,hasIronSword=true,swordTrained=true,bowTrained=true,hasBow=true,suppliesQuest=1,deliveryQuest=1,x=-3,y=-.5f};
         state.health=state.MaxHealth;return state;
     }
     public void ResetTestLocation()
@@ -257,7 +264,7 @@ public sealed partial class RpgGame : MonoBehaviour
             return;
         }
         if (State.defeated.Contains(id)) return;
-        if (State.currentArea > 0) position = RpgCampaign.Starts[State.currentArea] + (position - new Vector2(0, 2)) * 0.55f;
+        if ((InTown || IsTestLocation) && State.currentArea > 0) position = RpgCampaign.Starts[State.currentArea] + (position - new Vector2(0, 2)) * 0.55f;
         position = SnapToRoad(position);
         var obj = new GameObject(RpgEnemy.KindName(id.StartsWith("flying")));
         obj.transform.position = position;
@@ -273,7 +280,7 @@ public sealed partial class RpgGame : MonoBehaviour
         obj.transform.position = SnapToRoad(position);
         obj.transform.localScale = Vector3.one * 0.9f;
         var renderer = obj.AddComponent<SpriteRenderer>();
-        renderer.sprite = (kind=="guard"?RpgDirectionalHero.PetrFrame(0,0):kind=="elder"?RpgDirectionalHero.MatejFrame(0,0):null) ?? MedievalNpcAppearance.Get(kind=="elder"?"healer":kind,kind=="elder"?3:0);
+        renderer.sprite = (kind=="guard"?RpgDirectionalHero.PetrFrame(0,0):kind=="elder"?RpgDirectionalHero.MatejFrame(0,0):kind=="librarian"?MedievalNpcAppearance.Get("healer",1):null) ?? MedievalNpcAppearance.Get(kind=="elder"?"healer":kind,kind=="elder"?3:0);
         // Keep Unity's native sprite material: the palette/UV filter is for scenery,
         // and can change fine actor details as render batches and camera position change.
         renderer.color = Color.white; renderer.sortingOrder = 2;
@@ -282,7 +289,7 @@ public sealed partial class RpgGame : MonoBehaviour
         obj.AddComponent<RpgNpcNameplate>().Initialize(this,npcLabel,title,id);
         worldItems.Add(new WorldItem { id = id, title = title, kind = kind, obj = obj });
         worldObjects.Add(obj);
-        if(!IsTestLocation) obj.AddComponent<VillageNpcRoutine>().Initialize(this,kind,title);
+        if(!IsTestLocation && InTown) obj.AddComponent<VillageNpcRoutine>().Initialize(this,kind,title);
     }
     private Vector3 ShopApproach => RpgWorldGeometry.PixelPosition(RpgWorldGeometry.ShopApproachPixel,map.bounds);
     private void AddExpandedDistrict(string title,Vector2 point,string resident)
@@ -299,7 +306,7 @@ public sealed partial class RpgGame : MonoBehaviour
         var text=AddLabel(landmark.transform,title,new Vector3(0,.35f,0),new Color(1,.9f,.65f));text.characterSize=.04375f;
         worldObjects.Add(landmark);
     }
-    private void AddShopEntrance() => AddEntranceMarker("shop","Obchod","shop",ShopApproach);
+    private void AddShopEntrance() => AddEntranceMarker("shop","Obchod","shop",RoomDoor("merchant"),ShopApproach);
 
     private void AddQuestContainers()
     {
@@ -342,7 +349,7 @@ public sealed partial class RpgGame : MonoBehaviour
         {
             if (item.obj == null || !item.obj.activeSelf) continue;
             float current = Vector2.Distance(transform.position, item.obj.transform.position);
-            if (RpgEntranceRules.IsEntrance(item.kind) && current > RpgEntranceRules.Reach) continue;
+            if (RpgEntranceRules.IsEntrance(item.kind) && !RpgEntranceRules.CanUse(transform.position,item.obj.transform.position,item.entranceApproach.HasValue?(Vector2?)item.entranceApproach.Value:null)) continue;
             if(item.kind=="secretBook"&&current>RpgSecretBookGlow.BookReach)continue;
             if (current < distance) { result = item; distance = current; }
         }
@@ -350,12 +357,12 @@ public sealed partial class RpgGame : MonoBehaviour
     }
 
     public Vector3 RoomDoor(string kind) => kind=="merchant" ? RpgWorldGeometry.PixelPosition(RpgWorldGeometry.ShopDoorPixel,map.bounds) : transform.position;
-    public bool AtRoomDoor(string kind) => InTown && kind=="merchant" && RpgEntranceRules.InReach(transform.position,SnapToRoad(ShopApproach));
+    public bool AtRoomDoor(string kind) => InTown && kind=="merchant" && RpgEntranceRules.CanUse(transform.position,RoomDoor(kind),(Vector2)ShopApproach);
     private void UpdatePrompt()
     {
         var nearest=NearestItem();
         bool unknown=nearest!=null && !State.HasMetNpc(nearest.id) &&
-            (nearest.kind=="mayor" || nearest.kind=="healer" || nearest.kind=="guard" || nearest.kind=="elder" || nearest.kind=="villager" || nearest.kind=="district" || nearest.kind=="merchant");
+            (nearest.kind=="mayor" || nearest.kind=="healer" || nearest.kind=="guard" || nearest.kind=="elder" || nearest.kind=="villager" || nearest.kind=="district" || nearest.kind=="librarian" || nearest.kind=="merchant");
         NearbyPrompt=!BlockMovement && nearest!=null ? "[E] "+(unknown?"Promluvit s neznámým obyvatelem":nearest.title) : "";
         if(!BlockMovement && nearest!=null && RpgEntranceRules.IsEntrance(nearest.kind))
             NearbyPrompt=RpgEntranceRules.Prompt(nearest.title);
@@ -369,6 +376,7 @@ public sealed partial class RpgGame : MonoBehaviour
         {
             roomReturnPosition=SnapToRoad(ShopApproach);entryScale=transform.localScale;
             playerRenderer.enabled=false;hiddenInRoom=true;
+            DialogueNpcId="merchant";
             Interface.EnterRoom(kind);
         });
     }
@@ -382,6 +390,7 @@ public sealed partial class RpgGame : MonoBehaviour
     {
         var item=NearestItem();
         if(item==null) { Notify("Přijdi blíž k postavě nebo předmětu.");return; }
+        if(item.kind=="hunterStash"){Interface.ShowHunterStash();return;}
         if(item.kind=="extraCandle"){CollectCycleCandle(false);return;}
         if(item.kind=="ritual") { TryRitual();return; }
         if(item.kind=="locationExit") { OfferLocationEntry((RpgPlace)int.Parse(item.id));return; }
@@ -398,7 +407,8 @@ public sealed partial class RpgGame : MonoBehaviour
         if(item.kind=="testpotion") {State.potions++;item.obj.SetActive(false);Notify("Testovací lektvar přidaný do batohu.");return;}
         if(item.kind=="testweapon") {State.hasIronSword=true;State.weaponLevel=Mathf.Clamp(int.Parse(item.id.Substring(10)),0,5);Notify("Nasazen meč +"+State.weaponLevel);return;}
         if(item.kind=="testarmor") {State.armorLevel=Mathf.Clamp(int.Parse(item.id.Substring(9)),0,5);Notify("Nasazena zbroj +"+State.armorLevel);return;}
-        if(item.kind=="mayor") Interface.ShowMayor();
+        if(item.kind=="librarian") Interface.ShowLibrarian();
+        else if(item.kind=="mayor") Interface.ShowMayor();
         else if(item.kind=="healer") Interface.ShowHealer();
         else if(item.kind=="guard") Interface.ShowGuard();
         else if(item.kind=="elder") Interface.ShowCellarElder();
@@ -443,7 +453,7 @@ public sealed partial class RpgGame : MonoBehaviour
 
     public void DeliverParcel()
     {
-        if (State.deliveryQuest != 1 || State.parcelDelivered) return;
+        if (State.deliveryQuest != 1 || State.parcelDelivered || State.NpcDefeated("guard")) return;
         State.parcelDelivered = true;
         Interface.Close(); Notify("Balíček předán Petrovi. Vrať se k Elišce pro odměnu.", 5); Save(false);
     }
@@ -507,14 +517,19 @@ public sealed partial class RpgGame : MonoBehaviour
         if(State.cellarQuest==6 && State.NpcDefeated("guard"))return false;
         if (State.cellarQuest > 0 && State.cellarQuest < 7 && State.currentArea == 0)
         {
-            string cellarTargetKind = State.cellarQuest == 1 ? "elder" : State.cellarQuest == 6 ? "guard" : "shop";
+            string cellarTargetKind = State.cycle>=2?"shop":State.cellarQuest == 1 ? "elder" : State.cellarQuest == 6 ? "guard" : "shop";
             var storyTarget = worldItems.Find(i => i.kind == cellarTargetKind && i.obj != null);
             if(storyTarget != null) { position=storyTarget.obj.transform.position; description=State.CellarObjective; return true; }
         }
-        if(State.currentArea==0 && State.cellarQuest==0 && State.trackedQuest<0)
+        if(State.cycle==1 && State.currentArea==0 && State.cellarQuest==0 && State.trackedQuest<0)
         {
             var guide=worldItems.Find(i=>i.kind=="guard" && i.obj!=null);
             if(guide!=null){position=guide.obj.transform.position;description="Promluv s průvodcem Petrem Křížem";return true;}
+        }
+        if(State.cycle>=2 && State.currentArea==0 && State.cellarQuest==0 && State.trackedQuest<0)
+        {
+            var shop=worldItems.Find(i=>i.kind=="shop" && i.obj!=null);
+            if(shop!=null){position=shop.obj.transform.position;description=State.CellarObjective;return true;}
         }
         int quest=State.trackedQuest;
         if(quest>=0 && State.SideQuestStage(quest)!=1)quest=-1;
@@ -577,14 +592,14 @@ public sealed partial class RpgGame : MonoBehaviour
     {
         if (State.health >= State.MaxHealth) { Notify("Jsi úplně zdráv."); return; }
         if (!State.Spend(10)) { Notify("Na ošetření potřebuješ 10 zlata."); return; }
-        State.health = State.MaxHealth; State.stamina = 100; Notify("Mira tě plně vyléčila."); Save(false);
+        State.health = State.MaxHealth; State.stamina = State.MaxStamina; Notify("Mira tě plně vyléčila."); Save(false);
     }
 
     public void Respawn()
     {
-        State.deaths++; State.gold = Mathf.Max(0, State.gold - 10);
-        State.health = State.MaxHealth; State.stamina = 100;
-        State.x = 0; State.y = 0; PlacePlayer();
+        StopAutoBattle();finalBattle=false;battle=null;battleEnemy=null;battleNpcId=null;
+        State.RecoverAfterDefeat();
+        Interface.CloseForRestore();ApplyLocationMap();PlacePlayer();BuildWorld();
         nextDamage = Time.time + 3;
         foreach (var enemy in Enemies) if (enemy != null) enemy.ResetHome();
         Interface.Close(); Notify(State.NpcDefeated("healer")?"Probouzíš se po porážce. Ztratil jsi až 10 zlata.":"Mira tě zachránila. Ztratil jsi až 10 zlata."); Save(false);
@@ -683,6 +698,7 @@ public sealed partial class RpgGame : MonoBehaviour
         Facing=Vector2.down;playerRenderer.color=playerColor;playerRenderer.enabled=true;
         HeroSprite=actorAppearance.Frame(0,0,State.heroIsBoy);
         GetComponent<PlayerMovement>()?.ResetPose();
+        if(State.FinalWaveActive)Interface.ShowFinalWave();
     }
 
     public void Notify(string text, float duration = 3.5f)

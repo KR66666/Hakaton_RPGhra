@@ -25,9 +25,9 @@ public sealed class RpgTurnBattle
         {
             case RpgBattleAction.Attack:
             case RpgBattleAction.Bow:
-                if(action==RpgBattleAction.Attack && (!Player.CanSwordFight || Flying) || action==RpgBattleAction.Bow && !Player.CanBowFight){Message="Tuto zbraň nemůžeš použít.";return false;}
+                if(action==RpgBattleAction.Attack && (!Player.CanSwordFight || Flying) || action==RpgBattleAction.Bow && (!Player.CanBowFight || !Flying)){Message="Tuto zbraň nemůžeš použít.";return false;}
                 bool instant=!Boss && instantRoll<Player.InstantWinChance;
-                int hit=instant?EnemyHealth:action==RpgBattleAction.Bow?16+(Player.HasSkill(1)?6:0):Player.Damage;
+                int hit=instant?EnemyHealth:action==RpgBattleAction.Bow?Player.BowDamage:Player.Damage;
                 EnemyHealth=Mathf.Max(0,EnemyHealth-hit);
                 Message=instant?"Rozhodující úder! Nepřítel je okamžitě poražen.":"Útok: −"+hit+" zdraví nepřítele.";break;
             case RpgBattleAction.Guard:guard=true;Message="Kryješ se. Příští zásah bude slabší.";break;
@@ -35,7 +35,7 @@ public sealed class RpgTurnBattle
                 if(!Player.DrinkPotion()){Message="Lektvar nyní nelze použít. Vyber jinou akci.";return false;}
                 Message="Používáš léčivý lektvar.";break;
             case RpgBattleAction.Escape:
-                if(escapeRoll<.5f){Result=RpgBattleResult.Escaped;Message="Útěk se podařil.";return true;}
+                if(escapeRoll<Player.EscapeChance){Result=RpgBattleResult.Escaped;Message="Útěk se podařil.";return true;}
                 Message="Útěk se nepodařil.";break;
             default:return false;
         }
@@ -44,7 +44,7 @@ public sealed class RpgTurnBattle
         else
         {
             int damage=Mathf.Max(1,(Boss?22:9)-Player.Defense);
-            if(guard && dodgeRoll<.35f)damage=0;
+            if(guard && dodgeRoll<Player.BlockChance)damage=0;
             else if(guard)damage=Mathf.Max(1,(damage+1)/2);
             Player.health=Mathf.Max(0,Player.health-damage);Message+=" Nepřítel útočí: −"+damage+" HP.";
         }
@@ -92,7 +92,7 @@ public sealed partial class RpgGame
         Interface.Close();
         if(wasFinal)
         {
-            if(result==RpgBattleResult.Victory){State.FinishFinalEnemy();Save(false);Interface.ShowFinalWave();}
+            if(result==RpgBattleResult.Victory){State.FinishFinalEnemy();BuildWorld();Save(false);Interface.ShowFinalWave();}
             else {autoBattle=false;if(result==RpgBattleResult.Defeat)Interface.ShowDeath();else Interface.ShowFinalWave();}
             if(State.health>0)Save(false);
             return;
@@ -150,11 +150,11 @@ public sealed partial class RpgInterface
         if(game.State.CanFight(battle.Flying))
         {
             if(game.State.CanSwordFight && !battle.Flying)Action("Útok mečem",()=>game.ChooseBattleAction(RpgBattleAction.Attack));
-            if(game.State.CanBowFight)Action("Výstřel z luku",()=>game.ChooseBattleAction(RpgBattleAction.Bow));
+            if(game.State.CanBowFight && battle.Flying)Action("Výstřel z luku",()=>game.ChooseBattleAction(RpgBattleAction.Bow));
             Action("Blok • šance vykrýt zásah",()=>game.ChooseBattleAction(RpgBattleAction.Guard));
             Action("Lektvar • +15 HP",()=>game.ChooseBattleAction(RpgBattleAction.Potion));
         }
-        Action("Pokusit se utéct • 50 %",()=>game.ChooseBattleAction(RpgBattleAction.Escape));
+        Action("Pokusit se utéct • "+Mathf.RoundToInt(game.State.EscapeChance*100)+" %",()=>game.ChooseBattleAction(RpgBattleAction.Escape));
         if(game.State.finalRitualStarted)Action(game.AutoBattle?"Zastavit autoboj":"Spustit autoboj",game.ToggleAutoBattle);
     }
     public void ShowFinalWave()
@@ -162,8 +162,9 @@ public sealed partial class RpgInterface
         var s=game.State;
         Open("finalWave",s.storyComplete?"ÚNIK ZE SNU":"OBRANA RITUÁLU",s.storyComplete?
             "Poslední stín padl. Hvězda se rozsvítí a cesta ven ze snu se otevírá. Dokončil jsi třetí cyklus.":
-            $"Rituál přivolal nepřátele. Zbývá {s.finalEnemiesRemaining} z {RpgState.FinalWaveSize}. Můžeš bojovat tahově nebo spustit zrychlený autoboj. Spotřebuje skutečné lektvary a může skončit porážkou.");
+            $"Rituál přivolal nepřátele. Zbývá {s.finalEnemiesRemaining} z {RpgState.FinalWaveSize}. Kostel je obklíčený: obranu musíš dokončit v jednom pokusu. Útěk ze souboje nepřátele nezažene. Po porážce se celá vlna obnoví. Můžeš bojovat tahově nebo spustit zrychlený autoboj. Postup lze uložit a později pokračovat.");
         if(!s.storyComplete){Action("Další nepřítel",game.StartFinalBattle);Action(game.AutoBattle?"Zastavit autoboj":"Spustit autoboj",game.ToggleAutoBattle);}
-        Action("Zavřít",Close);
+        if(s.storyComplete)Action("Zavřít",Close);
+        else Action("Uložit a přejít do menu",game.ReturnToMenu);
     }
 }

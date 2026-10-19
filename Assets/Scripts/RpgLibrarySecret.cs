@@ -26,7 +26,7 @@ public sealed partial class RpgGame
         if(State.librarySecretOpened)
         {
             var door=new GameObject("Otevřený tajný průchod");
-            door.transform.position=new Vector3(11.4f,4.7f,0);
+            door.transform.position=RpgWorldDoors.SecretPassage;
             var art=door.AddComponent<SpriteRenderer>();art.sprite=SecretArt(true);art.sortingOrder=1;
             worldObjects.Add(door);return;
         }

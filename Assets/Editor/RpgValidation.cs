@@ -100,7 +100,10 @@ public static class RpgValidation
             Check(!guideSave.NeedsGuideInstruction,"Guide confirmation persists in saved progress",ref checks);
             checks+=RpgRitualValidation.CheckStory();
             checks+=RpgCycleValidation.CheckProgression();
+            checks+=RpgForestValidation.CheckPaths();
+            checks+=RpgWorldCollisionValidation.CheckDoors();
             checks+=RpgTurnCombatValidation.CheckRules();
+            checks+=RpgAuditRegressionValidation.CheckRules();
             var story=new RpgState{cellarQuest=4};story.CollectCandles(false);story.ExplainRitual();
             var storySave=JsonUtility.FromJson<RpgState>(JsonUtility.ToJson(story));storySave.Normalize();
             Check(storySave.candles==3 && storySave.ritualKnown && storySave.cellarQuest==7,"Candles and ritual instruction survive save",ref checks);
@@ -225,7 +228,7 @@ public static class RpgValidation
             trackedCopy.trackedQuest=99;trackedCopy.Normalize();
             Check(trackedCopy.trackedQuest>=-1&&trackedCopy.trackedQuest<=2,"Invalid tracking selection is normalized",ref checks);
             var testState=RpgGame.CreateTestState(true);
-            Check(testState.heroIsBoy&&testState.level==1 && testState.UpgradePoints==4&&testState.gold==9999&&testState.health==testState.MaxHealth,"Test location gets independent usable starting equipment",ref checks);
+            Check(testState.heroIsBoy&&testState.level==1 && testState.UpgradePoints==RpgState.SkillCount&&testState.gold==9999&&testState.health==testState.MaxHealth,"Test location gets independent usable starting equipment",ref checks);
             var secondTest=RpgGame.CreateTestState(false);testState.collected.Add("testPotion");
             Check(!secondTest.heroIsBoy&&secondTest.collected.Count==0,"Test reset creates fresh independent collections",ref checks);
             CheckNavigation(bounds, ref checks);

@@ -7,6 +7,10 @@ public sealed partial class RpgState
     public bool swordTrained,bowTrained,hasBow,cellarCandlesTaken,forestCandleTaken,libraryCandleTaken;
     public bool finalRitualStarted,storyComplete;
     public int finalEnemiesRemaining;
+    public bool forestDiscoverySeen,forestRouteKnown;
+    public bool ForestUnlocked => cycle>=2;
+    public bool CanAccessLocation(RpgPlace destination) => destination!=RpgPlace.Forest && destination!=RpgPlace.DarkForest || ForestUnlocked;
+    public bool CanSpawnForestEnemy(bool flying) => ForestUnlocked && (!flying || cycle>=3);
     public const int FinalWaveSize=8;
     public int RequiredCandles => cycle+2;
     public string RitualShape => cycle==1?"trojúhelník":cycle==2?"čtverec":"hvězda";
@@ -14,7 +18,9 @@ public sealed partial class RpgState
     public int CyclePointsAwarded => rewardedQuests.FindAll(key=>key.StartsWith(cycle+":" )).Count;
     public bool CanSwordFight => swordTrained && hasIronSword;
     public bool CanBowFight => bowTrained && hasBow;
-    public bool CanFight(bool flying) => flying?CanBowFight:CanSwordFight||CanBowFight;
+    public bool FinalWaveActive => finalRitualStarted && !storyComplete;
+    public bool CanBeginFinalRitual => cycle!=3 || CanSwordFight && CanBowFight;
+    public bool CanFight(bool flying) => cycle>=2 && (flying?CanBowFight:CanSwordFight);
     public bool LearnCombat(bool bow,bool paid)
     {
         if(cycle<(bow?3:2) || (bow?bowTrained:swordTrained) || health<=0)return false;
@@ -35,7 +41,7 @@ public sealed partial class RpgState
     }
     public bool StartFinalWave()
     {
-        if(cycle!=3 || !CanPerformRitual || finalRitualStarted)return false;
+        if(cycle!=3 || !CanPerformRitual || !CanBeginFinalRitual || finalRitualStarted)return false;
         finalRitualStarted=true;finalEnemiesRemaining=FinalWaveSize;return true;
     }
     public bool FinishFinalEnemy()
@@ -59,18 +65,23 @@ public sealed partial class RpgGame
     }
     public void BuyBow()
     {
-        if(DialogueNpcId!="districtRybář Oldřich" || State.NpcDefeated(DialogueNpcId) || !State.BuyBow()){Notify("Na luk potřebuješ 40 zlata.");return;}
+        if(!State.CanBuyBowFrom(DialogueNpcId) || !State.BuyBow()){Notify("Luk musí být dostupný a potřebuješ 40 zlata.");return;}
         Save(false);Notify("Koupen luk.");
     }
     private void BuildCycleExploration()
     {
+        BuildFinalWaveVisuals();
         if(State.cycle<2)return;
         if(State.place==RpgPlace.Forest && !State.forestCandleTaken)
-            AddPickup("forestCandle","Svíčka v lese","extraCandle",new Vector2(1,5),Color.yellow);
-        if(State.place==RpgPlace.DarkForest)
+            AddPickup("forestCandle","Svíčka v lese","extraCandle",(Vector2)RpgForestGeometry.Candle,Color.yellow);
+        if(State.place==RpgPlace.Forest || State.place==RpgPlace.DarkForest)
         {
-            SpawnEnemy("flying0",new Vector2(0,3),false);
-            SpawnEnemy("wolf1",new Vector2(2,-3),false);
+            string area=State.place==RpgPlace.Forest?"Edge":"Deep";
+            if(State.CanSpawnForestEnemy(false)){
+                SpawnEnemy("wolf"+area+"1",RpgForestGeometry.Wolf(State.place,0),false);
+                SpawnEnemy("wolf"+area+"2",RpgForestGeometry.Wolf(State.place,1),false);
+            }
+            if(State.CanSpawnForestEnemy(true))SpawnEnemy("flying"+area+"0",RpgForestGeometry.Bat(State.place),false);
         }
     }
     private void CollectCycleCandle(bool library)

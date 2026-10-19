@@ -39,11 +39,11 @@ public static class RpgLocationValidation
             check(RpgLocations.Find(link.to,link.from)!=null,"Every location transition needs a return: "+link.from+" -> "+link.to);
             if(link.from==RpgPlace.Town)
             {
-                var point=RpgWorldGeometry.ExpandedPixelPosition(link.point,townBounds);
+                var point=RpgWorldGeometry.ExpandedPixelPosition(link.approach??link.point,townBounds);
                 var safe=RpgWorldGeometry.NearestWalkable(point,townBounds);
                 check(!RpgWorldGeometry.Blocked(safe,townBounds,RpgWorldGeometry.FeetOffset)&&Vector2.Distance(point,safe)<1,"Town entrance must be close to visible paving: "+link.to);
             }
-            else check(!RpgLocations.Blocked(link.from,link.point),"Exit is not inside an obstacle: "+link.from);
+            else check(!RpgLocations.Blocked(link.from,link.approach??link.point),"Exit is not inside an obstacle: "+link.from);
             if(link.to==RpgPlace.Town)
             {
                 var point=RpgWorldGeometry.ExpandedPixelPosition(link.arrival,townBounds);
@@ -53,7 +53,7 @@ public static class RpgLocationValidation
             {
                 check(!RpgLocations.Blocked(link.to,link.arrival),"Arrival must be outside obstacles: "+link.to);
                 foreach(var next in RpgLocations.Exits)if(next.from==link.to)
-                    check(Reachable(link.to,link.arrival,next.point),"Walking route from arrival to exit: "+link.to+" -> "+next.to);
+                    check(Reachable(link.to,link.arrival,next.approach??next.point),"Walking route from arrival to exit: "+link.to+" -> "+next.to);
             }
         }
         foreach(var place in new[]{RpgPlace.Forest,RpgPlace.DarkForest,RpgPlace.Library,RpgPlace.ChurchRuins,RpgPlace.SecretLibrary})
@@ -103,13 +103,13 @@ public static class RpgLocationValidation
         count++;
         foreach(var place in new[]{RpgPlace.Forest,RpgPlace.DarkForest,RpgPlace.Library,RpgPlace.ChurchRuins,RpgPlace.SecretLibrary})
         {
-            var saved=new RpgState{place=place,x=1,y=-7,health=38,gold=67,cellarQuest=5};
+            var saved=new RpgState{cycle=2,place=place,x=1,y=-7,health=38,gold=67,cellarQuest=5};
             var restored=JsonUtility.FromJson<RpgState>(JsonUtility.ToJson(saved));restored.Normalize();
             if(restored.place!=place||restored.x!=1||restored.y!=-7||restored.health!=38||restored.gold!=67||restored.cellarQuest!=4)
                 throw new Exception("Location save round trip failed: "+place);
             var map=RpgLocationArt.Map(place);
-            float expectedHeight=place==RpgPlace.Library||place==RpgPlace.SecretLibrary?1024f/48:24;
-            if(map==null||map.texture.filterMode!=FilterMode.Point||Mathf.Abs(map.bounds.size.x-32)>.01f||Mathf.Abs(map.bounds.size.y-expectedHeight)>.01f)
+            float expectedHeight=place==RpgPlace.Library||place==RpgPlace.SecretLibrary?1024f/48:place==RpgPlace.Forest||place==RpgPlace.DarkForest?769f/48:24;
+            if(map==null||map.texture.filterMode!=FilterMode.Point||Mathf.Abs(map.bounds.size.x-(place==RpgPlace.Forest||place==RpgPlace.DarkForest?1154f/48:32))>.01f||Mathf.Abs(map.bounds.size.y-expectedHeight)>.01f)
                 throw new Exception("Location map dimensions failed: "+place);
             count+=2;
         }

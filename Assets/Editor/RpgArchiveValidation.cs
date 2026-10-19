@@ -30,10 +30,10 @@ public static class RpgArchiveValidation
         entries=RpgArchive.Entries(state,2);
         check(entries.Count==2 && !string.Join("",entries).Contains("KOSTEL"),"Only visited locations appear");
         state.RecordArchivePlace("shop");state.RecordArchivePlace("cellar");check(RpgArchive.Entries(state,2).Count==4,"Shop and cellar are separate visited interiors");
-        state.RecordOwnedArchiveItems();check(RpgArchive.Entries(state,3).Count==3,"Starting equipment and owned consumables are known after play begins");
+        state.RecordOwnedArchiveItems();check(RpgArchive.Entries(state,3).Count==2,"Owned consumables are known after play begins");
         check(!state.archiveItems.Contains("candle") && !state.archiveItems.Contains("herb") && !state.archiveItems.Contains("parcel"),"Unobtained quest items stay hidden");
         state.candles=1;state.RecordOwnedArchiveItems();state.candles=0;state.RecordOwnedArchiveItems();
-        check(state.archiveItems.Contains("candle") && RpgArchive.Entries(state,3).Count==4,"Discovered items remain known after being consumed");
+        check(state.archiveItems.Contains("candle") && RpgArchive.Entries(state,3).Count==3,"Discovered items remain known after being consumed");
         state.cellarQuest=4;state.CollectCandles(false);state.ExplainRitual();state.place=RpgPlace.ChurchRuins;
         var second=state.BeginSecondCycle();
         check(second.archivePlaces.Count==0 && second.archiveItems.Count==0 && second.archiveEnemies.Count==0 && second.metNpcs.Count==0,"A new cycle starts fresh discovery records");

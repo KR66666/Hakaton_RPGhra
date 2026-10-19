@@ -46,6 +46,7 @@ public sealed partial class RpgInterface
         if(state.cycle>=2 && !state.hasIronSword)Action("Koupit železný meč • 40 zl.",()=>{game.BuyIronSword();ShowBlacksmith();});
         if(state.cycle>=2 && state.hasIronSword && state.weaponLevel<5)Action($"Vylepšit meč • {40+state.weaponLevel*30} zl.",()=>{game.Upgrade(true);ShowBlacksmith();});
         if(state.cycle>=2 && !state.swordTrained)Action("Výcvik s mečem • 30 zl.",()=>{game.LearnCombat(false,true);ShowBlacksmith();});
+        if(state.cycle>=3 && !state.hasBow && state.NpcDefeated("districtRybář Oldřich"))Action("Koupit Oldřichův náhradní luk • 40 zl.",()=>{game.BuyBow();ShowBlacksmith();});
         NpcChallenge(game.DialogueNpcId);Action("Odejít",Close);
     }
     public void ShowCellarGuide()
@@ -139,7 +140,7 @@ public sealed partial class RpgInterface
     }
     private void ShowCellarEntrance()
     {
-        ShowEntrance("Sklep obchodu",()=>StartCoroutine(CellarEntry()),ShowCellarMerchant);
+        ShowEntrance("Sklep obchodu",()=>StartCoroutine(CellarEntry()),game.State.NpcDefeated("merchant")?(System.Action)ShowEmptyShop:ShowCellarMerchant);
     }
     private void ReturnFromCellar()
     {
@@ -159,7 +160,7 @@ public sealed partial class RpgInterface
         cellarAnimating=true;
         yield return FadeLocation(0,1);
         var actor=BuildCellarScene();
-        Open("cellarWalk","SCHODY DO SKLEPA","Vzpomeneš si na Petrovu radu: pomalu a opatrně…");
+        Open("cellarWalk","SCHODY DO SKLEPA",game.State.cycle==1?"Vzpomeneš si na Petrovu radu: pomalu a opatrně…":"Tyhle schody už znáš. Rozhlédneš se po svíčkách.");
         yield return FadeLocation(1,0);
         yield return CellarWalk(actor,new Vector2(-110,80),2.5f);
         for(int i=0;i<5;i++)
@@ -196,7 +197,7 @@ public sealed partial class RpgInterface
             game.Save(false);
         }
         cellarAnimating=false;
-        Open("cellarClue","SVÍČKY ZÍSKÁNY",rush?"Máš všechny tři svíčky. Kousnutí tě stálo až 20 HP. Vrať se k průvodci a řekni mu, že je máš.":"Máš všechny tři svíčky a vyvázl jsi bez zranění. Vrať se k průvodci a řekni mu, že je máš.");
+        Open("cellarClue","SVÍČKY ZÍSKÁNY",game.State.cycle>=2?"Tři svíčky mám. Postup rituálu si pamatuji. "+game.State.CellarObjective:rush?"Máš všechny tři svíčky. Kousnutí tě stálo až 20 HP. Vrať se k průvodci a řekni mu, že je máš.":"Máš všechny tři svíčky a vyvázl jsi bez zranění. Vrať se k průvodci a řekni mu, že je máš.");
         Action("Vrátit se do obchodu",Close);
     }
 }

@@ -17,7 +17,9 @@ public sealed partial class RpgGame
         if(id=="guard"){Interface.Close();State.RecordArchiveNpc(id);NpcVictory(id);Save(false);return;}
         var target=worldItems.Find(item=>item.id==id && item.obj!=null);
         string title=target!=null?target.title:id=="merchant"?"Obchodnice Eliška":"Obyvatel";
-        Interface.Close();if(!IsTestLocation)State.RecordArchiveNpc(id);Save(false);
+        // Combat replaces the room immediately; a delayed room-close callback
+        // would otherwise hide the newly opened battle panel.
+        Interface.CloseForRestore();if(!IsTestLocation)State.RecordArchiveNpc(id);Save(false);
         battleEnemy=null;battleNpcId=id;
         battle=new RpgTurnBattle(State,id=="guard"?72:48,false,title);
         Interface.ShowBattle(battle);
@@ -31,6 +33,7 @@ public sealed partial class RpgGame
             worldObjects.Remove(target.obj);target.obj.SetActive(false);Destroy(target.obj);
         }
         worldItems.RemoveAll(item=>item.id==id);
+        if(id=="districtRybář Oldřich")BuildHunterStash();
         if(id=="healer")BuildCompanion();
         DialogueNpcId=null;
         if(id=="guard"){Notify("Petr poražen • získáváš 1 svíčku navíc. Celkem: "+State.candles+".",7);return;}
@@ -58,6 +61,7 @@ public sealed partial class RpgInterface
     {
         if(game.State.cellarQuest>=2 && game.State.cellarQuest<6){ShowCellarMerchant();return;}
         Open("cellarClue","OPUŠTĚNÝ OBCHOD","Eliška je poražená. Nikdo tu neprodává ani nevydává její úkol. Zůstaly tu zásoby a přístup do sklepa.");
+        if(game.State.cycle>=2 && !game.State.cellarCandlesTaken)Action("Vstup do sklepa",ShowCellarEntrance);
         Action("Odejít",Close);
     }
 }

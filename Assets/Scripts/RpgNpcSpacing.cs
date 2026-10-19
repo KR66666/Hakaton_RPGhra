@@ -43,7 +43,7 @@ public sealed partial class RpgGame
         foreach(var item in worldItems)
         {
             if(item.obj==null||!item.obj.activeInHierarchy||item.obj.transform==ignore)continue;
-            if(item.kind!="mayor"&&item.kind!="merchant"&&item.kind!="healer"&&item.kind!="guard"&&item.kind!="elder"&&item.kind!="villager"&&item.kind!="district")continue;
+            if(item.kind!="mayor"&&item.kind!="merchant"&&item.kind!="healer"&&item.kind!="guard"&&item.kind!="elder"&&item.kind!="villager"&&item.kind!="district"&&item.kind!="librarian")continue;
             if(!RpgNpcSpacing.CanStep(current,desired,item.obj.transform.position,separation))return false;
         }
         return true;

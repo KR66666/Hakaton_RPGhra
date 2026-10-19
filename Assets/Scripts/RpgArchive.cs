@@ -18,7 +18,7 @@ public static class RpgArchive
         }
         else if(category==1)
         {
-            if(state.archiveEnemies.Contains("wolf"))entries.Add("VLK\nPozemní protivník. Lze proti němu použít meč nebo luk.");
+            if(state.archiveEnemies.Contains("wolf"))entries.Add("VLK\nPozemní protivník, proti kterému potřebuješ meč.");
             if(state.archiveEnemies.Contains("flying"))entries.Add("NETOPÝR\nLétajícího protivníka lze zasáhnout lukem.");
         }
         else if(category==2)
@@ -34,7 +34,6 @@ public static class RpgArchive
             {
                 string entry=id=="sword"?"ŽELEZNÝ MEČ\nMeč zakoupený u kováře Mikuláše.":
                     id=="bow"?"LUK\nZbraň proti létajícím protivníkům.":
-                    id=="armor"?"KOŽENÁ ZBROJ\nVýbava snižující příchozí zranění.":
                     id=="potion"?"LÉČIVÝ LEKTVAR\nObnoví 15 HP, nejvýše do maxima.":
                     id=="gold"?"ZLATO\nPeníze pro nákup zásob a vybavení.":
                     id=="candle"?"SVÍČKA\nZískaná svíčka pro rituál.":
@@ -51,6 +50,7 @@ public static class RpgArchive
         if(id=="elder")return "DĚDA MATĚJ";
         if(id=="healer")return "BYLINKÁŘKA MIRA";
         if(id=="mayor")return "RYCHTÁŘ RADOVAN";
+        if(id=="librarian")return "KNIHOVNICE AGÁTA";
         if(id=="merchant")return "OBCHODNICE ELIŠKA";
         if(id!=null && id.StartsWith("district"))return id.Substring(8).ToUpperInvariant();
         if(id!=null && id.StartsWith("bandit") && int.TryParse(id.Substring(6),out int index))

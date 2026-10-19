@@ -63,9 +63,9 @@ public sealed partial class RpgInterface
     }
     public void ShowGuideWelcome()
     {
+        if(game.State.cycle>=2)return;
         if(game.State.NpcDefeated("guard")){ShowFallenGuideNotes();return;}
         if(FirstMeeting("guard","Petr Kříž • průvodce","guideInstruction",ShowGuideWelcome))return;
-        if(game.State.cycle>=2){ShowCellarGuide();return;}
         Open("guideInstruction","PETR KŘÍŽ • RÁDCE","Tak tedy, "+game.State.HeroName+". Jestli hledáš cestu z toho podivného snu, místní pověsti mluví o rituálu se svíčkami. Ptej se obyvatel — oni zdejší místa znají lépe než ty.\n\n"+game.State.CellarObjective);
         NpcChallenge("guard");
         Action("Začít dobrodružství",()=>{
@@ -75,6 +75,7 @@ public sealed partial class RpgInterface
     }
     public void ShowGuideInstruction()
     {
+        if(game.State.cycle>=2)return;
         if(FirstMeeting("guard","Petr Kříž • průvodce","guideInstruction",ShowGuideInstruction))return;
         if(game.State.NpcDefeated("guard")){ShowFallenGuideNotes();return;}
         int stage=game.State.cellarQuest;

@@ -30,6 +30,7 @@ public sealed partial class RpgInterface
                 id=="elder"?"Říkají mi děda Matěj. Žiju tady už dlouho, ale tebe neznám. Když budeš něco hledat, možná ti poradím.":
                 id=="healer"?"Jsem Mira, zdejší bylinkářka. Neměj strach, cizinče. S lidmi, kteří se ocitnou daleko od domova, mám soucit.":
                 id=="mayor"?"Jsem Radovan, rychtář Havranova. Nepamatuji si, že bych tě tu někdy viděl. Dodržuj zdejší pořádek a můžeš se tu porozhlédnout.":
+                id=="librarian"?"Jsem Agáta, zdejší knihovnice. Kromě knih uchovávám i staré mapy. Jestli se chystáš do lesa, mohu ti poradit bezpečnou cestu.":
                 id=="merchant"?"Jsem Eliška a tohle je můj obchod. Dnes se vidíme poprvé. Jestli hledáš zásoby nebo radu, řekni, co potřebuješ.":
                 "Lidé mi říkají "+title+". Žiju tady v Havranově. Tvoje tvář mi není povědomá, ale můžeme se seznámit. Co potřebuješ?";
             Open(kind,title.ToUpperInvariant(),introduction);

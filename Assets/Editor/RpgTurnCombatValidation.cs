@@ -18,7 +18,7 @@ public static class RpgTurnCombatValidation
         check(s.UpgradeAttribute(1) && s.Damage==14,"Attack skill adds six damage");
         s.RewardQuest("c");s.RewardQuest("d");s.UpgradeAttribute(2);s.UpgradeAttribute(3);
         check(s.DodgeChance==.15f && s.InstantWinChance==.10f,"Chance skills expose their fixed bonuses");
-        check(!s.UpgradeAttribute(-1) && !s.UpgradeAttribute(4),"Invalid skills are rejected");
+        check(!s.UpgradeAttribute(-1) && !s.UpgradeAttribute(RpgState.SkillCount),"Invalid skills are rejected");
         check(!s.AddExperience(100000) && s.level==1 && s.experience==0 && s.UpgradePoints==0,"XP does not award levels or points");
         var containers=RpgState.CreateNew(false);
         check(!containers.QuestContainersVisible,"Containers are hidden before the search quest");

@@ -38,7 +38,7 @@ public sealed partial class RpgState
     }
     public void RecordOwnedArchiveItems()
     {
-        if(hasIronSword)RecordArchive(archiveItems,"sword");RecordArchive(archiveItems,"armor");
+        if(hasIronSword)RecordArchive(archiveItems,"sword");
         if(hasBow)RecordArchive(archiveItems,"bow");
         if(potions>0)RecordArchive(archiveItems,"potion");
         if(gold>0)RecordArchive(archiveItems,"gold");
@@ -73,6 +73,7 @@ public sealed partial class RpgState
         if(health<=0 || cellarQuest<3 || cellarQuest>4 || cellarCandlesTaken)return false;
         candles+=FirstCycleCandles;cellarCandlesTaken=true;cellarQuest=6;
         if(rush)health=Mathf.Max(1,health-20);
+        if(cycle>=2)ExplainRitual();
         return true;
     }
     public bool ExplainRitual()
@@ -87,15 +88,17 @@ public sealed partial class RpgState
         var next=CreateNew(heroIsBoy,HeroName);
         next.cycle=cycle+1;next.ritualFailed=true;next.deaths=deaths+1;
         next.unlockedSkills=new List<int>(unlockedSkills);
-        next.upgradePoints=upgradePoints;next.swordTrained=swordTrained;next.bowTrained=bowTrained;
+        next.upgradePoints=upgradePoints;next.swordTrained=swordTrained;next.bowTrained=bowTrained;next.forestRouteKnown=forestRouteKnown;
         next.health=next.MaxHealth;
+        next.stamina=next.MaxStamina;
         return next;
     }
     public int guideSeenStage = -1;
-    public bool NeedsGuideInstruction => !NpcDefeated("guard") && currentArea==0 && guideSeenStage!=cellarQuest &&
+    public bool NeedsGuideInstruction => cycle==1 && !NpcDefeated("guard") && currentArea==0 && guideSeenStage!=cellarQuest &&
         (cellarQuest==0 || cellarQuest==1 || cellarQuest==2 || cellarQuest==6);
     public bool cellarNoteTaken, cellarNoteOpened;
-    public string CellarObjective => storyComplete ? "Unikl jsi ze snu." : finalRitualStarted ? "Vrať se do kostela a dokonči obranu rituálu." : cellarQuest == 0 ? "Promluv s Petrem Křížem u mostu." :
+    public string CellarObjective => storyComplete ? "Unikl jsi ze snu." : finalRitualStarted ? "Vrať se do kostela a dokonči obranu rituálu." : cycle>=2 && cellarQuest<6 ?
+        $"Najdi {RequiredCandles} svíček. Sklep obchodu už znáš; další můžeš hledat v lese a knihovně." : cellarQuest == 0 ? "Promluv s Petrem Křížem u mostu." :
         cellarQuest == 1 ? "Zeptej se dědy Matěje na svíčky." :
         cellarQuest < 4 ? (NpcDefeated("merchant")?"Prozkoumej opuštěný obchod a sejdi do sklepa.":"Zeptej se Elišky na sklep obchodu.") :
         cellarQuest < 6 ? "Získej tři svíčky ve sklepě." :
@@ -186,7 +189,7 @@ public sealed partial class RpgState
     }
     public bool UpgradeAttribute(int attribute)
     {
-        if(upgradePoints<=0 || attribute<0 || attribute>3 || HasSkill(attribute))return false;
+        if(upgradePoints<=0 || attribute<0 || attribute>=SkillCount || HasSkill(attribute))return false;
         upgradePoints--;unlockedSkills.Add(attribute);
         if(attribute==0)health=Mathf.Min(MaxHealth,health+20);
         return true;
@@ -216,7 +219,7 @@ public sealed partial class RpgState
     public List<string> defeated = new List<string>();
 
     public int MaxHealth => 100 + (HasSkill(0)?20:0);
-    public int MaxStamina => 100;
+    public int MaxStamina => 100+(HasSkill(4)?20:0);
     public int Damage => (hasIronSword ? 18 + weaponLevel * 9 : 8) + (HasSkill(1)?6:0);
     public int Defense => armorLevel * 3;
     public bool CanFinishQuest => questStage == 1 && banditsDefeated >= 5;
@@ -263,7 +266,7 @@ public sealed partial class RpgState
 
     public bool AcceptSideQuest(int id)
     {
-        if (id < 1 || id > 2 || SideQuestStage(id) != 0) return false;
+        if (id < 1 || id > 2 || SideQuestStage(id) != 0 || id==2 && NpcDefeated("guard")) return false;
         SetSideQuestStage(id, 1);
         return true;
     }
@@ -312,7 +315,7 @@ public sealed partial class RpgState
         ResolveNpcClues();
         currentArea=Mathf.Clamp(currentArea,0,RpgCampaign.Names.Length-1);
         unlockedSkills=unlockedSkills ?? new List<int>();
-        unlockedSkills.RemoveAll(id=>id<0 || id>3);
+        unlockedSkills.RemoveAll(id=>id<0 || id>=SkillCount);
         unlockedSkills=new List<int>(new HashSet<int>(unlockedSkills));
         rewardedQuests=rewardedQuests ?? new List<string>();
         rewardedQuests.RemoveAll(string.IsNullOrEmpty);
@@ -345,8 +348,12 @@ public sealed partial class RpgState
         }
         candles=Mathf.Clamp(candles,0,cycle==1?FirstCycleCandles+(petrCandleTaken?1:0):6);
         if(cellarQuest>=6)cellarCandlesTaken=true;
+        if(cycle>=2 && cellarQuest==6)ExplainRitual();
         finalEnemiesRemaining=Mathf.Clamp(finalEnemiesRemaining,0,FinalWaveSize);
         place = RpgLocations.Normalize(place);
+        if(FinalWaveActive && !CanBeginFinalRitual){finalRitualStarted=false;finalEnemiesRemaining=0;}
+        if(FinalWaveActive && place!=RpgPlace.ChurchRuins){place=RpgPlace.ChurchRuins;x=0;y=0;}
+        if(!CanAccessLocation(place)){place=RpgPlace.Town;x=.5f;y=3.5f;}
         currentArea = Mathf.Clamp(currentArea, 0, RpgCampaign.Names.Length - 1);
         completedAreas = completedAreas ?? new List<int>();
         completedAreas.RemoveAll(a => a < 0 || a >= RpgCampaign.Names.Length);
@@ -360,7 +367,7 @@ public sealed partial class RpgState
         herbs = 0;gardenReadyAt=0;
         if(cycle<2)hasIronSword=false;
         if(!hasIronSword)weaponLevel=0;
-        archiveItems.RemoveAll(id=>id=="herb" || id=="sword"&&!hasIronSword);
+        archiveItems.RemoveAll(id=>id=="armor" || id=="herb" || id=="sword"&&!hasIronSword);
         weaponLevel = Mathf.Clamp(weaponLevel, 0, 5);
         armorLevel = Mathf.Clamp(armorLevel, 0, 5);
         trackedQuest=Mathf.Clamp(trackedQuest,-1,2);
@@ -372,9 +379,9 @@ public sealed partial class RpgState
         banditsDefeated = Mathf.Max(0, banditsDefeated);
         deaths = Mathf.Max(0, deaths);
         if (float.IsNaN(health) || float.IsInfinity(health)) health = MaxHealth;
-        if (float.IsNaN(stamina) || float.IsInfinity(stamina)) stamina = 100;
+        if (float.IsNaN(stamina) || float.IsInfinity(stamina)) stamina = MaxStamina;
         health = Mathf.Clamp(health, 0, MaxHealth);
-        stamina = Mathf.Clamp(stamina, 0, 100);
+        stamina = Mathf.Clamp(stamina, 0, MaxStamina);
         if (float.IsNaN(x) || float.IsInfinity(x)) x = 0;
         if (float.IsNaN(y) || float.IsInfinity(y)) y = 0;
         collected = collected ?? new List<string>();
@@ -391,14 +398,15 @@ public static class RpgWorldGeometry
 {
     // A directly overhead character is anchored at its ground-plane centre.
     public const float FeetOffset = 0f;
+    public const float FootRadius = .18f;
     public const float LegacyScale = .58f;
     public static readonly Vector2 ExpandedCoreOffset = new Vector2(358,163);
     public static Vector2 ToExpandedPixel(Vector2 original) => original*LegacyScale+ExpandedCoreOffset;
     public static Vector2 FromExpandedPixel(Vector2 expanded) => (expanded-ExpandedCoreOffset)/LegacyScale;
-    public static readonly Vector2 ShopDoorPixel=FromExpandedPixel(new Vector2(655,345));
-    public static readonly Vector2 ShopApproachPixel=FromExpandedPixel(new Vector2(650,395));
-    public static readonly Vector2 ChurchApproachPixel=FromExpandedPixel(new Vector2(1045,395));
-    public static readonly Vector2 LibraryApproachPixel=FromExpandedPixel(new Vector2(650,650));
+    public static readonly Vector2 ShopDoorPixel=FromExpandedPixel(RpgWorldDoors.Shop);
+    public static readonly Vector2 ShopApproachPixel=FromExpandedPixel(RpgWorldDoors.ShopApproach);
+    public static readonly Vector2 ChurchApproachPixel=FromExpandedPixel(RpgWorldDoors.ChurchApproach);
+    public static readonly Vector2 LibraryApproachPixel=FromExpandedPixel(RpgWorldDoors.LibraryApproach);
     public static Bounds ExpandedBounds(Bounds original)
     {
         var size=new Vector3(original.size.x/LegacyScale,original.size.y/LegacyScale,original.size.z);
@@ -427,10 +435,14 @@ public static class RpgWorldGeometry
     {
         var point=new Vector2((position.x-map.min.x)/map.size.x*1536,
             (map.max.y-position.y-feetOffset)/map.size.y*1024);
-        const float margin=1.74f;
-        return !WalkableExpandedPixel(point)||!WalkableExpandedPixel(point+new Vector2(margin,0))||
-            !WalkableExpandedPixel(point-new Vector2(margin,0))||!WalkableExpandedPixel(point+new Vector2(0,margin))||
-            !WalkableExpandedPixel(point-new Vector2(0,margin));
+        float rx=FootRadius*1536/map.size.x,ry=FootRadius*1024/map.size.y;
+        if(!WalkableExpandedPixel(point))return true;
+        for(int i=0;i<8;i++)
+        {
+            float angle=i*Mathf.PI/4;
+            if(!WalkableExpandedPixel(point+new Vector2(Mathf.Cos(angle)*rx,Mathf.Sin(angle)*ry)))return true;
+        }
+        return false;
     }
     private static bool WalkableExpandedPixel(Vector2 point) => point.x>=4&&point.x<=1532&&point.y>=4&&point.y<=1020&&RpgTownExpansion.Walkable(point);
     // Legacy quest/NPC pixel coordinates stay anchored to the old 40-unit central village.

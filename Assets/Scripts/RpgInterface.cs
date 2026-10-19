@@ -152,10 +152,10 @@ public sealed partial class RpgInterface : MonoBehaviour
         locationTitle.text=game.IsTestLocation?"TESTOVACÍ LOKACE [T]":game.LocationName.ToUpperInvariant();
         UpdateThemedHud();
         health.text = $"ZDRAVÍ    {Mathf.CeilToInt(state.health)} / {state.MaxHealth}";
-        stamina.text = $"VÝDRŽ    {Mathf.CeilToInt(state.stamina)} / 100";
+        stamina.text = $"VÝDRŽ    {Mathf.CeilToInt(state.stamina)} / {state.MaxStamina}";
         stats.text = $"BODY VYLEPŠENÍ: {state.UpgradePoints}    •    {state.gold} zl.";
         healthFill.fillAmount = state.health / state.MaxHealth;
-        staminaFill.fillAmount = state.stamina / 100;
+        staminaFill.fillAmount = state.stamina / state.MaxStamina;
         experienceFill.transform.parent.gameObject.SetActive(false);
         int active = (state.suppliesQuest == 1 ? 1 : 0) + (state.deliveryQuest == 1 ? 1 : 0);
         quest.text = QuestSummary() + (active > 0 ? $"\nVedlejší úkoly: {active}  [Q]" : "");
@@ -245,6 +245,7 @@ public sealed partial class RpgInterface : MonoBehaviour
     public void Close()
     {
         if(cellarAnimating || game.InBattle) return;
+        if(game.State.FinalWaveActive){ShowFinalWave();return;}
         if(currentModal=="entrance" && entranceCancel!=null)
         {
             var cancel=entranceCancel;entranceCancel=null;cancel();return;
@@ -312,20 +313,7 @@ public sealed partial class RpgInterface : MonoBehaviour
         Action("Zpět do testovací lokace",Close);
     }
 
-    public void ShowCharacterUpgrades()
-    {
-        if(game.State.health<=0)return;
-        var s=game.State;
-        Open("character","DOVEDNOSTI • ODEMČENÍ",$"{s.HeroName} • cyklus {s.cycle}\nVolné body: {s.UpgradePoints}\nZa úkol získáš bod, nejvýše 1 / 3 / 4 body podle cyklu. Nevyužité body zůstávají. Každá dovednost stojí 1 bod a odemyká se pouze jednou.\n\nVitalita: +20 maximálního zdraví.\nSilný úder: +6 poškození.\nÚhyb: 15% šance vyhnout se zásahu v souboji.\nRozhodující úder: 10% šance okamžitě porazit běžného nepřítele při útoku. ");
-        string[] names={"Vitalita","Silný úder","Úhyb","Rozhodující úder"};
-        for(int i=0;i<4;i++)
-        {
-            int skill=i;
-            Action(names[i]+(s.HasSkill(i)?" • odemčeno":" • odemknout za 1 bod"),()=>game.UpgradeCharacter(skill));
-            actions.GetChild(actions.childCount-1).GetComponent<Button>().interactable=s.UpgradePoints>0&&!s.HasSkill(i);
-        }
-        Action("Zavřít",Close);
-    }
+    public void ShowCharacterUpgrades() => ShowSkillPage(0);
 
     public void ToggleJournal()
     {
@@ -475,6 +463,7 @@ public sealed partial class RpgInterface : MonoBehaviour
         if(FirstMeeting("merchant","Obchodnice Eliška","merchant",ShowMerchant))return;
         var state = game.State;
         Open("merchant", "OBCHODNICE • ZBOŽÍ A VÝBAVA", $"„Mám pro tebe lektvary a mohu ti vylepšit zbroj.“\n\nTvé zlato: {state.gold}\nLektvary: {state.potions}   •   Zbroj +{state.armorLevel}\n\nLektvar: +15 zdraví.\nZbroj: −3 zranění za stupeň.");
+        if(state.cycle>=2 && !state.cellarCandlesTaken)Action("Vstup do sklepa",ShowCellarEntrance);
         Action("Koupit lektvar • 15 zl.", () => { game.BuyPotion(); ShowMerchant(); });
         Action(state.armorLevel >= 5 ? "Zbroj • maximální stupeň" : $"Vylepšit zbroj • {40 + state.armorLevel * 30} zl.", () => { game.Upgrade(false); ShowMerchant(); });
         NpcChallenge("merchant");
@@ -499,6 +488,7 @@ public sealed partial class RpgInterface : MonoBehaviour
         int stage = state.SideQuestStage(id);
         if (stage == 2) return "✓ " + name + " • splněno";
         if(state.NpcDefeated(id==1?"mayor":"merchant"))return name+" • zadavatel poražen, nelze odevzdat";
+        if(id==2 && state.ParcelRecipientMissing)return name+" • Petr zemřel, vrať zásilku Elišce";
         if (stage == 0) return name + " • zadává " + (id == 1 ? "Radovan" : "Eliška");
         if (state.SideQuestReady(id)) return name + " • vrať se pro odměnu";
         return name + " • " + (id == 1 ? $"zásoby {state.SuppliesFound}/2" : "doruč balíček Petrovi");
@@ -515,13 +505,18 @@ public sealed partial class RpgInterface : MonoBehaviour
             ? "Radovan hledá dvě bedny zásob. Jedna zůstala severně od náměstí, druhá na cestě k mostu na východě. Hledej oranžové značky, seber je [E] a vrať se k rychtáři.\n\nOdměna: 60 zlata a 1 bod vylepšení."
             : "Eliška potřebuje doručit balíček strážnému Petrovi. Stojí na východní cestě u kamenného mostu. Promluv s ním [E] a pak se vrať k Elišce.\n\nOdměna: 40 zlata, 1 bod vylepšení a 1 lektvar.";
         Open("sideQuest", title, story + "\n\n" + SideSummary(id));
-        if (atGiver && state.SideQuestStage(id) == 0)
+        if(id==2 && state.NpcDefeated("guard") && !state.parcelDelivered)
+        {
+            modalBody.text+="\n\nPetr zemřel, zásilku už nelze doručit.";
+            if(atGiver && state.ParcelRecipientMissing)Action("Vrátit zásilku a zrušit úkol",game.ReturnUndeliverableParcel);
+        }
+        else if (atGiver && state.SideQuestStage(id) == 0)
             Action("Přijmout úkol", () => game.AcceptSideQuest(id));
         else if (atGiver && state.SideQuestReady(id))
             Action("Odevzdat úkol a získat odměnu", () => game.CompleteSideQuest(id));
         else if (!atGiver && state.SideQuestStage(id) != 2)
             Action("Úkol přijmeš a odevzdáš u zadavatele", () => game.Notify("Vyhledej zadavatele ve vesnici."));
-        if(state.SideQuestStage(id)==1 && !state.NpcDefeated(id==1?"mayor":"merchant")) Action("Sledovat na mapce",()=>game.TrackQuest(id));
+        if(state.SideQuestStage(id)==1 && !state.NpcDefeated(id==1?"mayor":"merchant") && !(id==2 && state.ParcelRecipientMissing)) Action("Sledovat na mapce",()=>game.TrackQuest(id));
         Action(atGiver ? "Zpět k rozhovoru" : "Zpět do deníku", () =>
         {
             if (!atGiver) { currentModal = null; ToggleJournal(); }
@@ -535,7 +530,7 @@ public sealed partial class RpgInterface : MonoBehaviour
 
     public void ShowDeath()
     {
-        Open("death", "PADL JSI V BOJI", "Souboj skončil porážkou. Znovu se probereš na náměstí.\n\nZtratíš 10 zlata, ale zachováš si odemčené dovednosti, předměty i splněné části úkolu. Přeživší nepřátelé se uzdraví.");
+        Open("death", "PADL JSI V BOJI", "Souboj skončil porážkou. Znovu se probereš na náměstí.\n\nZtratíš 10 zlata, ale zachováš si odemčené dovednosti, předměty i splněné části úkolu. Přeživší nepřátelé se uzdraví. Pokud jsi bránil rituál, celá závěrečná vlna začne znovu.");
         Action("Vrátit se do vesnice", () => { currentModal = null; game.Respawn(); });
         Action("Hlavní nabídka", game.ReturnToMenu);
     }

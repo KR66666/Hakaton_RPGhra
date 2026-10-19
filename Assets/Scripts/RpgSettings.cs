@@ -49,20 +49,18 @@ public sealed class RpgSettings : MonoBehaviour
     }
     private void CreateAudio()
     {
-        musicSource=gameObject.AddComponent<AudioSource>();musicSource.loop=true;musicSource.spatialBlend=0;
+        musicSource=gameObject.AddComponent<AudioSource>();musicSource.loop=false;musicSource.spatialBlend=0;
         effectsSource=gameObject.AddComponent<AudioSource>();effectsSource.spatialBlend=0;
-        const int rate=22050;var samples=new float[rate*12];
-        int[] notes={57,60,64,62,57,55,52,55,57,60,64,67,64,62,60,57};
-        for(int i=0;i<samples.Length;i++)
-        {
-            float t=(float)i/rate;int beat=(int)(t/.75f);float age=t-beat*.75f;
-            float hz=440*Mathf.Pow(2,(notes[beat%notes.Length]-69)/12f);
-            float envelope=Mathf.Min(age*60,1)*Mathf.Exp(-age*5);
-            samples[i]=.12f*envelope*(Mathf.Sin(2*Mathf.PI*hz*age)+.25f*Mathf.Sin(4*Mathf.PI*hz*age));
-        }
-        var tune=AudioClip.Create("Quiet medieval plucked melody",samples.Length,1,rate,false);tune.SetData(samples,0);musicSource.clip=tune;musicSource.Play();
+        const int rate=22050;
         var sound=new float[rate/12];for(int i=0;i<sound.Length;i++){float t=(float)i/rate;sound[i]=.16f*Mathf.Sin(2*Mathf.PI*660*t)*Mathf.Exp(-t*55);}
         click=AudioClip.Create("UI click",sound.Length,1,rate,false);click.SetData(sound,0);
+    }
+    public static void PlayKingdom()
+    {
+        if(instance==null || instance.musicSource==null || instance.musicSource.isPlaying)return;
+        var track=instance.musicSource.clip ?? Resources.Load<AudioClip>("Sounds/Kingdom") ?? Resources.Load<AudioClip>("Kingdom");
+        if(track==null){Debug.LogWarning("Kingdom chybí: vlož skladbu do Assets/Resources/Sounds/Kingdom.");return;}
+        instance.musicSource.clip=track;instance.musicSource.loop=false;instance.musicSource.Play();
     }
     public static void PlayEffect(){if(instance!=null&&instance.effectsSource!=null&&instance.click!=null)instance.effectsSource.PlayOneShot(instance.click);}
     public static void PlayReward(bool point)

@@ -15,7 +15,7 @@ public static class RpgDialogueLayout
         switch(kind)
         {
             case "guideInstruction":case "cellarGuide":case "guard":case "mayor":case "healer":
-            case "merchant":case "shopDialogue":case "heroShopDialogue":case "resident":case "entrance":case "sideQuest":
+            case "librarian":case "merchant":case "shopDialogue":case "heroShopDialogue":case "resident":case "entrance":case "sideQuest":
             case "cellarElder":case "cellarMerchant":case "cellarWalk":case "cellarRats":
             case "cellarEscape":case "cellarNote":case "cellarClue":return true;
             default:return false;
@@ -123,6 +123,7 @@ public sealed partial class RpgInterface
         if(kind=="entrance")return RpgVisualTheme.Icon("entrance");
         if(kind=="merchant"||kind=="shopDialogue"||kind=="cellarMerchant")return Resources.Load<Sprite>("MerchantPortrait");
         if(kind=="mayor")return MedievalNpcAppearance.Get("mayor");
+        if(kind=="librarian")return MedievalNpcAppearance.Get("healer",1);
         if(kind=="healer")return MedievalNpcAppearance.Get("healer");
         if(kind=="cellarElder")return Resources.Load<Sprite>("MatejPortraitCutout");
         if(kind=="sideQuest")return speaker.Contains("MIRU")?MedievalNpcAppearance.Get("healer"):

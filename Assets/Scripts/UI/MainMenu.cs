@@ -52,8 +52,8 @@ public sealed class MainMenu : MonoBehaviour
         aspect.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
         aspect.aspectRatio = castle.sprite != null ? castle.sprite.rect.width / castle.sprite.rect.height : 1.5f;
         Label("Title", canvas.transform, "HAVRANOV", 72, new Vector2(0, 365), new Vector2(920, 96));
-        Label("Subtitle", canvas.transform, "Strážce vesnice • středověké RPG", 26, new Vector2(0, 255), new Vector2(920, 40));
-        Label("Tagline", canvas.transform, "Meč, odvaha a vesnice, která potřebuje hrdinu.", 24, new Vector2(0, -324), new Vector2(920, 40));
+        Label("Subtitle", canvas.transform, "Tajemství snu • příběhové RPG", 26, new Vector2(0, 255), new Vector2(920, 40));
+        Label("Tagline", canvas.transform, "Tři cykly. Jeden sen. Najdi cestu ven.", 24, new Vector2(0, -324), new Vector2(920, 40));
         Label("Controls", canvas.transform, "WASD • pohyb     J • tahový souboj     E • rozhovor     I • batoh", 22, new Vector2(0, -378), new Vector2(920, 36));
         Label("Save hint", canvas.transform, "Nová hra začíná od začátku. Uložený příběh otevři přes Načíst hru.", 20, new Vector2(0, -429), new Vector2(1100, 32));
 
@@ -83,7 +83,7 @@ public sealed class MainMenu : MonoBehaviour
         Button(panel,"Načíst hru",-50,()=>{
             if(!RpgGame.TryReadStorySave(out var saved))
             {heroSelection.text="Uloženou hru se nepodařilo načíst.";startPanel.SetActive(false);return;}
-            pendingGame=saved;pendingNewGame=false;SelectedHeroIsBoy=null;LaunchTest=false;LoadScene(gameplayScene);
+            pendingGame=saved;pendingNewGame=false;SelectedHeroIsBoy=null;LaunchTest=false;RpgSettings.PlayKingdom();LoadScene(gameplayScene);
         });
         Button(panel,"Zpět",-150,()=>startPanel.SetActive(false));
     }
@@ -105,6 +105,7 @@ public sealed class MainMenu : MonoBehaviour
     }
     private void ShowHeroName(bool boy)
     {
+        RpgSettings.PlayKingdom();
         var panel=BuildStartPanel("JMÉNO POSTAVY");
         Label("Name prompt",panel,"Jak se bude tvá postava jmenovat?",28,new Vector2(0,175),new Vector2(1000,60));
         var fieldRect=Box("Jméno hrdiny",panel,new Vector2(0,65),new Vector2(560,80));

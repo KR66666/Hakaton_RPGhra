@@ -34,7 +34,7 @@ public static class RpgRitualValidation
         check(second.cycle==2 && second.ritualFailed && second.deaths==3 && second.heroIsBoy,"Ritual death advances cycle and preserves appearance and memory");
         check(second.health==100 && second.stamina==100 && second.gold==35 && second.level==1 && second.candles==0,"Cycle restores initial attributes and empties candle inventory");
         check(second.place==RpgPlace.Town && second.cellarQuest==0 && !second.ritualKnown && second.collected.Count==0,"Cycle resets the location, quest and world pickups");
-        check(!second.CanPerformRitual && second.BeginSecondCycle()==null && second.NeedsGuideInstruction,"Second cycle starts a fresh candle quest and cannot repeat the ritual automatically");
+        check(!second.CanPerformRitual && second.BeginSecondCycle()==null && !second.NeedsGuideInstruction,"Second cycle starts independently without guide interruptions or automatic ritual repetition");
         var wounded=new RpgState{cellarQuest=4,health=5};
         check(wounded.CollectCandles(true) && wounded.health==1,"Cellar hit leaves a wounded player alive to return to the guide");
         var old=new RpgState{cellarQuest=7,cellarNoteOpened=true};old.Normalize();

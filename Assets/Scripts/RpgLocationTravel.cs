@@ -30,7 +30,7 @@ public sealed partial class RpgGame
         else
         {
             map.sprite=RpgLocationArt.Map(State.place);map.transform.position=new Vector3(0,0,1);map.transform.localScale=Vector3.one;
-            if((State.place==RpgPlace.Library||State.place==RpgPlace.SecretLibrary)&&map.sprite!=null)
+            if((State.place==RpgPlace.Library||State.place==RpgPlace.SecretLibrary||State.place==RpgPlace.Forest||State.place==RpgPlace.DarkForest)&&map.sprite!=null)
                 map.transform.localScale=new Vector3(32/map.sprite.bounds.size.x,24/map.sprite.bounds.size.y,1);
             if(State.place==RpgPlace.SecretLibrary)map.transform.localScale*=RpgLocations.SecretRoomScale;
             if(locationMapMaterial==null)locationMapMaterial=new Material(Shader.Find("Sprites/Default"));
@@ -40,22 +40,30 @@ public sealed partial class RpgGame
     }
     private Vector3 ExitPosition(RpgLocationExit exit) => exit.from==RpgPlace.Town
         ? RpgWorldGeometry.ExpandedPixelPosition(exit.point,map.bounds) : new Vector3(exit.point.x,exit.point.y,transform.position.z);
+    private Vector3? ExitApproach(RpgLocationExit exit) => !exit.approach.HasValue?(Vector3?)null:
+        exit.from==RpgPlace.Town?RpgWorldGeometry.ExpandedPixelPosition(exit.approach.Value,map.bounds):new Vector3(exit.approach.Value.x,exit.approach.Value.y,transform.position.z);
+    private bool CanUseExit(RpgLocationExit exit)
+    {
+        var approach=ExitApproach(exit);
+        return RpgEntranceRules.CanUse(transform.position,ExitPosition(exit),approach.HasValue?(Vector2?)approach.Value:null);
+    }
     private void AddLocationExits()
     {
         foreach(var exit in RpgLocations.Exits)
         {
             if(exit.from!=State.place)continue;
             if(exit.to==RpgPlace.SecretLibrary&&!State.librarySecretOpened)continue;
-            AddEntranceMarker(((int)exit.to).ToString(),RpgLocations.Name(exit.to),"locationExit",ExitPosition(exit));
+            AddEntranceMarker(((int)exit.to).ToString(),RpgLocations.Name(exit.to)+(State.CanAccessLocation(exit.to)?"":" • zamčeno"),"locationExit",ExitPosition(exit),ExitApproach(exit));
         }
     }
     private bool BuildExplorationLocation()
     {
         if(InTown)return false;
-        companionObject=null;AddLocationExits();BuildRitualSite();BuildCycleExploration();BuildLibrarySecret();return true;
+        companionObject=null;AddLocationExits();BuildRitualSite();BuildCycleExploration();BuildLibrarySecret();BuildLibrarian();return true;
     }
     public void TrackLocation(RpgPlace destination)
     {
+        if(!State.CanAccessLocation(destination)){Interface.ShowLockedForest();return;}
         var link=RpgLocations.Find(State.place,destination);
         if(destination==RpgPlace.SecretLibrary&&!State.librarySecretOpened){Notify("Tudy zatím žádná cesta nevede.");return;}
         if(link==null){Notify("Do této lokace odsud nevede přímá cesta.");return;}
@@ -70,6 +78,8 @@ public sealed partial class RpgGame
     {
         position=transform.position;title="";
         if(IsTestLocation)return false;
+        if(!trackedLocation.HasValue && State.forestRouteKnown && State.place==RpgPlace.Forest && !State.forestCandleTaken)
+        {position=RpgForestGeometry.NextSafeWaypoint(transform.position);title="Bezpečná cesta ke svíčce";return true;}
         if(trackedShop&&InTown){position=ShopApproach;title="Obchod • Eliška";return true;}
         RpgLocationExit link=trackedLocation.HasValue?RpgLocations.Find(State.place,trackedLocation.Value):null;
         if(link==null && State.ritualKnown)
@@ -77,10 +87,10 @@ public sealed partial class RpgGame
             if(State.place==RpgPlace.ChurchRuins){position=RitualPosition;title=State.CellarObjective;return true;}
             if(State.candles<State.RequiredCandles && State.cycle>=2)
             {
-                if(State.place==RpgPlace.Forest && !State.forestCandleTaken){position=new Vector3(1,5);title="Svíčka v lese";return true;}
+                if(State.place==RpgPlace.Forest && !State.forestCandleTaken){position=State.forestRouteKnown?RpgForestGeometry.NextSafeWaypoint(transform.position):RpgForestGeometry.Candle;title=State.forestRouteKnown?"Bezpečná cesta ke svíčce":"Svíčka v lese";return true;}
                 if(State.place==RpgPlace.Library && !State.libraryCandleTaken)
                 {
-                    position=State.librarySecretOpened?new Vector3(11.4f,3.7f):new Vector3(11.4f,5.1f);
+                    position=State.librarySecretOpened?(Vector3)RpgWorldDoors.SecretPassageApproach:new Vector3(11.4f,5.1f);
                     title=State.librarySecretOpened?"Tajný průchod v knihovně":"Kniha se skrytým mechanismem";return true;
                 }
                 if(State.place==RpgPlace.SecretLibrary && !State.libraryCandleTaken)
@@ -92,14 +102,21 @@ public sealed partial class RpgGame
         if(link==null&&!InTown)
             foreach(var candidate in RpgLocations.Exits)if(candidate.from==State.place&&(candidate.to!=RpgPlace.SecretLibrary||State.librarySecretOpened)){link=candidate;break;}
         if(link==null)return false;
-        position=SnapToRoad(ExitPosition(link));title="Cesta: "+RpgLocations.Name(link.to);return true;
+        position=ExitApproach(link)??ExitPosition(link);title="Cesta: "+RpgLocations.Name(link.to);return true;
     }
     public bool TryTravelLocation(RpgPlace destination)
     {
+        if(State.FinalWaveActive){Notify("Nejdřív dokonči obranu rituálu.");return false;}
         var exit=RpgLocations.Find(State.place,destination);
+        if(!State.CanAccessLocation(destination)){Interface.ShowLockedForest();return false;}
+        if(destination==RpgPlace.Forest && !State.forestDiscoverySeen && !IsTestLocation && exit!=null)
+        {
+            if(CanUseExit(exit))Interface.ShowForestDiscovery();
+            return false;
+        }
         if(destination==RpgPlace.SecretLibrary&&!State.librarySecretOpened)return false;
         if(IsTestLocation||exit==null||State.health<=0||IsEnteringRoom||Interface.InRoom)return false;
-        if(!RpgEntranceRules.InReach(transform.position,SnapToRoad(ExitPosition(exit))))
+        if(!CanUseExit(exit))
         {Notify("Přijdi blíž ke zlaté značce přechodu.");return false;}
         StartCoroutine(TravelLocation(exit));return true;
     }
@@ -149,7 +166,7 @@ public sealed partial class RpgInterface
         {
             if(link.from!=game.State.place)continue;
             if(link.to==RpgPlace.SecretLibrary&&!game.State.librarySecretOpened)continue;
-            var destination=link.to;Action("Označit cestu: "+RpgLocations.Name(destination),()=>game.TrackLocation(destination));
+            var destination=link.to;Action("Označit cestu: "+RpgLocations.Name(destination)+(game.State.CanAccessLocation(destination)?"":" • zamčeno"),()=>game.TrackLocation(destination));
         }
         if(game.InTown)Action("Označit cestu: obchod",game.TrackShop);
         Action("Zavřít [M / Esc]",Close);

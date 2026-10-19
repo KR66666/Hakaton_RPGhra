@@ -42,7 +42,7 @@ public sealed partial class RpgGame
     }
     public void StartRitual()
     {
-        if(IsEnteringRoom || !State.CanPerformRitual || Vector2.Distance(transform.position,RitualPosition)>2.5f)return;
+        if(IsEnteringRoom || !State.CanPerformRitual || !State.CanBeginFinalRitual || Vector2.Distance(transform.position,RitualPosition)>2.5f)return;
         StartCoroutine(PerformRitual());
     }
     private IEnumerator PerformRitual()
@@ -61,7 +61,7 @@ public sealed partial class RpgGame
             }
         if(State.cycle==3)
         {
-            State.StartFinalWave();IsEnteringRoom=false;Save(false);Interface.ShowFinalWave();yield break;
+            State.StartFinalWave();IsEnteringRoom=false;BuildWorld();Save(false);Interface.ShowFinalWave();yield break;
         }
         Notify("Světlo sílí. Něco je špatně…",4);
         if(site!=null){var line=site.GetComponent<LineRenderer>();line.startColor=line.endColor=new Color(.85f,.07f,.04f);}
@@ -86,12 +86,13 @@ public sealed partial class RpgInterface
         if(s.finalRitualStarted){ShowFinalWave();return;}
         Open("cellarClue","RITUÁLNÍ OBRAZEC",$"{s.RitualShape.ToUpperInvariant()} • {s.candles}/{s.RequiredCandles} svíček\n\n"+
             (s.CanPerformRitual?"Máš dost svíček. Můžeš je rozmístit a začít rituál.":s.CellarObjective));
-        if(s.CanPerformRitual)Action("Rozmístit svíčky a začít rituál",game.StartRitual);
+        if(s.CanPerformRitual && s.CanBeginFinalRitual)Action("Rozmístit svíčky a začít rituál",game.StartRitual);
+        else if(s.cycle==3 && !s.CanBeginFinalRitual)modalBody.text+="\n\nPřed posledním rituálem se nauč bojovat s mečem i lukem a obě zbraně si opatři. Po začátku už kostel neopustíš.";
         Action("Odejít",Close);
     }
     public void ShowSecondCycle()
     {
-        Open("cellarClue","CYKLUS "+game.State.cycle+" • PROBUZENÍ","Prudce se nadechneš. Znovu jsi na začátku. Rituál skončil smrtí, ale ze snu ses nedostal. Předměty a svíčky musíš získat znovu. Odemčené dovednosti, naučený boj i nevyužité body ti zůstaly. Obyvatelé tě znovu nepoznávají.");
+        Open("heroShopDialogue",game.State.HeroName.ToUpperInvariant(),game.State.heroIsBoy?"Okay, zkusím to nějak sám.":"Okay, zkusím to nějak sama.");
         Action("Vstát a pokračovat",Close);
     }
 }
